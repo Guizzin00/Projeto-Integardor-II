@@ -57,7 +57,7 @@ O sistema oferece as seguintes funcionalidades principais:
 ---
 # 📌 Product Backlog – SisCPTI
 Sistema de Gestão de Projetos de TI  
-Projeto Integrador I – UNICEUB  
+Projeto Integrador II – UNICEUB  
 
 ---
 
@@ -123,7 +123,7 @@ O objetivo do MVP é entregar um **protótipo navegável**, validando o conceito
 
 ---
 
-# 🔄 Evolução Futura (PI II e PI III)
+# 🔄 Evolução Futura (PI III)
 
 Funcionalidades previstas para evolução:
 
