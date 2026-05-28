@@ -14,12 +14,13 @@ Ele facilita a comunicação e o acompanhamento do progresso de projetos integra
 - [✨ Funcionalidades](#-funcionalidades)  
 - [💻 Tecnologia e Arquitetura](#-tecnologia-e-arquitetura)  
 - [📊 Stakeholders](#-stakeholders)  
-- [📌 Restrições e Premissas](#-restrições-e-premissas)  
-- [🗂️ Escopo Inicial (MVP)](#️-escopo-inicial-mvp)  
+- [📌 Evolução do Escopo (PI I para PI II)](#-evolução-do-escopo-pi-i-para-pi-ii)  
+- [🗂️ Registro de Alterações (Changelog)](#️-registro-de-alterações-changelog)  
 - [📈 Métricas de Sucesso](#-métricas-de-sucesso)  
-- [🛠️ Roadmap Inicial](#️-roadmap-inicial)  
+- [🛠️ Roadmap de Desenvolvimento](#️-roadmap-de-desenvolvimento)  
 - [🤝 Equipe do Projeto](#-equipe-do-projeto)  
-- [📄 Licença](#-licença)  
+- [📄 Licença](#-licença)
+  
 
 ---
 
@@ -144,12 +145,13 @@ Backlog estruturado com base nos princípios do Scrum Guide, de Ken Schwaber e J
 
 ### 💻 Tecnologia e Arquitetura
 
-O **SisCPTI** será construído com base em uma arquitetura web moderna:
+O **SisCPTI** é construído utilizando uma arquitetura web dinâmica com as seguintes tecnologias:
 
-- **Backend:** JavaScript e Python
-- **Frontend:** HTML e CSS 
-- **Banco de Dados:** SQL
-- **Versionamento:** Git
+- **Backend:** Python com o microframework **Flask** e gerenciamento de banco de dados via **Flask-SQLAlchemy**.
+- **Frontend:** HTML5 semântico, CSS3 personalizado (suportando temas claro e escuro dinamicamente) e JavaScript nativo para interações dinâmicas e requisições assíncronas (AJAX).
+- **Visualização de Dados:** **Chart.js** integrado no painel de administração para geração de gráficos estatísticos interativos de forma responsiva.
+- **Banco de Dados:** **SQLite** integrado para persistência de dados de usuários, projetos, logs e mensagens.
+- **Versionamento e Deploy:** Git para controle de versão com repositório no GitHub.
 
 ---
 
@@ -164,60 +166,53 @@ O **SisCPTI** será construído com base em uma arquitetura web moderna:
 
 ---
 
-### 📌 Restrições e Premissas
+### 📌 Evolução do Escopo (PI I para PI II)
 
--  **Acesso restrito:** inicialmente apenas alunos e professores do UNICEUB poderão visualizar e validar o protótipo.  
--  **Sem funcionalidades completas:** nesta fase o sistema não será desenvolvido com todas as funções finais, mas sim representado por protótipos navegáveis e documentação.  
--  **Sem integrações externas:** não haverá conexões com APIs, e-mails ou sistemas acadêmicos neste semestre.  
--  **Dados fictícios:** as informações de projetos cadastrados no protótipo serão apenas exemplos, não dados reais.  
--  **Premissa:** o sistema será utilizado inicialmente apenas como catálogo conceitual de projetos, servindo de base para fases futuras (PI II e PI III).  
+O que antes era um protótipo navegável estático (desenvolvido no PI I) evoluiu para um sistema web completo e dinâmico funcional:
+- **Autenticação de Usuários:** Cadastro e login protegidos com hash de senhas e perfis de permissão bem definidos.
+- **Processo Seletivo de Alunos:** Candidatura estruturada nos projetos e fluxo de aprovação de propostas no painel administrativo.
+- **Workspace Colaborativo:** Área de desenvolvimento própria para cada projeto com chat integrado e upload de arquivos.
+- **Auditoria de Eventos:** Logs detalhados de atividades do sistema para os administradores.
+- **Acessibilidade e Temas:** Alternância dinâmica nativa de tema claro/escuro com paletas de cores harmônicas e logo do UNICEUB auto-adaptável (inversão automática para cor branca no modo escuro).
 
 ---
 
-### 🗂️ Escopo Inicial (MVP)
+### 🗂️ Registro de Alterações (Changelog)
 
-- Catálogo digital de projetos disponíveis.  
-- Submissão de propostas de projetos por empresas.  
-- Área para atualização manual do status dos projetos.  
-- Visualização de informações básicas (descrição, responsável, status, requisitos).  
+Para ver o histórico completo das implementações desenvolvidas semana a semana no PI II, acesse o documento de histórico de desenvolvimento:
+* 📄 [Diário de Bordo / Changelog](file:///d:/SISCPTI-main/changelog/change_log.md)
 
 ---
 
 ### 📈 Métricas de Sucesso
 
 - ✅ % de alunos que conhecem e acessam o catálogo.  
-- ✅ Número de projetos submetidos no semestre.  
-- ✅ Engajamento: proporção de alunos que se inscrevem em pelo menos 1 projeto.  
-- ✅ Feedback positivo da coordenação e professores.  
+- ✅ Número de projetos submetidos e aprovados por semestre.  
+- ✅ Engajamento: proporção de alunos que se inscrevem em projetos.  
+- ✅ Auditoria de uso através dos logs administrativos.
 
 ---
 
-### 🛠️ Roadmap Inicial 
+### 🛠️ Roadmap de Desenvolvimento
 
-**Semana 1-2 (agosto/setembro)**  
-- Levantamento de requisitos com alunos, professores e coordenação.  
-- Identificação dos stakeholders e suas necessidades.  
-- Definição do problema central e objetivos do SisCPTI.  
+#### ✅ Fase I (Projeto Integrador I - Concluída)
+- Levantamento de requisitos iniciais e modelagem do Documento de Visão.
+- Design de telas conceituais e protótipo estático navegável no Figma.
+- Estruturação inicial do Product Backlog do MVP.
 
-**Semana 3-4 (setembro)**  
-- Construção do Documento de Visão do Projeto.  
-- Elaboração do Mapa de Empatia e Mapa de Stakeholders.  
-- Definição do escopo inicial (MVP) e restrições.  
+#### ✅ Fase II (Projeto Integrador II - Concluída / Atual)
+- Implementação do backend funcional com Flask.
+- Banco de dados SQLite integrado e persistência com ORM (SQLAlchemy).
+- Sistema de controle de acesso (Login/Cadastro/Perfis) e recuperação de senha.
+- Criação do workspace de equipes com chat e envio de anexos.
+- Painel de controle do Administrador com logs de auditoria e exportação CSV.
+- Interface responsiva com suporte a Dark/Light Theme e gráficos interativos Chart.js.
 
-**Semana 5-6 (outubro)**  
-- Criação do protótipo de telas (wireframes) no Figma.  
-- Desenho da arquitetura inicial (tecnologias sugeridas).  
-- Estrutura conceitual do banco de dados.  
-
-**Semana 7-8 (outubro/novembro)**  
-- Ajustes e validação do protótipo com a equipe e professor orientador.  
-- Preparação da documentação complementar (backlog inicial, métricas, roadmap).  
-
-**Semana 9-10 (novembro/dezembro)**  
-- Consolidação de toda a documentação do projeto.  
-- Entrega do protótipo final (não funcional, apenas navegável).  
-- Apresentação e entrega final do PI I.  
-
+#### 🔄 Fase III (Projeto Integrador III - Planejado)
+- Integração de e-mails reais para notificações e recuperação de senha.
+- Sistema de autenticação institucional unificado (Ex: LDAP/Azure AD do UNICEUB).
+- Implementação de filtros avançados no dashboard e geração de relatórios em PDF.
+- Aprimoramento da segurança e preparação do ambiente para produção.
 
 ---
 
