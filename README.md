@@ -230,7 +230,7 @@ Este projeto foi desenvolvido com dedicação pelo seguinte grupo:
 | Guilherme Gouveia | Scrum Master | [GuilhermeGouveia12](https://github.com/GuilhermeGouveia12) |
 | Davi Souza | Desenvolvedor | [davi-ssg](https://github.com/davi-ssg) |
 | Arthur Grangeiro | Product Owner | [ArthurGrangeiro](https://github.com/ArthurGrangeiro) | 
-| Guilherme Oliveira | Desenvolvedor |
+| Guilherme Oliveira | Desenvolvedor | [Guizzin00](https://github.com/Guizzin00)           |
 ---
 
 ### 📄 Licença
