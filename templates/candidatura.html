@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Candidatura: {{ projeto.titulo }} · SisCPTI{% endblock %}
+{% block content %}
+<div class="submit-form">
+  <h2>Candidatar-se ao Projeto</h2>
+  <p>Você está se candidatando para: <strong>{{ projeto.titulo }}</strong></p>
+  
+  <form method="POST" action="{{ url_for('candidatar', projeto_id=projeto.id) }}">
+    <div class="form-group">
+      <label for="motivo">Por que você quer participar deste projeto?</label>
+      <textarea name="motivo" id="motivo" rows="4" required placeholder="Explique seu interesse e motivação..."></textarea>
+    </div>
+    <div class="form-group" style="margin-top: 1rem;">
+      <label for="experiencia">Qual sua experiência prévia? (Opcional)</label>
+      <textarea name="experiencia" id="experiencia" rows="3" placeholder="Linguagens, frameworks, cursos..."></textarea>
+    </div>
+    <div style="margin-top: 1.5rem;">
+      <button type="submit" class="btn">Enviar Candidatura</button>
+      <a href="{{ url_for('projeto_detalhes', projeto_id=projeto.id) }}" class="btn" style="background: #ccc; color: #333; margin-left: 10px;">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

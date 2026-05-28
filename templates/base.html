@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}SisCPTI · Caderno de Projetos TI UniCEUB{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=4">
+
+
+  <style>
+    /* ===== Estrutura base para manter o footer fixo ao final ===== */
+    html, body {
+      height: 100%;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    main {
+      flex: 1;
+    }
+
+    footer {
+      margin-top: auto;
+    }
+
+    /* ===== Ajustes gerais ===== */
+    ul.nav-links {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 1.4rem;
+    }
+
+    ul.nav-links li a {
+      color: var(--purple-primary);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.2s ease;
+    }
+
+    ul.nav-links li a:hover {
+      color: var(--purple-hover);
+    }
+
+    footer {
+      background: var(--purple-primary);
+      color: var(--text-on-purple);
+      text-align: center;
+      padding: 1rem 0;
+      font-size: 0.9rem;
+      box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+
+<body>
+  <!-- ===== CABEÇALHO CEUB ===== -->
+  <header class="ceub-header">
+  <div class="ceub-container">
+    <a href="{{ url_for('index') }}">
+      <img src="{{ url_for('static', filename='logoCEUB.png') }}" alt="Logo CEUB" class="ceub-logo">
+    </a>
+
+    <!-- Botão hambúrguer (aparece só no mobile) -->
+    <button class="hamburger" type="button" aria-label="Abrir menu" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <nav class="ceub-nav">
+      <ul class="nav-links">
+        <li><a href="{{ url_for('index') }}">Início</a></li>
+        <li><a href="{{ url_for('projetos') }}">Projetos</a></li>
+        <li><a href="{{ url_for('sobre') }}">Sobre</a></li>
+
+        {% if session.get('logged_in') %}
+          {% if session.get('role') == 'admin' %}
+            <li><a href="{{ url_for('admin_dashboard') }}">Painel Admin</a></li>
+          {% endif %}
+          <li><a href="{{ url_for('perfil') }}">Meu Perfil</a></li>
+          <li><a href="{{ url_for('submissao') }}">Submissão</a></li>
+          
+          <!-- Sino de Notificações com Dropdown -->
+          <li class="notification-container" style="position: relative;">
+            <button id="notification-btn" class="theme-toggle-btn" title="Notificações" type="button" style="position: relative;">
+              🔔
+              <span id="notification-badge" class="notif-badge">0</span>
+            </button>
+            <div id="notification-dropdown" class="notif-dropdown" style="display: none;">
+              <div class="notif-dropdown-header">
+                <span>Notificações</span>
+                <button id="notif-mark-all-btn" class="notif-clear-btn" type="button">Marcar todas como lidas</button>
+              </div>
+              <ul id="notification-list" class="notif-list">
+                <li class="notif-empty">Nenhuma notificação não lida.</li>
+              </ul>
+            </div>
+          </li>
+          
+          <li><a href="{{ url_for('logout') }}">Sair ({{ session.get('user') }})</a></li>
+        {% else %}
+          <li><a href="{{ url_for('login') }}">Login</a></li>
+        {% endif %}
+        <li>
+          <button id="theme-toggle" class="theme-toggle-btn" title="Alternar Tema" type="button">🌓</button>
+        </li>
+      </ul>
+    </nav>
+  </div>
+
+  <!-- Linha roxa inferior -->
+  <div class="ceub-line"></div>
+</header>
+
+
+  <!-- ===== CONTEÚDO PRINCIPAL ===== -->
+  <main>
+    <div class="flash-container" style="width: 90%; margin: 1rem auto;">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ===== RODAPÉ ===== -->
+  <footer>
+    <p>© 2025 UniCEUB · Sistema de Gestão do Caderno de Projetos de TI (SisCPTI)</p>
+  </footer>
+
+  <script src="{{ url_for('static', filename='script.js') }}?v=3"></script>
+
+</html>

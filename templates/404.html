@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 – Página não encontrada · SisCPTI</title>
+  <meta name="description" content="A página que você procura não foi encontrada no SisCPTI UniCEUB.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=4">
+  <style>
+    .error-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+      background: var(--bg-primary);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Orbs de fundo animados */
+    .error-page::before,
+    .error-page::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.18;
+      animation: floatOrb 8s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .error-page::before {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, #7A1BB5, transparent);
+      top: -150px; left: -150px;
+    }
+    .error-page::after {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, #4B006E, transparent);
+      bottom: -100px; right: -100px;
+      animation-delay: -4s;
+    }
+
+    @keyframes floatOrb {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(30px) scale(1.05); }
+    }
+
+    .error-code {
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(6rem, 20vw, 12rem);
+      font-weight: 800;
+      line-height: 1;
+      background: linear-gradient(135deg, var(--purple-primary), var(--purple-hover));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin: 0;
+      letter-spacing: -4px;
+      position: relative;
+      z-index: 1;
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.2); }
+    }
+
+    .error-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      animation: bounce 2s ease-in-out infinite;
+      position: relative;
+      z-index: 1;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+
+    .error-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(1.4rem, 4vw, 2rem);
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 1rem 0 0.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .error-message {
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      color: var(--text-secondary);
+      max-width: 480px;
+      line-height: 1.7;
+      margin: 0 auto 2.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .error-actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .btn-primary-error {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.8rem 2rem;
+      background: linear-gradient(135deg, var(--purple-primary), var(--purple-hover));
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+      box-shadow: 0 4px 20px rgba(122, 27, 181, 0.35);
+    }
+
+    .btn-primary-error:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 30px rgba(122, 27, 181, 0.5);
+      filter: brightness(1.1);
+    }
+
+    .btn-ghost-error {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.8rem 2rem;
+      background: transparent;
+      color: var(--purple-primary);
+      border: 2px solid var(--purple-primary);
+      border-radius: 50px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    }
+
+    .btn-ghost-error:hover {
+      background: var(--purple-primary);
+      color: #fff;
+      transform: translateY(-3px);
+    }
+
+    .divider-line {
+      width: 60px;
+      height: 4px;
+      background: linear-gradient(135deg, var(--purple-primary), var(--purple-hover));
+      border-radius: 4px;
+      margin: 1.2rem auto;
+      position: relative;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body id="errorBody">
+  <div class="error-page">
+    <div class="error-icon">🔍</div>
+    <p class="error-code">404</p>
+    <div class="divider-line"></div>
+    <h1 class="error-title">Página não encontrada</h1>
+    <p class="error-message">
+      Parece que a página que você está procurando não existe ou foi movida.
+      Verifique o endereço ou retorne ao início.
+    </p>
+    <div class="error-actions">
+      <a href="{{ url_for('index') }}" class="btn-primary-error" id="btn-home-404">
+        🏠 Ir para o Início
+      </a>
+      <a href="{{ url_for('projetos') }}" class="btn-ghost-error" id="btn-projetos-404">
+        📂 Ver Projetos
+      </a>
+    </div>
+  </div>
+
+  <script>
+    // Aplicar tema salvo
+    (function() {
+      const theme = localStorage.getItem('theme');
+      if (theme === 'dark') {
+        document.getElementById('errorBody').classList.add('dark-theme');
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}Cadastrar · SisCPTI{% endblock %}
+{% block content %}
+
+<section class="register-section">
+  <h2>Crie sua Conta</h2>
+
+  <form class="register-form" method="POST" action="{{ url_for('cadastro') }}">
+    <label for="username">Usuário:</label>
+    <input type="text" id="username" name="username" placeholder="Seu nome de usuário" required>
+
+    <label for="password">Senha:</label>
+    <input type="password" id="password" name="password" placeholder="Digite sua senha" required>
+
+    <label for="confirm">Confirmar senha:</label>
+    <input type="password" id="confirm" name="confirm" placeholder="Confirme a senha" required>
+
+    <button type="submit" class="btn">Cadastrar</button>
+  </form>
+
+  <div class="login-redirect">
+    <p>Já tem uma conta?</p>
+    <a href="{{ url_for('login') }}" class="btn btn-secondary">Fazer Login</a>
+  </div>
+</section>
+
+<style>
+  .register-section {
+    max-width: 400px;
+    margin: 3rem auto;
+    background: var(--bg-surface);
+    padding: 2.5rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow-light);
+    text-align: center;
+  }
+
+  .register-section h2 {
+    color: var(--purple-primary);
+    margin-bottom: 1.5rem;
+  }
+
+  .register-form {
+    text-align: left;
+  }
+
+  .register-form label {
+    display: block;
+    font-weight: 600;
+    color: var(--purple-primary);
+    margin-bottom: 0.3rem;
+  }
+
+  .register-form input {
+    width: 100%;
+    padding: 0.6rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+  }
+
+  .btn {
+    width: 100%;
+    background: var(--purple-primary);
+    color: var(--text-on-purple);
+    border: none;
+    padding: 0.8rem;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+
+  .btn:hover {
+    background: var(--purple-hover);
+  }
+
+  .btn-secondary {
+    background: var(--border-color);
+    color: var(--text-primary);
+  }
+
+  .btn-secondary:hover {
+    background: var(--purple-hover);
+    color: var(--text-on-purple);
+  }
+
+  .login-redirect {
+    margin-top: 1rem;
+  }
+</style>
+
+{% endblock %}

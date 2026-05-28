@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+{% block title %}Meu Perfil · SisCPTI{% endblock %}
+{% block content %}
+
+<div class="admin-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+  <div style="display: flex; align-items: center; gap: 1.2rem;">
+    <div class="perfil-avatar-lg">{{ session.user[0]|upper }}</div>
+    <div>
+      <h2 style="margin: 0 0 0.2rem;">{{ session.user }}</h2>
+      {% set current_user = namespace(email='', bio='') %}
+      <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
+        🎓 Membro do SisCPTI
+      </p>
+    </div>
+  </div>
+  <a href="{{ url_for('perfil_editar') }}" class="btn" style="margin: 0;" id="btn-editar-perfil">
+    ✏️ Editar Perfil
+  </a>
+</div>
+
+<style>
+.perfil-avatar-lg {
+  width: 60px; height: 60px;
+  background: linear-gradient(135deg, var(--purple-primary), var(--purple-hover));
+  color: #fff;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-title);
+  font-size: 1.6rem; font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(122,27,181,0.3);
+}
+</style>
+
+<div class="admin-tabs">
+  <button class="tab-link active" onclick="openTab(event, 'tab-inscricoes')">Minhas Inscrições ({{ minhas_candidaturas|length }})</button>
+  <button class="tab-link" onclick="openTab(event, 'tab-propostas')">Minhas Propostas ({{ minhas_submissoes|length }})</button>
+  {% if meus_projetos|length > 0 %}
+  <button class="tab-link" onclick="openTab(event, 'tab-meusprojetos')">Gerenciar Meus Projetos ({{ meus_projetos|length }})</button>
+  {% endif %}
+</div>
+
+<!-- ABA 1: Minhas Inscrições -->
+<div id="tab-inscricoes" class="tab-content active" style="display:block;">
+  <h3>Projetos que me candidatei</h3>
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>Projeto</th>
+        <th>Meu Motivo</th>
+        <th>Status da Inscrição</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cand in minhas_candidaturas %}
+      <tr>
+        <td><strong>{{ cand.projeto.titulo }}</strong><br><a href="{{ url_for('projeto_detalhes', projeto_id=cand.projeto_id) }}" style="font-size: 0.8rem; color: var(--purple-primary);">Ver página</a></td>
+        <td style="max-width: 300px; font-size: 0.9rem;">{{ cand.motivo }}</td>
+        <td>
+          {% if cand.status == 'APROVADA' %}
+            <span class="badge status-green">{{ cand.status }}</span>
+            <br>
+            <a href="{{ url_for('workspace', projeto_id=cand.projeto_id) }}" class="btn-sm btn-success" style="margin-top: 8px;">Acessar Workspace</a>
+          {% elif cand.status == 'REJEITADA' %}
+            <span class="badge status-red">{{ cand.status }}</span>
+          {% else %}
+            <span class="badge">{{ cand.status }}</span>
+            <div style="margin-top: 8px;">
+              <a href="{{ url_for('editar_candidatura', cand_id=cand.id) }}" class="btn-sm btn-edit">Editar</a>
+              <a href="{{ url_for('cancelar_candidatura', cand_id=cand.id) }}" class="btn-sm btn-delete" onclick="return confirm('Tem certeza que deseja cancelar esta candidatura?')">Cancelar</a>
+            </div>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" style="text-align: center;">Você ainda não se inscreveu em nenhum projeto.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- ABA 2: Minhas Propostas de Projetos -->
+<div id="tab-propostas" class="tab-content" style="display:none;">
+  <h3>Minhas Propostas de Projetos</h3>
+  <p style="margin-bottom: 1rem;">Aqui você pode ver, editar ou cancelar as propostas de projetos que você enviou.</p>
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>Título do Projeto</th>
+        <th>Categoria</th>
+        <th>Status</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for subm in minhas_submissoes %}
+      <tr>
+        <td><strong>{{ subm.nome_projeto }}</strong></td>
+        <td>{{ subm.categoria }}</td>
+        <td>
+          <span class="badge {% if subm.status == 'APROVADA' %}status-green{% elif subm.status == 'REJEITADA' %}status-red{% else %}status-orange{% endif %}">
+            {{ subm.status }}
+          </span>
+        </td>
+        <td>
+          {% if subm.status == 'EM ANÁLISE' %}
+            <a href="{{ url_for('editar_submissao', sub_id=subm.id) }}" class="btn-sm btn-edit">Editar</a>
+            <a href="{{ url_for('excluir_submissao', sub_id=subm.id) }}" class="btn-sm btn-delete" onclick="return confirm('Tem certeza que deseja cancelar esta proposta?')">Excluir</a>
+          {% else %}
+            <span style="font-size: 0.85rem; color: var(--text-secondary); font-style: italic;">Já avaliado</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" style="text-align: center;">Você ainda não enviou nenhuma proposta de projeto.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ABA 2: Meus Projetos (Apenas para quem é dono de algo) -->
+{% if meus_projetos|length > 0 %}
+<div id="tab-meusprojetos" class="tab-content" style="display:none;">
+  <h3>Gerenciar Meus Projetos</h3>
+  <p style="margin-bottom: 1rem;">Como dono destes projetos, você tem autonomia para aprovar alunos e acessar o Chat da equipe.</p>
+  
+  {% for proj in meus_projetos %}
+    <div style="background: var(--bg-surface); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: var(--shadow-light); border: 1px solid var(--border-color);">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.8rem; margin-bottom: 1rem; gap: 10px; flex-wrap: wrap;">
+        <h4 style="color: var(--purple-primary); margin: 0;">Projeto: {{ proj.titulo }}</h4>
+        <div style="display: flex; gap: 10px;">
+          <a href="{{ url_for('editar_projeto', projeto_id=proj.id) }}" class="btn" style="margin-top: 0; background: #ff9800;">Editar Informações</a>
+          <a href="{{ url_for('workspace', projeto_id=proj.id) }}" class="btn btn-success" style="margin-top: 0;">Acessar Workspace / Chat</a>
+        </div>
+      </div>
+      
+      <h5>Candidaturas Recebidas:</h5>
+      <table class="admin-table" style="box-shadow: none; border: 1px solid var(--border-color);">
+        <thead>
+          <tr>
+            <th>Aluno(a)</th>
+            <th>Motivo</th>
+            <th>Experiência</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cand in proj.candidaturas %}
+          <tr>
+            <td><strong>{{ cand.username }}</strong></td>
+            <td style="font-size: 0.9rem; max-width: 250px;">{{ cand.motivo }}</td>
+            <td style="font-size: 0.9rem; max-width: 200px;">{{ cand.experiencia }}</td>
+            <td><span class="badge">{{ cand.status }}</span></td>
+            <td>
+              <a href="{{ url_for('dono_acao_candidatura', cand_id=cand.id, acao='aprovar') }}" class="btn-sm btn-success">Aceitar</a>
+              <a href="{{ url_for('dono_acao_candidatura', cand_id=cand.id, acao='rejeitar') }}" class="btn-sm btn-delete">Recusar</a>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" style="text-align: center;">Ninguém se inscreveu neste projeto ainda.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<script>
+function openTab(evt, tabName) {
+  var i, tabcontent, tablinks;
+  tabcontent = document.getElementsByClassName("tab-content");
+  for (i = 0; i < tabcontent.length; i++) {
+    tabcontent[i].style.display = "none";
+  }
+  tablinks = document.getElementsByClassName("tab-link");
+  for (i = 0; i < tablinks.length; i++) {
+    tablinks[i].className = tablinks[i].className.replace(" active", "");
+  }
+  document.getElementById(tabName).style.display = "block";
+  evt.currentTarget.className += " active";
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>500 – Erro interno · SisCPTI</title>
+  <meta name="description" content="Ocorreu um erro interno no servidor do SisCPTI UniCEUB. Tente novamente em instantes.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=4">
+  <style>
+    .error-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+      background: var(--bg-primary);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .error-page::before,
+    .error-page::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.18;
+      animation: floatOrb 8s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .error-page::before {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, #e67e22, transparent);
+      top: -150px; left: -150px;
+    }
+    .error-page::after {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, #7A1BB5, transparent);
+      bottom: -100px; right: -100px;
+      animation-delay: -4s;
+    }
+
+    @keyframes floatOrb {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(30px) scale(1.05); }
+    }
+
+    .error-code {
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(6rem, 20vw, 12rem);
+      font-weight: 800;
+      line-height: 1;
+      background: linear-gradient(135deg, #e67e22, #f39c12);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin: 0;
+      letter-spacing: -4px;
+      position: relative;
+      z-index: 1;
+      animation: glitch 4s ease-in-out infinite;
+    }
+
+    @keyframes glitch {
+      0%, 85%, 100% { transform: translate(0); filter: brightness(1); }
+      87% { transform: translate(-3px, 1px); filter: brightness(1.2) hue-rotate(20deg); }
+      89% { transform: translate(3px, -1px); filter: brightness(0.9) hue-rotate(-20deg); }
+      91% { transform: translate(-2px, 0px); filter: brightness(1.1); }
+      93% { transform: translate(0); filter: brightness(1); }
+    }
+
+    .error-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      position: relative;
+      z-index: 1;
+      animation: spin 6s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      20% { transform: rotate(18deg); }
+      40% { transform: rotate(-18deg); }
+      60% { transform: rotate(10deg); }
+      80% { transform: rotate(-10deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    .error-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(1.4rem, 4vw, 2rem);
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 1rem 0 0.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .error-message {
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      color: var(--text-secondary);
+      max-width: 500px;
+      line-height: 1.7;
+      margin: 0 auto 2.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .error-actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .btn-primary-error {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.8rem 2rem;
+      background: linear-gradient(135deg, var(--purple-primary), var(--purple-hover));
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+      box-shadow: 0 4px 20px rgba(122, 27, 181, 0.35);
+    }
+
+    .btn-primary-error:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 30px rgba(122, 27, 181, 0.5);
+      filter: brightness(1.1);
+    }
+
+    .btn-ghost-error {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.8rem 2rem;
+      background: transparent;
+      color: var(--purple-primary);
+      border: 2px solid var(--purple-primary);
+      border-radius: 50px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    }
+
+    .btn-ghost-error:hover {
+      background: var(--purple-primary);
+      color: #fff;
+      transform: translateY(-3px);
+    }
+
+    .divider-line {
+      width: 60px;
+      height: 4px;
+      background: linear-gradient(135deg, #e67e22, #f39c12);
+      border-radius: 4px;
+      margin: 1.2rem auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .countdown-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-top: -1rem;
+      margin-bottom: 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    #countdown-num {
+      font-weight: 700;
+      color: #e67e22;
+      font-size: 1rem;
+      min-width: 20px;
+      display: inline-block;
+      text-align: center;
+    }
+
+    .progress-bar-wrap {
+      width: 200px;
+      height: 4px;
+      background: var(--border-color);
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 0 auto 2.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #e67e22, #f39c12);
+      border-radius: 4px;
+      width: 0%;
+      animation: progressFill 30s linear forwards;
+    }
+
+    @keyframes progressFill {
+      from { width: 0%; }
+      to { width: 100%; }
+    }
+  </style>
+</head>
+<body id="errorBody">
+  <div class="error-page">
+    <div class="error-icon">⚙️</div>
+    <p class="error-code">500</p>
+    <div class="divider-line"></div>
+    <h1 class="error-title">Erro interno no servidor</h1>
+    <p class="error-message">
+      Algo inesperado aconteceu no nosso servidor. Nossa equipe já foi notificada
+      e está trabalhando para resolver o problema. Tente novamente em alguns instantes.
+    </p>
+    <div class="countdown-wrap">
+      ⏱ Redirecionando automaticamente em <span id="countdown-num">30</span>s
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+    <div class="error-actions">
+      <a href="{{ url_for('index') }}" class="btn-primary-error" id="btn-home-500">
+        🏠 Ir para o Início
+      </a>
+      <button onclick="location.reload()" class="btn-ghost-error" id="btn-retry-500">
+        🔄 Tentar Novamente
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // Aplicar tema salvo
+    (function() {
+      const theme = localStorage.getItem('theme');
+      if (theme === 'dark') {
+        document.getElementById('errorBody').classList.add('dark-theme');
+      }
+    })();
+
+    // Countdown e redirecionamento automático
+    let seconds = 30;
+    const countEl = document.getElementById('countdown-num');
+    const interval = setInterval(() => {
+      seconds--;
+      if (countEl) countEl.textContent = seconds;
+      if (seconds <= 0) {
+        clearInterval(interval);
+        window.location.href = '/';
+      }
+    }, 1000);
+  </script>
+</body>
+</html>

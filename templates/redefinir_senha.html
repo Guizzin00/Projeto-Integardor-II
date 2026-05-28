@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}Redefinir Senha · SisCPTI{% endblock %}
+{% block content %}
+<div style="min-height: 70vh; display: flex; align-items: center; justify-content: center; padding: 2rem;">
+  <div style="width: 100%; max-width: 440px;">
+
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <div style="font-size: 3rem; margin-bottom: 0.5rem;">🔓</div>
+      <h1 style="font-family: var(--font-title); font-size: 1.8rem; margin: 0 0 0.4rem;">Nova Senha</h1>
+      <p style="color: var(--text-secondary); margin: 0; font-size: 0.95rem;">
+        Escolha uma nova senha segura para sua conta.
+      </p>
+    </div>
+
+    <div style="background: var(--bg-surface); padding: 2rem; border-radius: 16px; box-shadow: var(--shadow-light);">
+      <form method="POST" action="{{ url_for('redefinir_senha', token=token) }}">
+
+        <div style="margin-bottom: 1.2rem;">
+          <label for="nova_senha" style="display: block; font-weight: 600; margin-bottom: 0.4rem;">🔑 Nova Senha</label>
+          <input type="password" id="nova_senha" name="nova_senha" required
+                 style="width: 100%; padding: 0.7rem 0.9rem; border: 1.5px solid var(--border-color);
+                        border-radius: 8px; font-size: 0.95rem; background: var(--bg-primary);
+                        color: var(--text-primary); box-sizing: border-box;"
+                 placeholder="Mínimo 4 caracteres">
+          <div class="invalid-feedback" id="fb-nova"></div>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label for="confirmar_senha" style="display: block; font-weight: 600; margin-bottom: 0.4rem;">🔑 Confirmar Senha</label>
+          <input type="password" id="confirmar_senha" name="confirmar_senha" required
+                 style="width: 100%; padding: 0.7rem 0.9rem; border: 1.5px solid var(--border-color);
+                        border-radius: 8px; font-size: 0.95rem; background: var(--bg-primary);
+                        color: var(--text-primary); box-sizing: border-box;"
+                 placeholder="Repita a nova senha">
+          <div class="invalid-feedback" id="fb-confirmar"></div>
+        </div>
+
+        <button type="submit" class="btn" style="width: 100%;" id="btn-redefinir">
+          ✅ Redefinir Senha
+        </button>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const nova = document.getElementById('nova_senha');
+const confirmar = document.getElementById('confirmar_senha');
+const fbNova = document.getElementById('fb-nova');
+const fbConfirmar = document.getElementById('fb-confirmar');
+
+function validar() {
+  if (nova.value.length > 0 && nova.value.length < 4) {
+    nova.classList.add('is-invalid'); nova.classList.remove('is-valid');
+    fbNova.textContent = 'Mínimo 4 caracteres.'; fbNova.style.display = 'block';
+  } else if (nova.value.length >= 4) {
+    nova.classList.remove('is-invalid'); nova.classList.add('is-valid');
+    fbNova.style.display = 'none';
+  }
+  if (confirmar.value && confirmar.value !== nova.value) {
+    confirmar.classList.add('is-invalid'); confirmar.classList.remove('is-valid');
+    fbConfirmar.textContent = 'As senhas não coincidem.'; fbConfirmar.style.display = 'block';
+  } else if (confirmar.value && confirmar.value === nova.value) {
+    confirmar.classList.remove('is-invalid'); confirmar.classList.add('is-valid');
+    fbConfirmar.style.display = 'none';
+  }
+}
+nova.addEventListener('input', validar);
+confirmar.addEventListener('input', validar);
+</script>
+{% endblock %}

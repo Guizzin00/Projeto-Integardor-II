@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% block title %}Workspace: {{ projeto.titulo }} · SisCPTI{% endblock %}
+{% block content %}
+
+<div class="workspace-container">
+  <aside class="workspace-sidebar">
+    <h3>Equipe do Projeto</h3>
+    <ul class="team-list">
+      <li class="team-owner">👑 {{ projeto.owner_username }} (Dono)</li>
+      {% for m in membros %}
+      <li class="team-member">👤 {{ m }}</li>
+      {% endfor %}
+    </ul>
+    
+    <a href="{{ url_for('perfil') }}" class="btn" style="margin-top: 1.5rem; display: block; text-align: center;">Voltar ao Perfil</a>
+    {% if is_owner %}
+      <a href="{{ url_for('editar_projeto', projeto_id=projeto.id) }}" class="btn" style="margin-top: 10px; display: block; text-align: center; background: #ff9800;">Editar Projeto</a>
+    {% endif %}
+  </aside>
+
+  <section class="workspace-chat">
+    <div class="chat-header">
+      <h2>{{ projeto.titulo }}</h2>
+      <p>Área de Trabalho & Chat Privado</p>
+    </div>
+
+    <div class="chat-messages" id="chatbox">
+      {% for msg in mensagens %}
+      <div class="message-bubble {% if msg.username == session.user %}my-message{% endif %}" data-id="{{ msg.id }}">
+        <div class="msg-header">
+          <strong>{{ msg.username }}</strong>
+          <small>{{ msg.data_envio.strftime('%d/%m %H:%M') }}</small>
+        </div>
+        
+        {% if msg.texto %}
+        <p class="msg-text">{{ msg.texto }}</p>
+        {% endif %}
+        
+        {% if msg.arquivo %}
+        <a href="{{ url_for('static', filename=msg.arquivo) }}" target="_blank">
+          <img src="{{ url_for('static', filename=msg.arquivo) }}" class="msg-image" alt="Anexo">
+        </a>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <form class="chat-input" id="chatForm" enctype="multipart/form-data">
+      <label for="arquivo" class="btn-attach" title="Anexar Imagem">📎</label>
+      <input type="file" id="arquivo" name="arquivo" style="display:none;" accept="image/*">
+      <input type="text" id="textoMsg" name="texto" placeholder="Digite sua mensagem para a equipe..." autocomplete="off">
+      <button type="submit" class="btn">Enviar</button>
+    </form>
+  </section>
+</div>
+
+<script>
+  const chatbox = document.getElementById("chatbox");
+  const chatForm = document.getElementById("chatForm");
+  const textoMsg = document.getElementById("textoMsg");
+  const arquivoInput = document.getElementById("arquivo");
+  const currentUser = "{{ session.user }}";
+  const projetoId = "{{ projeto.id }}";
+  
+  // Rola até o final na inicialização
+  chatbox.scrollTop = chatbox.scrollHeight;
+
+  // Registrar IDs das mensagens já renderizadas
+  const renderedMessageIds = new Set();
+  document.querySelectorAll(".message-bubble").forEach(el => {
+    renderedMessageIds.add(parseInt(el.getAttribute("data-id")));
+  });
+
+  // Função para anexar uma nova bolha no DOM
+  function appendMessageBubble(msg) {
+    if (renderedMessageIds.has(msg.id)) return;
+    renderedMessageIds.add(msg.id);
+
+    const isMy = msg.username === currentUser;
+    const bubble = document.createElement("div");
+    bubble.className = `message-bubble ${isMy ? 'my-message' : ''}`;
+    bubble.setAttribute("data-id", msg.id);
+
+    let html = `
+      <div class="msg-header">
+        <strong>${msg.username}</strong>
+        <small>${msg.data_envio}</small>
+      </div>
+    `;
+    if (msg.texto) {
+      html += `<p class="msg-text">${msg.texto}</p>`;
+    }
+    if (msg.arquivo) {
+      const staticUrl = `/static/${msg.arquivo}`;
+      html += `
+        <a href="${staticUrl}" target="_blank">
+          <img src="${staticUrl}" class="msg-image" alt="Anexo">
+        </a>
+      `;
+    }
+    bubble.innerHTML = html;
+    chatbox.appendChild(bubble);
+    chatbox.scrollTop = chatbox.scrollHeight;
+  }
+
+  // Interceptar envio tradicional
+  chatForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const texto = textoMsg.value.trim();
+    const file = arquivoInput.files[0];
+    
+    if (!texto && !file) return;
+
+    const formData = new FormData(chatForm);
+    textoMsg.value = ""; // Limpa o input imediatamente
+    arquivoInput.value = ""; // Limpa arquivo selecionado
+
+    try {
+      const response = await fetch(`/projeto/${projetoId}/workspace/enviar_ajax`, {
+        method: "POST",
+        body: formData
+      });
+      if (response.ok) {
+        const resData = await response.json();
+        if (resData.status === "success") {
+          appendMessageBubble(resData.message);
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao enviar mensagem por AJAX:", err);
+    }
+  });
+
+  // Polling a cada 3 segundos para novas mensagens
+  setInterval(async () => {
+    try {
+      const response = await fetch(`/projeto/${projetoId}/workspace/mensagens`);
+      if (response.ok) {
+        const mensagens = await response.json();
+        mensagens.forEach(msg => {
+          appendMessageBubble(msg);
+        });
+      }
+    } catch (err) {
+      console.error("Erro no polling do chat:", err);
+    }
+  }, 3000);
+</script>
+
+{% endblock %}

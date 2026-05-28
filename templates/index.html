@@ -1,0 +1,66 @@
+
+{% extends 'base.html' %}
+{% block title %}Início · SisCPTI{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Caderno de Projetos de TI</h1>
+  <p>Gestão e acompanhamento dos projetos acadêmicos e institucionais do UniCEUB.</p>
+  <a href="{{ url_for('projetos') }}" class="btn">Ver Projetos</a>
+</section>
+<!-- ===================== -->
+<!-- BLOCO DE INFORMAÇÕES IMPORTANTES -->
+<!-- ===================== -->
+<section class="info-section">
+  <h2>Informações Importantes</h2>
+
+  <p>
+    As disciplinas de <strong>Projeto Integrador (PI)</strong> e/ou <strong>Projeto Final (PF)</strong> têm como principal objetivo
+    proporcionar aos alunos uma experiência prática e imersiva na resolução de problemas reais, em parceria com o
+    ambiente acadêmico do CEUB, empresas e organizações do terceiro setor.
+  </p>
+
+  <p>
+    Durante um ou mais semestres, os discentes aplicam suas competências técnicas e metodológicas para desenvolver
+    uma solução tecnológica, validando hipóteses e funcionalidades. Além disso, o PI/PF fortalece habilidades
+    interpessoais e de gestão, preparando os estudantes para atuação em equipes e liderança de projetos.
+  </p>
+
+  <p>
+    É importante destacar que os projetos desenvolvidos podem não incluir suporte, manutenção ou continuidade garantida
+    após o período letivo. O foco das disciplinas é a <strong>experimentação</strong> e a <strong>validação de ideias</strong>,
+    permitindo que os estudantes enfrentem desafios reais e aprimorem suas habilidades técnicas e comportamentais
+    em ambiente acadêmico interligado ao mercado de trabalho.
+  </p>
+
+  <p>
+    Para os <strong>parceiros internos ou externos</strong>, essa é uma oportunidade de transformar ideias em experimentos e
+    testar hipóteses. Os alunos envolvidos são profissionais em formação, com bases teórica e prática para contribuir no
+    desenvolvimento de soluções alinhadas às expectativas do mercado. Caso haja interesse na evolução do projeto,
+    o parceiro poderá sugerir novos desafios, compreendendo a natureza das atividades acadêmicas.
+  </p>
+
+  <p>
+    Para os <strong>estudantes</strong>, o PI/PF representa uma experiência única, permitindo que vivenciem todas as etapas do
+    desenvolvimento de uma solução, desde a ideação até a entrega funcional. Essa vivência proporciona uma visão prática
+    do mercado e do impacto da tecnologia na sociedade.
+  </p>
+
+  <p>
+    Para <strong>professores</strong>, a disciplina funciona como um <em>laboratório de inovação aplicada</em>, no qual conceitos
+    acadêmicos são testados e aprimorados na prática, utilizando metodologias ativas e ágeis.
+  </p>
+
+  <p>
+    Ao participar do PI/PF, todas as partes envolvidas compreendem que a entrega final poderá ser um
+    <strong>MVP (Produto Mínimo Viável)</strong>, uma <strong>Prova de Conceito (PoC)</strong> ou um
+    <strong>Protótipo Funcional</strong>, cujo principal objetivo é materializar ideias em soluções reais.
+  </p>
+
+  <p>
+    O sucesso do projeto não está apenas na entrega da solução, mas no aprendizado conjunto entre alunos, professores e
+    parceiros, além da validação de hipóteses relevantes que refletem desafios concretos em suas respectivas áreas de
+    atuação. Dessa forma, as disciplinas contribuem tanto para a formação profissional dos alunos quanto para a inovação no mercado.
+  </p>
+</section>
+
+{% endblock %}

@@ -1,0 +1,322 @@
+{% extends 'base.html' %}
+{% block title %}{{ projeto.get('titulo', 'Projeto') }} · SisCPTI{% endblock %}
+{% block content %}
+
+<!-- Hero com imagem de capa -->
+<div class="project-hero">
+  <img src="{{ url_for('static', filename=projeto.imagem) }}"
+       alt="Capa de {{ projeto.get('titulo', '') }}"
+       class="project-hero-img"
+       onerror="this.src='{{ url_for('static', filename='img/default.png') }}'">
+  <div class="project-hero-overlay">
+    <div class="ceub-container">
+      <span class="badge {% if 'EXECUTADO' in projeto.status %}status-green{% elif 'EXECUÇÃO' in projeto.status %}status-orange{% elif 'INDISPONÍVEL' in projeto.status %}status-red{% else %}status-gray{% endif %}"
+            style="font-size: 0.85rem; margin-bottom: 0.8rem; display: inline-block;">
+        {{ projeto.get('status', '') }}
+      </span>
+      <h1 class="project-hero-title">{{ projeto.get('titulo', 'Sem título') }}</h1>
+      <p class="project-hero-sub">
+        👨‍🏫 <strong>{{ projeto.get('professor', '—') }}</strong>
+        &nbsp;·&nbsp;
+        🗂 {{ projeto.get('categoria', '—') }}
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="ceub-container" style="padding-top: 2.5rem; padding-bottom: 3rem;">
+  <div class="project-layout">
+
+    <!-- Coluna principal -->
+    <div class="project-main">
+
+      <!-- Barra de stats -->
+      <div class="project-stats-bar">
+        <div class="stat-pill">
+          📋 <span id="total-avaliacoes">—</span> avaliações
+        </div>
+        <div class="stat-pill">
+          ⭐ Média: <span id="media-nota">—</span>
+        </div>
+        <div class="stat-pill">
+          👥 {{ projeto.get('candidaturas_aprovadas', 0) }} no time
+        </div>
+      </div>
+
+      <!-- Detalhes do projeto -->
+      <div class="project-card-section">
+        <h2 class="section-title">📄 Sobre o Projeto</h2>
+        {% if projeto.get('detalhes') %}
+          {% for paragrafo in projeto.detalhes %}
+            <p style="line-height: 1.8; color: var(--text-primary); margin-bottom: 1rem;">{{ paragrafo }}</p>
+          {% endfor %}
+        {% else %}
+          <p style="color: var(--text-secondary);">Informações detalhadas não disponíveis.</p>
+        {% endif %}
+      </div>
+
+      <!-- Links -->
+      {% if projeto.get('links') and projeto.links %}
+      <div class="project-card-section">
+        <h2 class="section-title">🔗 Links Relacionados</h2>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.6rem;">
+          {% for nome, link in projeto.links.items() %}
+            <a href="{{ link }}" target="_blank" rel="noopener noreferrer"
+               class="link-chip">🌐 {{ nome }}</a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Seção de Avaliações -->
+      <div class="project-card-section" id="avaliacoes-section">
+        <h2 class="section-title">⭐ Avaliações</h2>
+
+        <div id="avaliacoes-lista" style="margin-bottom: 1.5rem;">
+          <p style="color: var(--text-secondary); font-style: italic;">Carregando avaliações...</p>
+        </div>
+
+        {% if session.get('logged_in') %}
+        <div style="background: var(--bg-primary); border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border-color);">
+          <h3 style="font-family: var(--font-title); margin: 0 0 1rem; font-size: 1rem;">Deixe sua avaliação</h3>
+          <form method="POST" action="{{ url_for('avaliar_projeto', projeto_id=projeto.get('id')) }}">
+            <div style="margin-bottom: 0.8rem;">
+              <label style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.4rem; display: block;">Sua nota:</label>
+              <div class="star-picker" id="star-picker">
+                {% for i in range(1, 6) %}
+                <button type="button" class="star-btn" data-val="{{ i }}" title="{{ i }} estrela{{ 's' if i > 1 }}">★</button>
+                {% endfor %}
+              </div>
+              <input type="hidden" name="nota" id="nota-input" value="">
+            </div>
+            <div style="margin-bottom: 1rem;">
+              <label style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.4rem; display: block;">Comentário <small style="color: var(--text-secondary);">(opcional)</small></label>
+              <textarea name="comentario" rows="3"
+                        style="width: 100%; padding: 0.65rem 0.9rem; border: 1.5px solid var(--border-color);
+                               border-radius: 8px; background: var(--bg-surface); color: var(--text-primary);
+                               font-family: var(--font-body); font-size: 0.9rem; resize: vertical; box-sizing: border-box;"
+                        placeholder="O que achou deste projeto?"></textarea>
+            </div>
+            <button type="submit" class="btn" id="btn-avaliar" style="margin: 0;" disabled>
+              ⭐ Enviar Avaliação
+            </button>
+          </form>
+        </div>
+        {% else %}
+        <p style="color: var(--text-secondary); font-style: italic;">
+          <a href="{{ url_for('login') }}" style="color: var(--purple-primary); font-weight: 600;">Faça login</a> para avaliar este projeto.
+        </p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="project-sidebar">
+      <div class="sidebar-card">
+        <h3 class="sidebar-title">Candidatar-se</h3>
+        {% if session.get('logged_in') %}
+          <a href="{{ url_for('candidatar', projeto_id=projeto.get('id')) }}" class="btn-interest" id="btn-candidatar">
+            🚀 Me Candidatar
+          </a>
+        {% else %}
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0 0 0.8rem;">Faça login para se candidatar.</p>
+          <a href="{{ url_for('login') }}" class="btn-interest" style="text-align: center; display: block;">🔑 Fazer Login</a>
+        {% endif %}
+      </div>
+
+      <div class="sidebar-card">
+        <h3 class="sidebar-title">Informações</h3>
+        <div class="info-row"><span>📌 Status</span><strong>{{ projeto.get('status', '—') }}</strong></div>
+        <div class="info-row"><span>🗂 Categoria</span><strong>{{ projeto.get('categoria', '—') }}</strong></div>
+        <div class="info-row"><span>👨‍🏫 Professor</span><strong>{{ projeto.get('professor', '—') }}</strong></div>
+      </div>
+
+      <a href="{{ url_for('projetos') }}" style="display: block; text-align: center; margin-top: 0.5rem;
+         color: var(--purple-primary); font-weight: 600; text-decoration: none; font-size: 0.9rem;">
+        ← Voltar aos Projetos
+      </a>
+    </aside>
+  </div>
+</div>
+
+<style>
+/* ---- Hero ---- */
+.project-hero {
+  position: relative; height: 320px; overflow: hidden;
+  background: #1a0a2e;
+}
+.project-hero-img {
+  width: 100%; height: 100%; object-fit: cover; opacity: 0.45;
+  transition: opacity 0.3s;
+}
+.project-hero-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding-bottom: 2rem;
+  background: linear-gradient(to top, rgba(10,4,20,0.85) 0%, transparent 60%);
+}
+.project-hero-title {
+  font-family: var(--font-title); font-size: clamp(1.4rem, 4vw, 2.2rem);
+  font-weight: 800; color: #fff; margin: 0 0 0.4rem; line-height: 1.2;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+}
+.project-hero-sub { color: rgba(255,255,255,0.8); margin: 0; font-size: 0.95rem; }
+
+/* ---- Layout ---- */
+.project-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 2rem;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .project-layout { grid-template-columns: 1fr; }
+  .project-hero { height: 220px; }
+}
+
+/* ---- Stats bar ---- */
+.project-stats-bar {
+  display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1.5rem;
+}
+.stat-pill {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 50px;
+  padding: 0.35rem 1rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* ---- Sections ---- */
+.project-card-section {
+  background: var(--bg-surface);
+  border-radius: 16px;
+  padding: 1.8rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-light);
+}
+.section-title {
+  font-family: var(--font-title); font-size: 1.1rem; font-weight: 700;
+  margin: 0 0 1.2rem; color: var(--text-primary);
+  padding-bottom: 0.6rem; border-bottom: 2px solid var(--border-color);
+}
+.link-chip {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.4rem 1rem; border-radius: 50px;
+  border: 1.5px solid var(--purple-primary);
+  color: var(--purple-primary); text-decoration: none;
+  font-size: 0.85rem; font-weight: 600;
+  transition: background 0.2s, color 0.2s;
+}
+.link-chip:hover { background: var(--purple-primary); color: #fff; }
+
+/* ---- Sidebar ---- */
+.sidebar-card {
+  background: var(--bg-surface);
+  border-radius: 16px; padding: 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow-light);
+}
+.sidebar-title {
+  font-family: var(--font-title); font-size: 1rem; font-weight: 700;
+  margin: 0 0 1rem; color: var(--text-primary);
+  padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-color);
+}
+.info-row {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 0.5rem; padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-color); font-size: 0.88rem;
+  flex-wrap: wrap;
+}
+.info-row:last-child { border-bottom: none; }
+.info-row span { color: var(--text-secondary); }
+.btn-interest {
+  display: block; width: 100%; text-align: center;
+  padding: 0.8rem 1rem; border-radius: 50px; box-sizing: border-box;
+  background: linear-gradient(135deg, var(--purple-primary), var(--purple-hover));
+  color: #fff; font-weight: 700; text-decoration: none; font-size: 0.95rem;
+  transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+  box-shadow: 0 4px 16px rgba(122,27,181,0.3);
+}
+.btn-interest:hover {
+  transform: translateY(-2px); filter: brightness(1.1);
+  box-shadow: 0 8px 24px rgba(122,27,181,0.45);
+}
+
+/* ---- Stars ---- */
+.star-picker { display: flex; gap: 0.3rem; margin-bottom: 0.5rem; }
+.star-btn {
+  background: none; border: none; font-size: 2rem; cursor: pointer;
+  color: var(--border-color); transition: color 0.15s, transform 0.15s;
+  padding: 0;
+}
+.star-btn.lit { color: #f5a623; }
+.star-btn:hover { transform: scale(1.2); }
+
+/* ---- Review cards ---- */
+.review-card {
+  background: var(--bg-primary);
+  border-radius: 10px; padding: 1rem 1.2rem; margin-bottom: 0.8rem;
+  border-left: 3px solid var(--purple-primary);
+}
+.review-stars { color: #f5a623; font-size: 1rem; margin-bottom: 0.3rem; }
+.review-text { font-size: 0.9rem; color: var(--text-primary); margin: 0.3rem 0; }
+.review-meta { font-size: 0.78rem; color: var(--text-secondary); }
+</style>
+
+<script>
+// Star picker
+const stars = document.querySelectorAll('.star-btn');
+const notaInput = document.getElementById('nota-input');
+const btnAvaliar = document.getElementById('btn-avaliar');
+
+if (stars.length) {
+  stars.forEach((btn, idx) => {
+    btn.addEventListener('mouseenter', () => {
+      stars.forEach((s, i) => s.classList.toggle('lit', i <= idx));
+    });
+    btn.addEventListener('mouseleave', () => {
+      const selected = parseInt(notaInput?.value || 0);
+      stars.forEach((s, i) => s.classList.toggle('lit', i < selected));
+    });
+    btn.addEventListener('click', () => {
+      const val = btn.dataset.val;
+      if (notaInput) notaInput.value = val;
+      stars.forEach((s, i) => s.classList.toggle('lit', i < parseInt(val)));
+      if (btnAvaliar) btnAvaliar.disabled = false;
+    });
+  });
+}
+
+// Carregar avaliações via API
+async function loadAvaliacoes() {
+  const projId = {{ projeto.get('id') }};
+  try {
+    const res = await fetch(`/api/projeto/${projId}/avaliacoes`);
+    if (!res.ok) return;
+    const data = await res.json();
+
+    document.getElementById('total-avaliacoes').textContent = data.total;
+    document.getElementById('media-nota').textContent = data.total > 0 ? `${data.media} ⭐` : '—';
+
+    const lista = document.getElementById('avaliacoes-lista');
+    if (data.total === 0) {
+      lista.innerHTML = '<p style="color:var(--text-secondary);font-style:italic;">Nenhuma avaliação ainda. Seja o primeiro!</p>';
+      return;
+    }
+
+    lista.innerHTML = data.avaliacoes.map(a => `
+      <div class="review-card">
+        <div class="review-stars">${'★'.repeat(a.nota)}${'☆'.repeat(5 - a.nota)}</div>
+        <div class="review-meta">@${a.username} · ${a.data}</div>
+        ${a.comentario ? `<p class="review-text">${a.comentario}</p>` : ''}
+      </div>
+    `).join('');
+  } catch(e) { console.error('Erro ao carregar avaliações:', e); }
+}
+
+document.addEventListener('DOMContentLoaded', loadAvaliacoes);
+</script>
+
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Recuperar Senha · SisCPTI{% endblock %}
+{% block content %}
+<div style="min-height: 70vh; display: flex; align-items: center; justify-content: center; padding: 2rem;">
+  <div style="width: 100%; max-width: 440px;">
+
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <div style="font-size: 3rem; margin-bottom: 0.5rem;">🔑</div>
+      <h1 style="font-family: var(--font-title); font-size: 1.8rem; margin: 0 0 0.4rem;">Recuperar Senha</h1>
+      <p style="color: var(--text-secondary); margin: 0; font-size: 0.95rem;">
+        Informe seu e-mail cadastrado e enviaremos um link de redefinição.
+      </p>
+    </div>
+
+    <div style="background: var(--bg-surface); padding: 2rem; border-radius: 16px; box-shadow: var(--shadow-light);">
+
+      <form method="POST" action="{{ url_for('recuperar_senha') }}">
+        <div class="form-group" style="margin-bottom: 1.2rem;">
+          <label for="email" style="display: block; font-weight: 600; margin-bottom: 0.4rem;">📧 E-mail</label>
+          <input type="email" id="email" name="email" required
+                 style="width: 100%; padding: 0.7rem 0.9rem; border: 1.5px solid var(--border-color);
+                        border-radius: 8px; font-size: 0.95rem; background: var(--bg-primary);
+                        color: var(--text-primary); box-sizing: border-box;"
+                 placeholder="seu@email.com">
+        </div>
+
+        <button type="submit" class="btn" style="width: 100%;" id="btn-recuperar">
+          📤 Enviar Link de Recuperação
+        </button>
+      </form>
+
+      <div style="text-align: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+        <a href="{{ url_for('login') }}" style="color: var(--purple-primary); font-weight: 600; text-decoration: none; font-size: 0.9rem;">
+          ← Voltar para o Login
+        </a>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

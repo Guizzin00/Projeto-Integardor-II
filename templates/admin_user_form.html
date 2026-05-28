@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Editar' if usuario else 'Novo' }} Usuário · SisCPTI{% endblock %}
+{% block content %}
+
+<div class="submit-form">
+  <h2>{{ 'Editar' if usuario else 'Criar Novo' }} Usuário</h2>
+  <p>Defina as credenciais e o nível de acesso do usuário no sistema.</p>
+  
+  <form method="POST">
+    <div class="form-group">
+      <label for="username">Nome de Usuário (Username):</label>
+      <input type="text" id="username" name="username" value="{{ usuario.username if usuario else '' }}" required placeholder="Ex: professor.jose">
+    </div>
+
+    <div class="form-group">
+      <label for="password">Senha:</label>
+      <input type="password" id="password" name="password" value="{{ usuario.password if usuario else '' }}" required placeholder="Senha de acesso">
+    </div>
+
+    <div class="form-group">
+      <label for="role">Papel / Nível de Acesso (Role):</label>
+      <select id="role" name="role" required>
+        <option value="user" {% if usuario and usuario.role == 'user' %}selected{% endif %}>Usuário Comum (Estudante/Professor)</option>
+        <option value="admin" {% if usuario and usuario.role == 'admin' %}selected{% endif %}>Administrador do Sistema</option>
+      </select>
+    </div>
+
+    <div style="margin-top: 1.5rem; display: flex; gap: 10px;">
+      <button type="submit" class="btn">Salvar Usuário</button>
+      <a href="{{ url_for('admin_dashboard') }}" class="btn" style="background: #ccc; color: #333; text-decoration: none; text-align: center;">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

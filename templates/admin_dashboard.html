@@ -1,0 +1,323 @@
+{% extends 'base.html' %}
+{% block title %}Painel Admin · SisCPTI{% endblock %}
+{% block content %}
+
+<div class="admin-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <h2>Painel Administrativo Corporativo</h2>
+    <p>Gestão e controle do ecossistema de projetos, {{ session.user }}.</p>
+  </div>
+  <a href="{{ url_for('admin_logs') }}" class="btn" style="margin: 0; background: var(--text-secondary); font-size: 0.85rem;" id="btn-ver-logs">
+    📋 Ver Logs de Atividade
+  </a>
+</div>
+
+<div class="admin-stats">
+  <div class="stat-card">
+    <h3>Projetos Ativos</h3>
+    <h2>{{ projetos|length }}</h2>
+  </div>
+  <div class="stat-card">
+    <h3>Propostas Pendentes</h3>
+    <h2>{{ submissoes|length }}</h2>
+  </div>
+  <div class="stat-card">
+    <h3>Candidaturas</h3>
+    <h2>{{ candidaturas|length }}</h2>
+  </div>
+  <div class="stat-card">
+    <h3>Usuários</h3>
+    <h2>{{ usuarios|length }}</h2>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="charts-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 2.5rem; margin-top: 1rem;">
+  <div class="stat-card" style="padding: 1.5rem; text-align: left; border-left: none; border-top: 5px solid var(--purple-primary); display: flex; flex-direction: column;">
+    <h3 style="margin: 0 0 1rem 0; text-align: center; color: var(--text-primary); border-left: none; padding-left: 0; font-size: 1.1rem;">Projetos por Categoria</h3>
+    <div style="position: relative; height: 220px; width: 100%; flex: 1;">
+      <canvas id="categoryChart"></canvas>
+    </div>
+  </div>
+  <div class="stat-card" style="padding: 1.5rem; text-align: left; border-left: none; border-top: 5px solid var(--purple-primary); display: flex; flex-direction: column;">
+    <h3 style="margin: 0 0 1rem 0; text-align: center; color: var(--text-primary); border-left: none; padding-left: 0; font-size: 1.1rem;">Status dos Projetos</h3>
+    <div style="position: relative; height: 220px; width: 100%; flex: 1;">
+      <canvas id="statusChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="admin-tabs">
+  <button class="tab-link active" onclick="openTab(event, 'tab-projetos')">Projetos Ativos</button>
+  <button class="tab-link" onclick="openTab(event, 'tab-submissoes')">Propostas Recebidas ({{ submissoes|length }})</button>
+  <button class="tab-link" onclick="openTab(event, 'tab-candidaturas')">Candidaturas ({{ candidaturas|length }})</button>
+  <button class="tab-link" onclick="openTab(event, 'tab-usuarios')">Usuários ({{ usuarios|length }})</button>
+</div>
+
+<div id="tab-projetos" class="tab-content active" style="display:block;">
+  <div class="action-bar" style="margin-bottom: 1rem; display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center;">
+    <a href="{{ url_for('novo_projeto') }}" class="btn" id="btn-novo-projeto">+ Novo Projeto</a>
+    <a href="{{ url_for('exportar_csv', tipo='usuarios') }}" class="btn" style="background: #28a745; font-size: 0.85rem;" id="btn-export-usuarios">⬇️ Exportar Usuários CSV</a>
+  </div>
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Título</th>
+        <th>Status</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in projetos %}
+      <tr>
+        <td>{{ p.id }}</td>
+        <td>{{ p.titulo }}</td>
+        <td><span class="badge">{{ p.status }}</span></td>
+        <td>
+          <a href="{{ url_for('editar_projeto', projeto_id=p.id) }}" class="btn-sm btn-edit">Editar</a>
+          <a href="{{ url_for('excluir_projeto', projeto_id=p.id) }}" class="btn-sm btn-delete" onclick="return confirm('Excluir este projeto?')">Excluir</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div id="tab-submissoes" class="tab-content" style="display:none;">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1rem;">
+    <h3 style="margin: 0;">Propostas de Novos Projetos</h3>
+    <a href="{{ url_for('exportar_csv', tipo='propostas') }}" class="btn" style="background: #28a745; font-size: 0.85rem; margin: 0;" id="btn-export-propostas">⬇️ Exportar CSV</a>
+  </div>
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Projeto</th>
+        <th>Proponente</th>
+        <th>Status</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in submissoes %}
+      <tr>
+        <td>#{{ s.id }}</td>
+        <td><strong>{{ s.nome_projeto }}</strong><br><small>{{ s.categoria }}</small></td>
+        <td>{{ s.proponente }} <br> <small>{{ s.email }}</small></td>
+        <td><span class="badge">{{ s.status }}</span></td>
+        <td>
+          <a href="{{ url_for('acao_submissao', sub_id=s.id, acao='aprovar') }}" class="btn-sm btn-success">Aprovar</a>
+          <a href="{{ url_for('acao_submissao', sub_id=s.id, acao='rejeitar') }}" class="btn-sm btn-delete">Rejeitar</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" style="text-align: center;">Nenhuma proposta recebida ainda.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div id="tab-candidaturas" class="tab-content" style="display:none;">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1rem;">
+    <h3 style="margin: 0;">Candidaturas de Alunos</h3>
+    <a href="{{ url_for('exportar_csv', tipo='candidaturas') }}" class="btn" style="background: #28a745; font-size: 0.85rem; margin: 0;" id="btn-export-candidaturas">⬇️ Exportar CSV</a>
+  </div>
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Projeto Alvo</th>
+        <th>Usuário</th>
+        <th>Motivo/Exp</th>
+        <th>Status</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in candidaturas %}
+      <tr>
+        <td>#{{ c.id }}</td>
+        <td>{{ c.projeto.titulo }}</td>
+        <td>{{ c.username }}</td>
+        <td style="max-width: 300px; font-size: 0.9rem;">
+          <strong>Motivo:</strong> {{ c.motivo }}<br>
+          <strong>Exp:</strong> {{ c.experiencia }}
+        </td>
+        <td><span class="badge">{{ c.status }}</span></td>
+        <td>
+          <a href="{{ url_for('acao_candidatura', cand_id=c.id, acao='aprovar') }}" class="btn-sm btn-success">Aprovar</a>
+          <a href="{{ url_for('acao_candidatura', cand_id=c.id, acao='rejeitar') }}" class="btn-sm btn-delete">Rejeitar</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align: center;">Nenhuma candidatura recebida ainda.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div id="tab-usuarios" class="tab-content" style="display:none;">
+  <div class="action-bar" style="margin-bottom: 1rem;">
+    <a href="{{ url_for('admin_novo_usuario') }}" class="btn">+ Novo Usuário</a>
+  </div>
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Usuário</th>
+        <th>Papel (Role)</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in usuarios %}
+      <tr>
+        <td>#{{ u.id }}</td>
+        <td><strong>{{ u.username }}</strong></td>
+        <td><span class="badge {% if u.role == 'admin' %}status-green{% endif %}">{{ u.role }}</span></td>
+        <td>
+          <a href="{{ url_for('admin_editar_usuario', user_id=u.id) }}" class="btn-sm btn-edit">Editar</a>
+          <a href="{{ url_for('admin_excluir_usuario', user_id=u.id) }}" class="btn-sm btn-delete" onclick="return confirm('Excluir este usuário?')">Excluir</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+function openTab(evt, tabName) {
+  var i, tabcontent, tablinks;
+  tabcontent = document.getElementsByClassName("tab-content");
+  for (i = 0; i < tabcontent.length; i++) {
+    tabcontent[i].style.display = "none";
+  }
+  tablinks = document.getElementsByClassName("tab-link");
+  for (i = 0; i < tablinks.length; i++) {
+    tablinks[i].className = tablinks[i].className.replace(" active", "");
+  }
+  document.getElementById(tabName).style.display = "block";
+  evt.currentTarget.className += " active";
+}
+
+// Inicialização de Gráficos via Chart.js
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    const response = await fetch("/api/admin/stats");
+    if (!response.ok) return;
+    const stats = await response.json();
+
+    // Verifica se o tema escuro está ativo
+    const isDark = document.body.classList.contains("dark-theme");
+    const textColor = isDark ? '#f3f4f6' : '#1c1c1c';
+    const gridColor = isDark ? '#374151' : '#e5e7eb';
+
+    // Paleta roxa e harmoniosa
+    const colors = [
+      '#7A1BB5', // roxo principal
+      '#28a745', // verde
+      '#ff9800', // laranja
+      '#dc3545', // vermelho
+      '#6c757d'  // cinza
+    ];
+
+    // Gráfico de Categorias (Barras)
+    const ctxCategory = document.getElementById('categoryChart').getContext('2d');
+    const catLabels = Object.keys(stats.categoria);
+    const catData = Object.values(stats.categoria);
+    window.categoryChartInstance = new Chart(ctxCategory, {
+      type: 'bar',
+      data: {
+        labels: catLabels,
+        datasets: [{
+          label: 'Quantidade de Projetos',
+          data: catData,
+          backgroundColor: colors.slice(0, catLabels.length),
+          borderWidth: 0,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          x: {
+            grid: { color: gridColor },
+            ticks: { color: textColor }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0, color: textColor },
+            grid: { color: gridColor }
+          }
+        }
+      }
+    });
+
+    // Gráfico de Status (Rosca / Donut)
+    const ctxStatus = document.getElementById('statusChart').getContext('2d');
+    const statusLabels = Object.keys(stats.status);
+    const statusData = Object.values(stats.status);
+    window.statusChartInstance = new Chart(ctxStatus, {
+      type: 'doughnut',
+      data: {
+        labels: statusLabels,
+        datasets: [{
+          data: statusData,
+          backgroundColor: colors.slice(0, statusLabels.length),
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              boxWidth: 12,
+              font: { size: 11 },
+              color: textColor
+            }
+          }
+        },
+        cutout: '65%'
+      }
+    });
+
+    // Listener para o botão de alternar tema atualizar os gráficos em tempo real
+    const themeBtn = document.getElementById("theme-toggle");
+    if (themeBtn) {
+      themeBtn.addEventListener("click", () => {
+        setTimeout(() => {
+          const newIsDark = document.body.classList.contains("dark-theme");
+          const newTextColor = newIsDark ? '#f3f4f6' : '#1c1c1c';
+          const newGridColor = newIsDark ? '#374151' : '#e5e7eb';
+
+          if (window.categoryChartInstance) {
+            window.categoryChartInstance.options.scales.x.ticks.color = newTextColor;
+            window.categoryChartInstance.options.scales.x.grid.color = newGridColor;
+            window.categoryChartInstance.options.scales.y.ticks.color = newTextColor;
+            window.categoryChartInstance.options.scales.y.grid.color = newGridColor;
+            window.categoryChartInstance.update();
+          }
+
+          if (window.statusChartInstance) {
+            window.statusChartInstance.options.plugins.legend.labels.color = newTextColor;
+            window.statusChartInstance.update();
+          }
+        }, 50);
+      });
+    }
+  } catch (err) {
+    console.error("Erro ao carregar estatísticas do admin:", err);
+  }
+});
+</script>
+
+{% endblock %}

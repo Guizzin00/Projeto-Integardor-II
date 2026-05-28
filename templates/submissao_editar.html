@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Editar Proposta · SisCPTI{% endblock %}
+{% block content %}
+
+<h2>Editar Proposta de Projeto</h2>
+<p>Ajuste os dados da sua proposta de projeto abaixo.</p>
+
+<form method="POST" class="submit-form" enctype="multipart/form-data">
+  <div class="form-group">
+    <label for="nome_projeto">Nome do Projeto:</label>
+    <input type="text" id="nome_projeto" name="nome_projeto" value="{{ submissao.nome_projeto }}" required>
+  </div>
+
+  <div class="form-group">
+    <label for="categoria">Categoria:</label>
+    <select id="categoria" name="categoria" required>
+      <option value="Responsabilidade Social" {% if submissao.categoria == 'Responsabilidade Social' %}selected{% endif %}>Responsabilidade Social</option>
+      <option value="Projetos do CEUB" {% if submissao.categoria == 'Projetos do CEUB' %}selected{% endif %}>Projetos do CEUB</option>
+      <option value="Empresas do Setor Privado" {% if submissao.categoria == 'Empresas do Setor Privado' %}selected{% endif %}>Empresas do Setor Privado</option>
+    </select>
+  </div>
+
+  <div class="form-group full">
+    <label for="descricao">Descrição:</label>
+    <textarea id="descricao" name="descricao" rows="4" required>{{ submissao.descricao }}</textarea>
+  </div>
+
+  <div class="form-grid">
+    <div class="form-group">
+      <label for="proponente">Proponente (Aluno / Professor / Empresa):</label>
+      <input type="text" id="proponente" name="proponente" value="{{ submissao.proponente }}" required>
+    </div>
+
+    <div class="form-group">
+      <label for="email">E-mail de Contato:</label>
+      <input type="email" id="email" name="email" value="{{ submissao.email }}" required>
+    </div>
+  </div>
+
+  <div class="form-group full">
+    <label for="logo">Logo ou Foto do Projeto (Opcional - deixe vazio para manter a atual):</label>
+    {% if submissao.imagem %}
+      <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 5px;">Imagem atual: <a href="{{ url_for('static', filename=submissao.imagem) }}" target="_blank">Visualizar</a></p>
+    {% endif %}
+    <input type="file" id="logo" name="logo" accept="image/*" style="background: var(--bg-primary); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 100%;">
+  </div>
+
+  <div style="display: flex; gap: 10px; margin-top: 1rem;">
+    <button type="submit" class="btn" style="margin-top: 0;">Salvar Alterações</button>
+    <a href="{{ url_for('perfil') }}" class="btn btn-secondary" style="margin-top: 0; text-align: center;">Cancelar</a>
+  </div>
+</form>
+
+{% endblock %}

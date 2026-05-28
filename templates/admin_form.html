@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Editar' if projeto else 'Novo' }} Projeto · SisCPTI{% endblock %}
+{% block content %}
+<section class="admin-form-section">
+  <h2>{{ 'Editar' if projeto else 'Novo' }} Projeto</h2>
+
+  <form method="POST" class="admin-form" enctype="multipart/form-data">
+    <div class="form-group">
+      <label for="titulo">Título:</label>
+      <input type="text" id="titulo" name="titulo" value="{{ projeto.get('titulo', '') }}" required>
+    </div>
+
+    <div class="form-group">
+      <label for="categoria">Categoria:</label>
+      <select id="categoria" name="categoria" required>
+        <option value="" disabled {% if not projeto.get('categoria') %}selected{% endif %}>Selecione uma categoria</option>
+        <option value="Responsabilidade Social" {% if projeto.get('categoria') == 'Responsabilidade Social' %}selected{% endif %}>Responsabilidade Social</option>
+        <option value="Projetos do CEUB" {% if projeto.get('categoria') == 'Projetos do CEUB' %}selected{% endif %}>Projetos do CEUB</option>
+        <option value="Empresas do Setor Privado" {% if projeto.get('categoria') == 'Empresas do Setor Privado' %}selected{% endif %}>Empresas do Setor Privado</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="status">Status:</label>
+      <select id="status" name="status" required>
+        <option value="" disabled {% if not projeto.get('status') %}selected{% endif %}>Selecione o status</option>
+        <option value="DISPONÍVEL" {% if projeto.get('status') == 'DISPONÍVEL' %}selected{% endif %}>Disponível</option>
+        <option value="EM EXECUÇÃO" {% if projeto.get('status') == 'EM EXECUÇÃO' %}selected{% endif %}>Em Execução</option>
+        <option value="EXECUTADO" {% if projeto.get('status') == 'EXECUTADO' %}selected{% endif %}>Executado</option>
+        <option value="INDISPONÍVEL" {% if projeto.get('status') == 'INDISPONÍVEL' %}selected{% endif %}>Indisponível</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="professor">Professor:</label>
+      <input type="text" id="professor" name="professor" value="{{ projeto.get('professor', '') }}">
+    </div>
+
+    <div class="form-group">
+      <label for="descricao_curta">Descrição curta:</label>
+      <textarea id="descricao_curta" name="descricao_curta" rows="2">{{ projeto.get('descricao_curta', '') }}</textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="detalhes">Detalhes:</label>
+      <textarea id="detalhes" name="detalhes" rows="5">{{ projeto.get('detalhes', [''])[0] }}</textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="imagem_capa">Imagem de Capa (Opcional - deixe vazio para manter a atual):</label>
+      {% if projeto.get('imagem') %}
+        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 5px;">Capa atual: <a href="{{ url_for('static', filename=projeto.imagem) }}" target="_blank">Visualizar</a></p>
+      {% endif %}
+      <input type="file" id="imagem_capa" name="imagem_capa" accept="image/*" style="background: var(--bg-primary); color: var(--text-primary); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); width: 100%; box-sizing: border-box;">
+    </div>
+
+    <div style="display: flex; gap: 10px; margin-top: 1.5rem;">
+      <button type="submit" class="btn-save" style="flex: 1;">Salvar Projeto</button>
+      {% if session.get('role') == 'admin' %}
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary" style="flex: 1; text-align: center; margin-top: 0; padding: 0.8rem;">Cancelar</a>
+      {% else %}
+        <a href="{{ url_for('perfil') }}" class="btn btn-secondary" style="flex: 1; text-align: center; margin-top: 0; padding: 0.8rem;">Cancelar</a>
+      {% endif %}
+    </div>
+  </form>
+</section>
+
+<style>
+  .admin-form-section {
+    max-width: 700px;
+    margin: 3rem auto;
+    background: var(--bg-surface);
+    padding: 2.5rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow-light);
+  }
+
+  .admin-form-section h2 {
+    color: var(--purple-primary);
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-size: 1.8rem;
+  }
+
+  .admin-form .form-group {
+    margin-bottom: 1.2rem;
+  }
+
+  .admin-form label {
+    display: block;
+    font-weight: 600;
+    color: var(--purple-primary);
+    margin-bottom: 0.4rem;
+  }
+
+  .admin-form input,
+  .admin-form textarea,
+  .admin-form select {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.3s ease;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+  }
+
+  .admin-form input:focus,
+  .admin-form textarea:focus,
+  .admin-form select:focus {
+    outline: none;
+    border-color: var(--purple-primary);
+    box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+  }
+
+  .btn-save {
+    display: block;
+    background: var(--purple-primary);
+    color: var(--text-on-purple);
+    border: none;
+    border-radius: 8px;
+    padding: 0.8rem;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+
+  .btn-save:hover {
+    background: var(--purple-hover);
+  }
+</style>
+{% endblock %}

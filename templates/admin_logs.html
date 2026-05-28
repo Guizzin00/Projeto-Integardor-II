@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block title %}Logs de Atividade · Admin SisCPTI{% endblock %}
+{% block content %}
+<div class="ceub-container" style="padding: 2rem 0;">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+    <div>
+      <a href="{{ url_for('admin_dashboard') }}" style="color: var(--purple-primary); text-decoration: none; font-size: 0.9rem; font-weight: 600;">← Painel Admin</a>
+      <h2 style="margin: 0.3rem 0 0 0; font-family: var(--font-title);">📋 Logs de Atividade</h2>
+    </div>
+    <form method="GET" action="{{ url_for('admin_logs') }}" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <input type="text" name="user" value="{{ filtro_user }}" placeholder="Filtrar por usuário..."
+             style="padding: 0.5rem 0.9rem; border: 1.5px solid var(--border-color); border-radius: 8px;
+                    background: var(--bg-surface); color: var(--text-primary); font-size: 0.9rem;">
+      <button type="submit" class="btn" style="margin: 0; padding: 0.5rem 1.2rem;">Filtrar</button>
+      {% if filtro_user %}
+        <a href="{{ url_for('admin_logs') }}" class="btn" style="margin: 0; padding: 0.5rem 1.2rem; background: var(--text-secondary);">Limpar</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <div style="background: var(--bg-surface); border-radius: 16px; box-shadow: var(--shadow-light); overflow: hidden;">
+    <table class="admin-table" style="margin: 0; box-shadow: none;">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Usuário</th>
+          <th>Ação</th>
+          <th>Detalhes</th>
+          <th>Data/Hora</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs.items %}
+        <tr>
+          <td style="color: var(--text-secondary); font-size: 0.85rem;">{{ log.id }}</td>
+          <td><strong>{{ log.username }}</strong></td>
+          <td>
+            <span class="badge {% if 'exclu' in log.acao|lower or 'rejeit' in log.acao|lower %}status-red
+                               {% elif 'aprovou' in log.acao|lower or 'atualiz' in log.acao|lower %}status-green
+                               {% else %}status-gray{% endif %}">
+              {{ log.acao }}
+            </span>
+          </td>
+          <td style="font-size: 0.85rem; color: var(--text-secondary);">{{ log.detalhes or '—' }}</td>
+          <td style="font-size: 0.82rem; white-space: nowrap; color: var(--text-secondary);">
+            {{ log.data.strftime('%d/%m/%Y %H:%M') }}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+            Nenhum log encontrado{% if filtro_user %} para "{{ filtro_user }}"{% endif %}.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Paginação -->
+  {% if logs.pages > 1 %}
+  <div class="pagination" style="margin-top: 1.5rem;">
+    {% if logs.has_prev %}
+      <a href="{{ url_for('admin_logs', page=logs.prev_num, user=filtro_user) }}" class="page-btn">← Anterior</a>
+    {% endif %}
+    {% for p in logs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if p %}
+        <a href="{{ url_for('admin_logs', page=p, user=filtro_user) }}"
+           class="page-btn {% if p == logs.page %}active{% endif %}">{{ p }}</a>
+      {% else %}
+        <span class="page-btn" style="cursor: default;">…</span>
+      {% endif %}
+    {% endfor %}
+    {% if logs.has_next %}
+      <a href="{{ url_for('admin_logs', page=logs.next_num, user=filtro_user) }}" class="page-btn">Próximo →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

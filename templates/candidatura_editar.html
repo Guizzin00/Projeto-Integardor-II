@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Editar Candidatura · SisCPTI{% endblock %}
+{% block content %}
+<div class="submit-form">
+  <h2>Editar Candidatura ao Projeto</h2>
+  <p>Você está editando sua candidatura para o projeto: <strong>{{ candidatura.projeto.titulo }}</strong></p>
+  
+  <form method="POST">
+    <div class="form-group">
+      <label for="motivo">Por que você quer participar deste projeto?</label>
+      <textarea name="motivo" id="motivo" rows="4" required placeholder="Explique seu interesse e motivação...">{{ candidatura.motivo }}</textarea>
+    </div>
+    <div class="form-group" style="margin-top: 1rem;">
+      <label for="experiencia">Qual sua experiência prévia? (Opcional)</label>
+      <textarea name="experiencia" id="experiencia" rows="3" placeholder="Linguagens, frameworks, cursos...">{{ candidatura.experiencia }}</textarea>
+    </div>
+    <div style="margin-top: 1.5rem; display: flex; gap: 10px;">
+      <button type="submit" class="btn">Salvar Alterações</button>
+      <a href="{{ url_for('perfil') }}" class="btn" style="background: #ccc; color: #333; text-decoration: none; text-align: center;">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
