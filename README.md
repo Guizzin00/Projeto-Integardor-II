@@ -16,17 +16,18 @@ A plataforma atua como um catálogo digital centralizado, permitindo que empresa
 
 - [💡 Justificativa e Objetivos](#-justificativa-e-objetivos)
 - [🎯 Objetivo do Produto](#-objetivo-do-produto)
+- [📊 Stakeholders](#-stakeholders)
 - [📐 Arquitetura e Fluxo do Sistema](#-arquitetura-e-fluxo-do-sistema)
+- [📌 Product Backlog – Scrum](#-product-backlog--scrum)
+- [✅ Definição de Escopos por Fases (PI I, PI II e PI III)](#-definição-de-escopos-por-fases-pi-i-pi-ii-e-pi-iii)
 - [👥 Hierarquia e Matriz de Permissões (7 Roles)](#-hierarquia-e-matriz-de-permissões-7-roles)
 - [✨ Funcionalidades Avançadas e Detalhes Técnicos](#-funcionalidades-avançadas-e-detalhes-técnicos)
 - [💻 Tecnologia e Stack Completa](#-tecnologia-e-stack-completa)
-- [⚙️ Guia de Variáveis de Ambiente (.env)](#️-guia-de-variáveis-de-ambiente-env)
-- [🛠️ Instalação e Execução Local](#️-instalação-e-execução-local)
+- [⚙️ Guia de Variáveis de Ambiente (.env)](#-guia-de-variáveis-de-ambiente-env)
+- [🛠️ Instalação e Execução Local](#-instalação-e-execução-local)
 - [🧼 Scripts de Manutenção e Testes](#-scripts-de-manutenção-e-testes)
-- [📌 Evolução do Escopo (PI I vs PI II)](#-evolução-do-escopo-pi-i-vs-pi-ii)
 - [🚨 Guia de Resolução de Problemas (Troubleshooting)](#-guia-de-resolução-de-problemas-troubleshooting)
-- [🗂️ Diário de Bordo / Changelog](#️-diário-de-bordo--changelog)
-- [🛠️ Roadmap de Desenvolvimento](#️-roadmap-de-desenvolvimento)
+- [🗂️ Diário de Bordo / Changelog](#-diário-de-bordo--changelog)
 - [🤝 Equipe do Projeto](#-equipe-do-projeto)
 - [📄 Licença](#-licença)
 
@@ -43,6 +44,18 @@ A plataforma atua como um catálogo digital centralizado, permitindo que empresa
 ## 🎯 Objetivo do Produto
 
 Fornecer uma plataforma web interativa, responsiva e em tempo real que otimize em **até 80% o tempo de gestão, atribuição, desenvolvimento e avaliação** dos projetos de tecnologia desenvolvidos no UniCEUB.
+
+---
+
+## 📊 Stakeholders
+
+Os atores envolvidos no ciclo de vida da plataforma e suas responsabilidades são:
+
+* **Coordenação do Curso:** Valida as diretrizes pedagógicas, supervisiona o andamento global e avalia as estatísticas agregadas através de relatórios executivos.
+* **Professor Orientador (Supervisor):** Guia e valida as etapas de desenvolvimento das equipes vinculadas aos seus respectivos projetos, alterando status e emitindo notas.
+* **Alunos (Desenvolvedores / Scrum Master):** Visualizam o catálogo, candidatam-se a vagas, participam de workspaces privados e movimentam o Kanban de entregas.
+* **Empresas Parceiras / Clientes (Product Owners):** Propõem desafios reais do mercado de trabalho através do formulário de submissão e monitoram passivamente o progresso.
+* **Administrador do Sistema (TI CEUB):** Gerencia contas de usuários, altera níveis de acessos e audita o sistema por meio de logs de eventos.
 
 ---
 
@@ -96,6 +109,63 @@ graph TD
     RoutesProj <-->|ORM SQLAlchemy| DB_Postgres
     RoutesAdmin <-->|ORM SQLAlchemy| DB_Postgres
 ```
+
+---
+
+## 📌 Product Backlog – Scrum
+
+Este é o Product Backlog do **SisCPTI** estruturado sob a metodologia ágil Scrum, organizado por Épicos e priorizado conforme as entregas acadêmicas do Projeto Integrador:
+
+### 🔴 Épico 1 – Gestão de Usuários e Autenticação
+
+| ID | User Story (História de Usuário) | Prioridade | Story Points | Fase / MVP | Status |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **US01** | Como aluno ou professor, quero visualizar os projetos disponíveis no catálogo para conhecer oportunidades. | Alta | 5 | PI I | ✅ Concluído |
+| **US02** | Como empresa, quero cadastrar meus dados básicos para poder submeter novos projetos de TI. | Alta | 5 | PI I | ✅ Concluído |
+| **US03** | Como aluno, quero criar um perfil estruturado contendo bio e interesses acadêmicos de tecnologias para obter recomendações. | Média | 3 | PI II | ✅ Concluído |
+| **US11** | Como usuário cadastrado, quero efetuar login com hash seguro de senhas e papéis (roles) definidos. | Alta | 5 | PI II | ✅ Concluído |
+| **US12** | Como novo usuário, quero receber uma ativação obrigatória em meu e-mail com link de confirmação para poder acessar a plataforma. | Alta | 8 | PI II | ✅ Concluído |
+
+### 🔴 Épico 2 – Catálogo de Projetos e Propostas
+
+| ID | User Story (História de Usuário) | Prioridade | Story Points | Fase / MVP | Status |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **US04** | Como empresa, quero submeter uma proposta de projeto (desafio de TI) de forma estruturada para avaliação acadêmica. | Alta | 8 | PI I | ✅ Concluído |
+| **US05** | Como coordenador, quero visualizar, aprovar ou reprovar ideias submetidas pelas empresas. | Alta | 5 | PI I | ✅ Concluído |
+| **US06** | Como professor, quero atualizar o status do projeto (ex.: de "Em Desenvolvimento" para "Concluído") para andamento do ciclo de vida. | Alta | 5 | PI I | ✅ Concluído |
+| **US07** | Como usuário, quero clicar em um projeto para visualizar a descrição completa, requisitos e links úteis. | Alta | 3 | PI I | ✅ Concluído |
+| **US13** | Como coordenador, quero selecionar e atribuir dinamicamente um Professor Orientador ao aprovar uma proposta. | Alta | 5 | PI II | ✅ Concluído |
+
+### 🔴 Épico 3 – Workspace e Acompanhamento Ágil
+
+| ID | User Story (História de Usuário) | Prioridade | Story Points | Fase / MVP | Status |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **US08** | Como aluno, quero enviar uma candidatura para um projeto, descrevendo minhas experiências e motivações. | Média | 5 | PI II | ✅ Concluído |
+| **US09** | Como membro de equipe, quero um quadro Kanban interativo com Drag & Drop, subtarefas e prazos de entrega. | Alta | 8 | PI II | ✅ Concluído |
+| **US10** | Como integrante de projeto, quero um chat instantâneo para alinhamento rápido com WebSockets e menções `@username`. | Média | 8 | PI II | ✅ Concluído |
+| **US14** | Como aluno de projeto concluído, quero emitir um Certificado acadêmico oficial em PDF assinado eletronicamente. | Média | 5 | PI II | ✅ Concluído |
+| **US15** | Como administrador / coordenador, quero extrair relatórios estatísticos da plataforma em formato PDF e planilhas CSV. | Média | 5 | PI II | ✅ Concluído |
+| **US16** | Como aluno ou orientador, quero visualizar gráficos de Burn-down e diagramas de Gantt para acompanhar o rendimento. | Alta | 8 | PI II | ✅ Concluído |
+
+---
+
+## ✅ Definição de Escopos por Fases (PI I, PI II e PI III)
+
+### 📦 Escopo do MVP (Projeto Integrador I - Figma & Protótipo Navegável)
+O objetivo do PI I foi projetar e validar o conceito inicial com um protótipo navegável contendo:
+* **US01, US02, US04, US05, US06 e US07** (Catálogo simplificado, formulário de submissão e fluxo de andamento sem persistência em banco complexo).
+* **Total de Story Points (MVP PI I):** 31 pontos.
+
+### 🚀 Escopo da Evolução (Projeto Integrador II - Sistema Completo e Conectado em Nuvem)
+O PI II transformou o conceito inicial em uma aplicação robusta de produção com persistência escalável:
+* **US03, US11, US12, US13, US08, US09, US10, US14, US15 e US16** (Sistema de 7 papéis, banco de dados Supabase PostgreSQL, upload em nuvem, chat realtime Socket.IO com menções, Kanban interativo, PDFs automatizados, gráficos dinâmicos de Gantt/Burn-down e e-mails premium).
+* **Total de Story Points (Evolução PI II):** 60 pontos.
+* **Total de Story Points Acumulados no Backlog:** 91 pontos.
+
+### 🔄 Evolução Futura (Projeto Integrador III - Planejado)
+* Integração de Single Sign-On (SSO) com o sistema de autenticação corporativo (Azure AD / LDAP UniCEUB).
+* Módulo de entrega final automatizada com exportação para o repositório de TCC do CEUB.
+* Integração de chamadas de vídeo/áudio integradas diretamente na aba de reuniões do Workspace.
 
 ---
 
@@ -154,7 +224,7 @@ O controle de privilégios e acessos nas views e nas requisições é gerenciado
 * **Linguagem Principal:** [Python 3.10+](https://www.python.org/)
 * **Framework Web:** [Flask 3.0.2](https://flask.palletsprojects.com/)
 * **ORM:** [Flask-SQLAlchemy](https://flask-sqlalchemy.palletsprojects.com/)
-* **Banco de Dados (Produção):** [Supabase PostgreSQL](https://supabase.com/) conectado via Connection Pooler (Porta `6543`)
+* **Banco de Dados (Produção):** [PostgreSQL (Supabase)](https://supabase.com/) conectado via Connection Pooler (Porta `6543`)
 * **Armazenamento de Imagens/Anexos:** [Supabase Storage](https://supabase.com/docs/guides/storage)
 * **Conexão Realtime:** [Flask-SocketIO](https://flask-socketio.readthedocs.io/)
 * **Processador de PDFs:** [ReportLab 4.1.0](https://www.reportlab.com/)
@@ -255,21 +325,6 @@ Zera o banco e carrega um ecossistema realista composto por:
 
 ---
 
-## 📌 Evolução do Escopo (PI I vs PI II)
-
-| Característica / Recurso | MVP (Projeto Integrador I) | Versão Completa (Projeto Integrador II) |
-| :--- | :--- | :--- |
-| **Banco de Dados** | SQLite local (básico / sem persistência dinâmica) | PostgreSQL em Nuvem (Supabase) + Pooler IPv4 |
-| **Níveis de Usuários** | 4 Perfis básicos estáticos | 7 Roles complexos com controle de permissão |
-| **Kanban do Workspace**| Sem funcionalidade interativa | Drag & Drop funcional + checklist JSON + deadlines |
-| **Ambiente de Chat** | Chat simulado por formulário simples | WebSockets instantâneos + autocomplete + menções |
-| **Processamento de Mídia**| Armazenamento local temporário | Supabase Storage integrado com caminhos absolutos |
-| **Controle de Cadastro** | Abertura geral automática de contas | Verificação obrigatória via e-mail corporativo |
-| **Visual / Design** | Layout estático ou páginas básicas | Tema claro/escuro nativo automático e CSS com variáveis |
-| **Documentação PDF** | Sem emissão de arquivos | Certificados de TCC e Relatórios executivos em PDF |
-
----
-
 ## 🚨 Guia de Resolução de Problemas (Troubleshooting)
 
 #### 1. Erro de Truncamento de Senha (`psycopg2.errors.StringDataRightTruncation`)
@@ -290,28 +345,6 @@ Zera o banco e carrega um ecossistema realista composto por:
 
 O histórico de entregas semanais, correções de bugs de responsividade e log de commits do projeto pode ser acompanhado detalhadamente no arquivo:
 * 📄 [Diário de Bordo / Changelog](changelog/change_log.md)
-
----
-
-## 🛠️ Roadmap de Desenvolvimento
-
-#### ✅ Fase I (Projeto Integrador I - Concluída)
-* Levantamento de requisitos iniciais e design de telas no Figma.
-* Modelagem conceitual do Product Backlog e MVP.
-
-#### ✅ Fase II (Projeto Integrador II - Concluída / Atual)
-* Migração e persistência no PostgreSQL do Supabase + Storage.
-* Sistema de 7 Roles, ativação e redefinição de senhas com e-mail HTML premium e logo CEUB.
-* Workspace Kanban com Drag & Drop, checklists e datas limite.
-* Chat em tempo real por WebSockets (Socket.IO) com menções `@username`.
-* Métricas e visualizações (Burn-down e Gantt CSS).
-* Certificados de TCC e relatórios analíticos em PDF (ReportLab).
-* Ferramentas automáticas `reset_db.py` e `seed_db.py`.
-
-#### 🔄 Fase III (Projeto Integrador III - Planejado)
-* Integração de Single Sign-On (SSO) com o sistema de autenticação corporativo do UniCEUB.
-* Integração de chamadas de vídeo/áudio integradas diretamente na aba de reuniões do Workspace.
-* Módulo de entrega final e exportação automatizada para o Portal de Repositório de Monografias do CEUB.
 
 ---
 
