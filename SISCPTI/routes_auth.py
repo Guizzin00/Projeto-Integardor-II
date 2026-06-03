@@ -78,9 +78,10 @@ def cadastro():
         corpo = f"""
         <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #F6F8FA; padding: 40px 20px; text-align: center;">
           <div style="max-width: 500px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E1E4E8; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: left;">
-            <div style="background-color: #7A1BB5; padding: 30px; text-align: center;">
-              <h1 style="color: #FFFFFF; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 1px;">SisCPTI</h1>
-              <p style="color: #E9D5FF; margin: 5px 0 0; font-size: 13px;">Caderno de Projetos de TI · UniCEUB</p>
+            <div style="background-color: #FFFFFF; padding: 30px 20px; text-align: center; border-bottom: 1px solid #EEEEEE;">
+              <img src="https://www.uniceub.br/imagens/logoCEUB2021.png" alt="UniCEUB Logo" style="height: 45px; display: inline-block; margin-bottom: 10px;">
+              <h1 style="color: #7A1BB5; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 1px;">SisCPTI</h1>
+              <p style="color: #666666; margin: 5px 0 0; font-size: 13px;">Caderno de Projetos de TI · UniCEUB</p>
             </div>
             <div style="padding: 40px 30px; color: #24292E; line-height: 1.6;">
               <h2 style="margin-top: 0; font-size: 20px; color: #7A1BB5; font-weight: 700;">Ativação de Conta</h2>
@@ -200,9 +201,10 @@ def recuperar_senha():
             corpo = f"""
             <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #F6F8FA; padding: 40px 20px; text-align: center;">
               <div style="max-width: 500px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E1E4E8; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: left;">
-                <div style="background-color: #7A1BB5; padding: 30px; text-align: center;">
-                  <h1 style="color: #FFFFFF; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 1px;">SisCPTI</h1>
-                  <p style="color: #E9D5FF; margin: 5px 0 0; font-size: 13px;">Caderno de Projetos de TI · UniCEUB</p>
+                <div style="background-color: #FFFFFF; padding: 30px 20px; text-align: center; border-bottom: 1px solid #EEEEEE;">
+                  <img src="https://www.uniceub.br/imagens/logoCEUB2021.png" alt="UniCEUB Logo" style="height: 45px; display: inline-block; margin-bottom: 10px;">
+                  <h1 style="color: #7A1BB5; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 1px;">SisCPTI</h1>
+                  <p style="color: #666666; margin: 5px 0 0; font-size: 13px;">Caderno de Projetos de TI · UniCEUB</p>
                 </div>
                 <div style="padding: 40px 30px; color: #24292E; line-height: 1.6;">
                   <h2 style="margin-top: 0; font-size: 20px; color: #7A1BB5; font-weight: 700;">Redefinição de Senha</h2>
