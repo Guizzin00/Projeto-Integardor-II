@@ -20,6 +20,21 @@ def upload_file_to_supabase(file):
         filename = secure_filename(file.filename)
         unique_filename = str(uuid.uuid4())[:8] + "_" + filename
         
+        # Tenta criar o bucket caso nao exista (auto-inicializacao)
+        try:
+            bucket_headers = {
+                "Authorization": f"Bearer {supabase_key}",
+                "Content-Type": "application/json"
+            }
+            bucket_data = {
+                "id": supabase_bucket,
+                "name": supabase_bucket,
+                "public": True
+            }
+            requests.post(f"{supabase_url}/storage/v1/bucket", headers=bucket_headers, json=bucket_data)
+        except Exception:
+            pass
+            
         # Endpoint REST do Supabase Storage
         url = f"{supabase_url}/storage/v1/object/{supabase_bucket}/{unique_filename}"
         
@@ -62,6 +77,11 @@ def enviar_email(destinatario, assunto, corpo):
     mail_server = os.environ.get('MAIL_SERVER', '').strip()
     mail_user = os.environ.get('MAIL_USER', '').strip()
     mail_pass = os.environ.get('MAIL_PASS', '').strip()
+    try:
+        mail_port = int(os.environ.get('MAIL_PORT', '587').strip())
+    except Exception:
+        mail_port = 587
+        
     if not mail_server or not mail_user:
         return False
     try:
@@ -69,11 +89,19 @@ def enviar_email(destinatario, assunto, corpo):
         msg['Subject'] = assunto
         msg['From'] = mail_user
         msg['To'] = destinatario
-        with smtplib.SMTP_SSL(mail_server, 465) as srv:
-            srv.login(mail_user, mail_pass)
-            srv.sendmail(mail_user, [destinatario], msg.as_string())
+        
+        if mail_port == 465:
+            with smtplib.SMTP_SSL(mail_server, 465) as srv:
+                srv.login(mail_user, mail_pass)
+                srv.sendmail(mail_user, [destinatario], msg.as_string())
+        else:
+            with smtplib.SMTP(mail_server, mail_port) as srv:
+                srv.starttls()
+                srv.login(mail_user, mail_pass)
+                srv.sendmail(mail_user, [destinatario], msg.as_string())
         return True
-    except Exception:
+    except Exception as e:
+        print(f"Erro ao enviar email: {e}")
         return False
 
 def log_atividade(username, acao, detalhes=None):

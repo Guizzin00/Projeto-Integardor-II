@@ -172,9 +172,15 @@
               {% endif %}
               
               {% if msg.arquivo %}
-              <a href="{{ url_for('static', filename=msg.arquivo) }}" target="_blank">
-                <img src="{{ url_for('static', filename=msg.arquivo) }}" class="msg-image" alt="Anexo">
-              </a>
+                {% if msg.arquivo.startswith('http://') or msg.arquivo.startswith('https://') %}
+                  <a href="{{ msg.arquivo }}" target="_blank">
+                    <img src="{{ msg.arquivo }}" class="msg-image" alt="Anexo">
+                  </a>
+                {% else %}
+                  <a href="{{ url_for('static', filename=msg.arquivo) }}" target="_blank">
+                    <img src="{{ url_for('static', filename=msg.arquivo) }}" class="msg-image" alt="Anexo">
+                  </a>
+                {% endif %}
               {% endif %}
             </div>
           </div>
@@ -337,7 +343,11 @@
             {% if msg.arquivo %}
               {% set file_count.value = file_count.value + 1 %}
               <li>
-                <a href="{{ url_for('static', filename=msg.arquivo) }}" target="_blank" class="recent-file-item">
+                {% if msg.arquivo.startswith('http://') or msg.arquivo.startswith('https://') %}
+                  <a href="{{ msg.arquivo }}" target="_blank" class="recent-file-item">
+                {% else %}
+                  <a href="{{ url_for('static', filename=msg.arquivo) }}" target="_blank" class="recent-file-item">
+                {% endif %}
                   <span class="file-icon">🖼️</span>
                   <div class="file-details">
                     <span class="file-name">{{ msg.arquivo.split('/')[-1] }}</span>
@@ -763,10 +773,10 @@
       html += `<p class="msg-text">${formatMessageMentions(msg.texto)}</p>`;
     }
     if (msg.arquivo) {
-      const staticUrl = `/static/${msg.arquivo}`;
+      const fileUrl = (msg.arquivo.startsWith('http://') || msg.arquivo.startsWith('https://')) ? msg.arquivo : `/static/${msg.arquivo}`;
       html += `
-        <a href="${staticUrl}" target="_blank">
-          <img src="${staticUrl}" class="msg-image" alt="Anexo">
+        <a href="${fileUrl}" target="_blank">
+          <img src="${fileUrl}" class="msg-image" alt="Anexo">
         </a>
       `;
     }
@@ -798,8 +808,9 @@
 
     const li = document.createElement("li");
     const filename = msg.arquivo.split('/').pop();
+    const fileUrl = (msg.arquivo.startsWith('http://') || msg.arquivo.startsWith('https://')) ? msg.arquivo : `/static/${msg.arquivo}`;
     li.innerHTML = `
-      <a href="/static/${msg.arquivo}" target="_blank" class="recent-file-item">
+      <a href="${fileUrl}" target="_blank" class="recent-file-item">
         <span class="file-icon">🖼️</span>
         <div class="file-details">
           <span class="file-name">${filename}</span>

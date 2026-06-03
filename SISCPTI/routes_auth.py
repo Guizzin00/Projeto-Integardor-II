@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import uuid
 
 from app_instance import app
-from models import db, User, PasswordReset
+from models import db, User, PasswordReset, AccountVerification
 from utils import log_atividade, enviar_email
 
 # =========================
@@ -19,6 +19,10 @@ def login():
         usuario = User.query.filter_by(username=user).first()
 
         if usuario and check_password_hash(usuario.password, password):
+            if not usuario.ativo:
+                flash("❌ Esta conta ainda não foi ativada. Verifique seu e-mail para ativá-la!", "error")
+                return redirect(url_for('login'))
+
             session['logged_in'] = True
             session['user'] = usuario.username
             session['role'] = usuario.role
@@ -59,14 +63,53 @@ def cadastro():
             flash("⚠️ Este e-mail já está associado a outra conta.", "error")
             return redirect(url_for('cadastro'))
 
-        novo_usuario = User(username=username, email=email, password=generate_password_hash(password), role="user")
+        novo_usuario = User(username=username, email=email, password=generate_password_hash(password), role="user", ativo=False)
         db.session.add(novo_usuario)
         db.session.commit()
 
-        flash("✅ Cadastro realizado com sucesso! Faça login para continuar.", "success")
+        # Gerar token de ativacao da conta
+        token = str(uuid.uuid4())
+        expira = datetime.utcnow() + timedelta(days=1)
+        verif = AccountVerification(username=username, token=token, expira_em=expira)
+        db.session.add(verif)
+        db.session.commit()
+
+        link = url_for('verificar_conta', token=token, _external=True)
+        corpo = f"""
+        <h2>Ativação de Conta – SisCPTI</h2>
+        <p>Olá {username}, obrigado por se cadastrar no SisCPTI!</p>
+        <p>Clique no link abaixo para ativar sua conta e liberar seu acesso:</p>
+        <p><a href="{link}">{link}</a></p>
+        <p>Se você não realizou este cadastro, por favor ignore este e-mail.</p>
+        """
+        enviado = enviar_email(email, 'Ativação de Conta – SisCPTI', corpo)
+        if enviado:
+            flash("📧 Conta criada com sucesso! Enviamos um link de ativação para seu e-mail.", "success")
+        else:
+            print(f"\n--- ATIVAÇÃO DE CONTA (CONSOLE FALLBACK) ---\nUsuário: {username}\nLink: {link}\n--------------------------------------------\n")
+            flash(f"⚠️ SMTP não configurado. Ative sua conta usando este link: /verificar-conta/{token}", "warning")
+
         return redirect(url_for('login'))
 
     return render_template('cadastro.html')
+
+@app.route('/verificar-conta/<token>')
+def verificar_conta(token):
+    verification = AccountVerification.query.filter_by(token=token).first()
+    if not verification or verification.expira_em < datetime.utcnow():
+        flash("⚠️ Link de ativação inválido ou expirado.", "error")
+        return redirect(url_for('login'))
+
+    user = User.query.filter_by(username=verification.username).first()
+    if user:
+        user.ativo = True
+        db.session.delete(verification)
+        db.session.commit()
+        log_atividade(user.username, 'Conta ativada por e-mail')
+        flash("✅ Conta ativada com sucesso! Faça login para continuar.", "success")
+    else:
+        flash("⚠️ Erro ao ativar: usuário não encontrado.", "error")
+    return redirect(url_for('login'))
 
 # =========================
 # Logout

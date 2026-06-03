@@ -29,15 +29,19 @@ with app.app_context():
                 conn.execute(text('ALTER TABLE "user" ALTER COLUMN password TYPE VARCHAR(255)'))
                 conn.commit()
 
-        # User: email, bio, interesses
+        # User: email, bio, interesses, ativo
         user_cols = [c['name'] for c in inspector.get_columns('user')]
         if 'email' not in user_cols:
-
             conn.execute(text('ALTER TABLE "user" ADD COLUMN email VARCHAR(120)'))
         if 'bio' not in user_cols:
             conn.execute(text('ALTER TABLE "user" ADD COLUMN bio VARCHAR(300)'))
         if 'interesses' not in user_cols:
             conn.execute(text('ALTER TABLE "user" ADD COLUMN interesses VARCHAR(300)'))
+        if 'ativo' not in user_cols:
+            if db.engine.name == 'postgresql':
+                conn.execute(text('ALTER TABLE "user" ADD COLUMN ativo BOOLEAN DEFAULT TRUE'))
+            else:
+                conn.execute(text('ALTER TABLE "user" ADD COLUMN ativo BOOLEAN DEFAULT 1'))
             
         # Project: professor_id, tags
         proj_cols = [c['name'] for c in inspector.get_columns('project')]

@@ -15,6 +15,7 @@ class User(db.Model):
     email = db.Column(db.String(120), nullable=True)
     bio = db.Column(db.String(300), nullable=True)
     interesses = db.Column(db.String(300), nullable=True, default='')
+    ativo = db.Column(db.Boolean, nullable=False, default=True)
 
 import random
 
@@ -110,6 +111,12 @@ class ActivityLog(db.Model):
     data = db.Column(db.DateTime, default=datetime.utcnow)
 
 class PasswordReset(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), nullable=False)
+    token = db.Column(db.String(100), unique=True, nullable=False)
+    expira_em = db.Column(db.DateTime, nullable=False)
+
+class AccountVerification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), nullable=False)
     token = db.Column(db.String(100), unique=True, nullable=False)
