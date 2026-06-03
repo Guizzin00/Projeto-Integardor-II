@@ -1,64 +1,99 @@
 # 📝 Diário de Bordo / Changelog – SisCPTI
 
-Este arquivo documenta as atualizações, implementações e correções realizadas no **SisCPTI** (Sistema de Gestão de Projetos de TI) durante a evolução do **Projeto Integrador II**, no período de **01/05/2026** a **28/05/2026**.
+Este arquivo documenta as atualizações, implementações, evoluções e correções realizadas no **SisCPTI** (Sistema de Gestão de Projetos de TI) durante a evolução do **Projeto Integrador II**, no período de **06/04/2026** a **03/06/2026**.
 
 ---
 
-## 📅 Semanas 1 e 2: Fundação e Autenticação (01/05/2026 – 10/05/2026)
+## 📅 Semana 1: Fundação, Modelagem e Autenticação (06/04/2026 – 12/04/2026)
 
 ### 🖥️ Backend e Banco de Dados
-* **Criação do Servidor Flask**: Inicialização do backend principal (`app.py`) integrando rotas dinâmicas e gerenciamento de sessões de usuário.
-* **Modelagem Relacional (SQLite + SQLAlchemy)**: Criação das tabelas relacionais do sistema:
-  * `User`: Cadastro de usuários com perfis e permissões (`admin`, `professor`, `empresa`, `aluno`), campos para biografia e email.
-  * `Project`: Projetos ativos no catálogo.
-  * `Submission`: Propostas de novos projetos submetidas por empresas.
-  * `Application`: Candidatura de estudantes a projetos.
-* **Segurança das Senhas**: Implementação de criptografia das senhas locais no banco de dados utilizando hashing seguro com `werkzeug.security` (migrando senhas legadas em texto plano para hashes criptográficos).
-* **Fluxo de Autenticação Completo**:
-  * Implementação de rotas e templates de **Login** e **Cadastro** (`cadastro.html` e `login.html`).
-  * Controle de acesso nas rotas por meio do perfil do usuário logado (ex.: restrição de painéis administrativos).
-* **Recuperação de Senha**:
-  * Criação da tabela `PasswordReset` para gerenciar tokens de expiração.
-  * Implementação da rota e tela de recuperação (`recuperar_senha.html` e `redefinir_senha.html`).
+* **Configuração Inicial do Servidor**: Inicialização do backend em Flask (`app.py`), configurando rotas dinâmicas, controle de sessões e manipuladores de erros.
+* **Modelagem Relacional (SQLite + SQLAlchemy)**: Criação do esquema inicial do banco de dados:
+  * `User`: Perfis e permissões (`admin`, `professor`, `empresa`, `aluno`), dados de biografia e contato.
+  * `Project`: Projetos do catálogo do UniCEUB.
+  * `Submission`: Propostas de novos projetos submetidas por organizações parceiras.
+  * `Application`: Registro de candidaturas de estudantes.
+* **Criptografia e Segurança**: Hashing seguro de senhas com `werkzeug.security`.
+
+### 🔑 Autenticação e Recuperação
+* **Login e Cadastro**: Telas interativas (`login.html` e `cadastro.html`) com validação de credenciais e controle de sessões.
+* **Recuperação de Senha**: Modelo `PasswordReset` e rotas iniciais para redefinição segura de senhas via tokens temporários.
 
 ---
 
-## 📅 Semana 3: Core de Projetos e Fluxos de Candidatura (11/05/2026 – 20/05/2026)
+## 📅 Semanas 2 e 3: Catálogo, Candidaturas e Workspace (13/04/2026 – 26/04/2026)
 
-### 🗂️ Gestão e Visualização de Projetos
-* **Visualização Dinâmica**: Migração da listagem estática do catálogo de projetos para renderização dinâmica via banco de dados (`projetos.html`).
-* **Filtros e Buscas**: Adicionada filtragem dinâmica por termo de busca, categoria e status do projeto.
-* **Página de Detalhes**: Criação da visualização expandida dos requisitos, tecnologias e links úteis dos projetos (`projeto_detalhes.html`).
+### 🗂️ Catálogo de Projetos
+* **Listagem Dinâmica**: Renderização do catálogo direto do banco de dados (`projetos.html`) com filtros básicos por termo de busca, categoria e status.
+* **Detalhes do Projeto**: Tela expandida com visualização de requisitos, cronograma e links úteis (`projeto_detalhes.html`).
 
 ### 📩 Submissão e Candidatura
-* **Envio de Propostas pelas Empresas**: Implementação da tela de submissão de ideias/projetos pelas empresas (`submissao.html` e `submissao_editar.html`) com upload opcional de imagens identificadoras.
-* **Candidatura de Alunos**: Implementação da tela onde os estudantes enviam suas motivações e competências para participar de um projeto (`candidatura.html`).
-* **Workspace de Equipes**:
-  * Criação de um ambiente de desenvolvimento integrado para cada projeto (`workspace.html`).
-  * Implementação de um sistema de chat (comunicação integrada) com suporte a mensagens em tempo real e envio de anexos/arquivos.
+* **Envio de Propostas pelas Empresas**: Interface para submissão de ideias/projetos pelas empresas (`submissao.html` e `submissao_editar.html`) com upload de imagens.
+* **Candidatura de Alunos**: Envio de motivações e competências de estudantes interessados em vagas nos projetos.
+
+### 💬 Workspace de Equipes
+* **Ambiente Integrado**: Criação de um workspace para cada projeto (`workspace.html`) permitindo centralizar a interação do grupo.
+* **Chat Interno**: Integração de um chat básico com suporte a mensagens e envio de anexos de arquivos (inicialmente baseado em AJAX Polling).
 
 ---
 
-## 📅 Semana 4: Dashboards, Auditoria e Polimento de Design (21/05/2026 – 28/05/2026)
+## 📅 Semanas 4 e 5: Auditoria, Dashboards e Polimento Visual (27/04/2026 – 10/05/2026)
 
-### 📊 Painel Administrativo e Métricas
-* **Painel Geral (Admin Dashboard)**: Centralização do gerenciamento de usuários, submissões de empresas e aprovação de candidaturas.
-* **Log de Atividades (Auditoria)**: Criação do modelo `ActivityLog` e tela de logs (`admin_logs.html`) que registra todas as ações dos usuários no sistema (como login, novas submissões, alterações de perfil).
-* **Exportação de Dados**: Funcionalidade para download de tabelas em formato CSV (exportação de usuários e projetos para relatórios acadêmicos).
-* **Gráficos Dinâmicos**: Integração do `Chart.js` para exibir a distribuição de projetos por categoria e por status de forma visual.
+### 📊 Painel Geral e Auditoria
+* **Admin Dashboard**: Centralização do gerenciamento de usuários, submissões de empresas e aprovação de candidaturas.
+* **Log de Atividades (Auditoria)**: Criação da tabela `ActivityLog` e tela de auditoria (`admin_logs.html`) para registrar ações cruciais no sistema.
+* **Exportação Básica**: Download de relatórios administrativos simplificados em formato CSV.
+* **Gráficos Dinâmicos**: Integração do `Chart.js` para exibir a distribuição de projetos por categoria e status.
 
-### 🎨 Refatoração Visual, Tema Escuro e Acessibilidade (26/05 – 28/05)
-* **Unificação do Tema Claro/Escuro**:
-  * Correção do interruptor (toggled theme) no JavaScript (`static/script.js`).
-  * Substituição de todas as cores hardcoded nos templates HTML por variáveis CSS globais (`static/style.css`), garantindo consistência completa no modo noturno.
-  * Ajuste de contraste para textos e placeholders nos campos de formulários em ambas as cores de tema.
-* **Inversão da Logo do UNICEUB**:
-  * Configuração de classe CSS `.ceub-logo` com aplicação de filtro dinâmico (`filter: brightness(0) invert(1)`) para que a logo do CEUB fique completamente branca apenas quando o tema escuro estiver ativo.
-* **Correção de Responsividade**:
-  * Redesenho das regras de Media Queries para telas de tablets e smartphones (abaixo de 768px).
-  * Correção do menu sanduíche (hamburguer menu) do cabeçalho que apresentava quebra visual.
-* **Gráficos Adaptativos**:
-  * Configuração no JavaScript para re-renderizar dinamicamente as cores dos textos, eixos e linhas do Chart.js baseando-se na ativação do tema claro/escuro.
-* **Estabilização de Versionamento**:
-  * Criação do arquivo `.gitignore` para proteção de dados do SQLite (`siscpti.db`), arquivos locais de upload de testes e caches do python (`__pycache__`).
-  * Integração total das alterações e push bem-sucedido para o repositório oficial no GitHub.
+### 🎨 Refatoração Visual e Tema Escuro Automático
+* **Sincronização de Tema**: Implementação de detecção automática do tema do sistema operacional (`prefers-color-scheme`) e interruptor manual sincronizado via `localStorage`.
+* **CSS Variabilizado**: Substituição de cores fixas por variáveis CSS globais (`static/style.css`), garantindo perfeita adaptação ao modo escuro.
+* **Responsividade**: Redesenho de Media Queries e menu hambúrguer para dispositivos mobile.
+* **Inversão da Logo do UNICEUB**: Aplicação do filtro CSS `filter: brightness(0) invert(1)` na logo institucional quando o tema escuro estiver ativo.
+
+---
+
+## 📅 Semanas 6 e 7: Expansão de Roles, Kanban, PDFs e WebSockets (11/05/2026 – 24/05/2026)
+
+### 👥 Hierarquia de 7 Cargos (Roles)
+* **Permissões Refinadas**: Divisão de privilégios para `admin`, `coordenador`, `professor`, `empresa`, `cliente`, `aluno` e `lider`.
+* **Painel do Coordenador**: Interface exclusiva (`/coordenador`) permitindo aprovação de propostas com atribuição direta de Professores Orientadores.
+
+### 📈 Kanban Drag & Drop e Avaliação Multidimensional
+* **Kanban do Workspace**: Kanban funcional com arrastar-e-soltar de tarefas (`todo`, `doing`, `done`) e controle de permissões de visualização apenas-leitura para Clientes, Coordenadores e Empresas.
+* **Avaliações Estrela (Ratings)**: Sistema de feedback multidimensional no encerramento de projetos (notas em Geral, Organização, Orientação e Aprendizado).
+
+### 📄 Certificados ReportLab e WebSockets no Chat
+* **Certificados em PDF**: Geração dinâmica de certificados em formato paisagem (landscape) com ReportLab para projetos concluídos, com assinaturas da coordenação e do orientador.
+* **Chat Realtime (Socket.IO)**: Substituição do polling de 3 segundos por WebSockets em tempo real, organizando conversas por salas exclusivas de projetos.
+
+### 🔍 Paginação, Tags e Recomendador
+* **Paginação e Fuzzy Search**: Paginação de 6 itens por página no catálogo e integração do `Fuse.js` para buscas tolerantes a erros de digitação.
+* **Recomendador de Projetos**: Algoritmo que lê os interesses de tecnologia no perfil do aluno e sugere projetos ideais no painel do estudante.
+
+---
+
+## 📅 Semanas 8 e 9: Integração Supabase, Métricas Avançadas, SMTP Premium e Ferramentas (25/05/2026 – 03/06/2026)
+
+### ☁️ Banco de Dados PostgreSQL no Supabase & Storage
+* **Migração de Banco**: Configuração da string de conexão de pooler IPv4 (`aws-1-sa-east-1`) para garantir estabilidade local e em nuvem.
+* **Tratamento de String de Hashing**: Redimensionamento da coluna de senhas para `VARCHAR(255)` no PostgreSQL para evitar truncamento de hashes longos (`scrypt`).
+* **Upload em Nuvem (Supabase Storage)**: Integração das rotas de chat, projeto e perfil com o bucket `uploads` do Supabase, contornando caminhos de arquivo relativos.
+
+### 🎯 Autocomplete, Menções e Kanban Avançado
+* **Autocomplete de `@username`**: Dropdown inteligente no chat e sistema de notificações reais ao mencionar colegas de equipe.
+* **Checklist e Prazos no Kanban**: Kanban expandido com subtarefas (riscadas em tempo real), deadlines com coloração de alerta para tarefas atrasadas e barra de progresso.
+
+### 📉 Gráficos de Desempenho e Relatórios Administrativos
+* **Burn-down e Gantt**: Aba de métricas no Workspace exibindo o gráfico de Burn-down (ritmo ideal vs real) e diagrama de Gantt interativo gerado dinamicamente em CSS.
+* **Relatório Executivo PDF**: Geração de relatórios analíticos completos em PDF para administradores contendo tabelas e estatísticas de uso da plataforma.
+* **Exportação Completa (CSV)**: Exportação de logs, avaliações e projetos.
+
+### 📧 Ativação de Contas, SMTP e E-mails Premium com Logo
+* **Fluxo de Ativação**: Usuários cadastrados iniciam como inativos (`ativo = False`) e recebem e-mail com token temporário para ativação.
+* **SMTP Gmail TLS**: Otimização do envio usando porta `587` e TLS (`starttls()`) para funcionamento estável no Vercel.
+* **Templates HTML Premium**: E-mails de ativação e recuperação de senha estruturados em cards minimalistas responsivos, com o logotipo oficial do CEUB (`https://www.uniceub.br/imagens/logoCEUB2021.png`) no topo e botão CTA na cor roxa da identidade do SisCPTI.
+
+### 🧹 Ferramentas de Manutenção
+* **`reset_db.py`**: Script utilitário para limpar e recriar toda a estrutura do banco de dados (SQLite/Supabase).
+* **`seed_db.py`**: Script de semeadura que preenche o banco com 11 usuários de papéis distintos, 4 projetos, tarefas de Kanban estruturadas, chat histórico e avaliações para validações pontuais.

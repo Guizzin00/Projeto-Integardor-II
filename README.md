@@ -1,236 +1,331 @@
 # 📘 Sistema de Gestão do Caderno de Projetos de TI (SisCPTI) 📝
 
-O **SisCPTI** é um sistema de gestão desenvolvido para a disciplina de **Projeto Integrador I**, com continução em **Projeto Integrador II**  do UNICEUB.  
-O objetivo principal é criar uma plataforma centralizada para gerenciar projetos de Tecnologia da Informação (TI), servindo como um catálogo digital para empresas e estudantes da universidade.
-Ele facilita a comunicação e o acompanhamento do progresso de projetos integradores, garantindo uma experiência mais eficiente para todos os envolvidos.
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Flask Version](https://img.shields.io/badge/flask-3.0.x-green.svg)](https://flask.palletsprojects.com/)
+[![Database](https://img.shields.io/badge/database-PostgreSQL%20%7C%20Supabase-blueviolet.svg)](https://supabase.com/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/deploy-Vercel-black.svg)](https://vercel.com/)
+
+O **SisCPTI** é um ecossistema de gestão acadêmica e corporativa desenvolvido originalmente para a disciplina de **Projeto Integrador I** e evoluído de forma robusta e em tempo real em **Projeto Integrador II** no **UniCEUB**.  
+
+A plataforma atua como um catálogo digital centralizado, permitindo que empresas parceiras proponham desafios tecnológicos reais, coordenadores gerenciem o fluxo pedagógico, professores orientem e estudantes desenvolvam soluções integradoras organizadas sob a metodologia ágil Scrum.
 
 ---
 
 ## 📑 Sumário
 
-- [💡 Justificativa e Objetivos](#-justificativa-e-objetivos)  
-- [🎯 Objetivo do Produto](#-objetivo-do-produto)  
-- [👥 Público-alvo](#-público-alvo)  
-- [✨ Funcionalidades](#-funcionalidades)  
-- [💻 Tecnologia e Arquitetura](#-tecnologia-e-arquitetura)  
-- [📊 Stakeholders](#-stakeholders)  
-- [📌 Evolução do Escopo (PI I para PI II)](#-evolução-do-escopo-pi-i-para-pi-ii)  
-- [🗂️ Registro de Alterações (Changelog)](#️-registro-de-alterações-changelog)  
-- [📈 Métricas de Sucesso](#-métricas-de-sucesso)  
-- [🛠️ Roadmap de Desenvolvimento](#️-roadmap-de-desenvolvimento)  
-- [🤝 Equipe do Projeto](#-equipe-do-projeto)  
+- [💡 Justificativa e Objetivos](#-justificativa-e-objetivos)
+- [🎯 Objetivo do Produto](#-objetivo-do-produto)
+- [📐 Arquitetura e Fluxo do Sistema](#-arquitetura-e-fluxo-do-sistema)
+- [👥 Hierarquia e Matriz de Permissões (7 Roles)](#-hierarquia-e-matriz-de-permissões-7-roles)
+- [✨ Funcionalidades Avançadas e Detalhes Técnicos](#-funcionalidades-avançadas-e-detalhes-técnicos)
+- [💻 Tecnologia e Stack Completa](#-tecnologia-e-stack-completa)
+- [⚙️ Guia de Variáveis de Ambiente (.env)](#️-guia-de-variáveis-de-ambiente-env)
+- [🛠️ Instalação e Execução Local](#️-instalação-e-execução-local)
+- [🧼 Scripts de Manutenção e Testes](#-scripts-de-manutenção-e-testes)
+- [📌 Evolução do Escopo (PI I vs PI II)](#-evolução-do-escopo-pi-i-vs-pi-ii)
+- [🚨 Guia de Resolução de Problemas (Troubleshooting)](#-guia-de-resolução-de-problemas-troubleshooting)
+- [🗂️ Diário de Bordo / Changelog](#️-diário-de-bordo--changelog)
+- [🛠️ Roadmap de Desenvolvimento](#️-roadmap-de-desenvolvimento)
+- [🤝 Equipe do Projeto](#-equipe-do-projeto)
 - [📄 Licença](#-licença)
-  
 
 ---
 
-### 💡 Justificativa e Objetivos
+## 💡 Justificativa e Objetivos
 
-- **Aumentar a visibilidade dos projetos de TI disponíveis para a comunidade acadêmica:** Atualmente, a gestão e visualização dos projetos não são centralizadas, o que dificulta o acompanhamento e a descoberta de novas oportunidades por estudantes e professores.  
-- **Melhorar a gestão do ciclo de vida dos projetos, desde a submissão até o acompanhamento do progresso:** Não há um local único para acompanhar o status e o progresso dos projetos.  
-- **Centralizar o fluxo de informações, permitindo a comunicação entre empresas, alunos e gestores:** O sistema atua como um ponto de encontro, simplificando a interação entre empresas, alunos e coordenadores.  
-
----
-
-### 🎯 Objetivo do Produto
-
-**Aumentar a eficiência e a visibilidade** no processo de gestão de projetos de TI, simplificando a forma como são propostos, aceitos e acompanhados dentro do UNICEUB.
+* **Centralização Acadêmica:** Resolve a fragmentação de informações sobre projetos integradores, TCCs e parcerias externas.
+* **Ciclo de Vida do Projeto Monitorado:** Acompanhamento transparente desde o rascunho de uma ideia proposta por uma empresa até o fechamento com emissão de certificado em PDF.
+* **Comunicação Ativa e Direcionada:** Elimina o uso de canais externos descentralizados, integrando chat em tempo real nas próprias salas dos projetos com rastreabilidade de menções.
 
 ---
 
-### 👥 Público-alvo
+## 🎯 Objetivo do Produto
 
-- **Alunos:** Usarão o sistema para visualizar projetos e encontrar oportunidades para trabalhos acadêmicos ou projetos integradores.  
-- **Empresas:** Poderão submeter propostas de projetos de forma organizada para a comunidade acadêmica.  
-- **Coordenadores e Professores do CPTI:** Usarão o sistema para gerenciar, aprovar e acompanhar o progresso dos projetos.  
+Fornecer uma plataforma web interativa, responsiva e em tempo real que otimize em **até 80% o tempo de gestão, atribuição, desenvolvimento e avaliação** dos projetos de tecnologia desenvolvidos no UniCEUB.
 
 ---
 
-### ✨ Funcionalidades
+## 📐 Arquitetura e Fluxo do Sistema
 
-O sistema oferece as seguintes funcionalidades principais:
+Abaixo é apresentada a arquitetura lógica do SisCPTI, mapeando as interações em tempo real dos clientes web com os serviços de infraestrutura e nuvem:
 
-- **Visualização de Projetos:** Uma interface intuitiva onde estudantes e professores podem navegar e explorar projetos de TI propostos por empresas.  
-- **Sugestão de Novos Projetos:** Empresas podem submeter propostas de projetos de forma estruturada, incluindo documentos, requisitos e informações detalhadas para análise.  
-- **Acompanhamento e Gestão:** Permite o registro de atualizações, feedbacks e o progresso geral dos projetos, facilitando o acompanhamento do ciclo de vida de cada um.  
-- **Comunicação Integrada:** Promove a comunicação entre empresas, estudantes e coordenadores, simplificando a interação entre as partes.  
+```mermaid
+graph TD
+    %% Clientes e Navegadores
+    subgraph Client ["Cliente (Navegador Web)"]
+        UI["Interface HTML5 / CSS3 (Variáveis Globais)"]
+        JS["Script Client-side (JS Vanilla / Fuse.js / Chart.js)"]
+        WS_Client["Socket.IO Client"]
+    end
 
----
-# 📌 Product Backlog – SisCPTI
-Sistema de Gestão de Projetos de TI  
-Projeto Integrador II – UNICEUB  
+    %% Servidor Flask
+    subgraph Server ["Backend (Flask App / Vercel Serverless)"]
+        App["App Principal (app.py)"]
+        RoutesAuth["Rotas de Autenticação & SMTP (routes_auth.py)"]
+        RoutesProj["Workspace, Kanban & Chat (routes_project.py)"]
+        RoutesAdmin["Dashboards & CSV (routes_admin.py)"]
+        WS_Server["Socket.IO Server (Salas por ID de Projeto)"]
+        ReportLab["Gerador PDF (ReportLab / admin_report.py)"]
+    end
 
----
+    %% Infraestrutura & Nuvem
+    subgraph Cloud ["Serviços em Nuvem / Terceiros"]
+        DB_Postgres[("Supabase PostgreSQL (aws-1-sa-east-1 Pooler)")]
+        Storage[("Supabase Storage (uploads bucket)")]
+        SMTP["SMTP Server (Gmail TLS Port 587)"]
+    end
 
-## 📖 Visão Geral
-
-Este documento apresenta o Product Backlog do **SisCPTI**, organizado com base na metodologia Scrum.  
-As funcionalidades estão estruturadas em Épicos e User Stories, priorizadas conforme o escopo do MVP (Produto Mínimo Viável).
-
----
-
-# 🧩 Estrutura do Backlog
-
-## 🔴 Épico 1 – Gestão de Usuários
-
-| ID   | User Story | Prioridade | Story Points | MVP |
-|------|------------|------------|--------------|-----|
-| US01 | Como aluno ou professor, quero visualizar os projetos disponíveis para conhecer oportunidades acadêmicas. | Alta | 5 | ✅ |
-| US02 | Como empresa, quero cadastrar meus dados para submeter propostas de projetos. | Alta | 5 | ✅ |
-| US03 | Como aluno, quero criar um perfil para me candidatar a projetos. | Média | 3 | ❌ |
-
----
-
-## 🔴 Épico 2 – Gestão de Projetos
-
-| ID   | User Story | Prioridade | Story Points | MVP |
-|------|------------|------------|--------------|-----|
-| US04 | Como empresa, quero submeter uma proposta de projeto para que alunos possam desenvolvê-lo. | Alta | 8 | ✅ |
-| US05 | Como coordenador, quero aprovar ou rejeitar projetos para garantir alinhamento acadêmico. | Alta | 5 | ✅ |
-| US06 | Como professor, quero atualizar o status do projeto para acompanhar seu progresso. | Alta | 5 | ✅ |
-| US07 | Como usuário, quero visualizar informações completas do projeto para compreender seus requisitos. | Alta | 3 | ✅ |
-
----
-
-## 🔴 Épico 3 – Participação e Acompanhamento
-
-| ID   | User Story | Prioridade | Story Points | MVP |
-|------|------------|------------|--------------|-----|
-| US08 | Como aluno, quero me inscrever em um projeto para participar do processo seletivo. | Média | 5 | ❌ |
-| US09 | Como professor, quero registrar atualizações para manter histórico do progresso. | Média | 5 | ❌ |
-| US10 | Como empresa e aluno, quero trocar mensagens dentro do sistema para alinhar requisitos. | Baixa | 8 | ❌ |
+    %% Fluxo de Conexões
+    UI --> JS
+    JS --> WS_Client
+    
+    WS_Client <-->|WebSockets Realtime| WS_Server
+    JS -->|HTTP GET/POST / AJAX| App
+    
+    App --> RoutesAuth
+    App --> RoutesProj
+    App --> RoutesAdmin
+    
+    RoutesAuth -->|Envio de HTML Premium| SMTP
+    RoutesProj -->|Upload de Anexos/Imagens| Storage
+    RoutesProj -->|Geração de Certificados TCC| ReportLab
+    RoutesAdmin -->|Geração de Relatórios Estatísticos| ReportLab
+    
+    RoutesAuth <-->|ORM SQLAlchemy| DB_Postgres
+    RoutesProj <-->|ORM SQLAlchemy| DB_Postgres
+    RoutesAdmin <-->|ORM SQLAlchemy| DB_Postgres
+```
 
 ---
 
-# ✅ Escopo do MVP (PI I)
+## 👥 Hierarquia e Matriz de Permissões (7 Roles)
 
-O MVP incluirá as seguintes funcionalidades:
+O controle de privilégios e acessos nas views e nas requisições é gerenciado de forma rigorosa por perfis no banco de dados. Abaixo está a matriz detalhada de permissões:
 
-- US01 – Visualização do catálogo
-- US02 – Cadastro de empresa
-- US04 – Submissão de projeto
-- US05 – Aprovação de projeto
-- US06 – Atualização de status
-- US07 – Visualização detalhada
-
-O objetivo do MVP é entregar um **protótipo navegável**, validando o conceito do sistema.
-
----
-
-# 📊 Resumo de Pontuação
-
-- Total de Story Points (MVP): **31**
-- Total Geral do Backlog: **47**
+| Funcionalidade / Tela | Admin | Coordenador | Professor | Líder | Aluno | Empresa | Cliente |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Painel de Usuários (CRUD)** | ✅ Sim | ❌ Não | ❌ Não | ❌ Não | ❌ Não | ❌ Não | ❌ Não |
+| **Auditoria e Logs do Sistema** | ✅ Sim | ❌ Não | ❌ Não | ❌ Não | ❌ Não | ❌ Não | ❌ Não |
+| **Aprovação de Ideias / Projetos** | ✅ Sim | ✅ Sim | ❌ Não | ❌ Não | ❌ Não | ❌ Não | ❌ Não |
+| **Atribuição de Professor Orientador**| ✅ Sim | ✅ Sim | ❌ Não | ❌ Não | ❌ Não | ❌ Não | ❌ Não |
+| **Mudar Status do Projeto (Concluir)**| ✅ Sim | ❌ Não | ✅ Sim | ❌ Não | ❌ Não | ❌ Não | ❌ Não |
+| **Criar/Editar Tarefas Kanban** | ✅ Sim | ❌ Não | ❌ Não | ✅ Sim | ❌ Não | ❌ Não | ❌ Não |
+| **Marcar Checklists do Kanban** | ✅ Sim | ❌ Não | ❌ Não | ✅ Sim | ✅ Sim | ❌ Não | ❌ Não |
+| **Movimentar Cards (Drag & Drop)** | ✅ Sim | ❌ Não | ❌ Não | ✅ Sim | ✅ Sim | ❌ Não | ❌ Não |
+| **Enviar Mensagens no Chat** | ✅ Sim | ❌ Não | ✅ Sim | ✅ Sim | ✅ Sim | ✅ Sim | ✅ Sim |
+| **Baixar Relatórios Administrativos** | ✅ Sim | ✅ Sim | ❌ Não | ❌ Não | ❌ Não | ❌ Não | ❌ Não |
+| **Baixar Certificado em PDF** | ✅ Sim | ✅ Sim | ✅ Sim | ✅ Sim | ✅ Sim | ❌ Não | ❌ Não |
 
 ---
 
-# 🔄 Evolução Futura (PI III)
+## ✨ Funcionalidades Avançadas e Detalhes Técnicos
 
-Funcionalidades previstas para evolução:
+### 1. Chat Realtime via WebSockets (Flask-SocketIO)
+* **Estrutura de Salas:** Quando o usuário acessa o Workspace, ele é inserido em uma sala Socket.IO baseada no `projeto_id` correspondente. As mensagens não sobrecarregam o servidor com requisições repetitivas.
+* **Parser de Menções (`@username`):** O backend faz a leitura Regex de cada mensagem. Ao detectar `@username`, ele valida se o mencionado é um integrante do projeto e gera um registro na tabela `Notification` enviando alertas imediatos via socket para a tela do mencionado com destaque dourado (`.mention-bubble-highlight`) na bolha correspondente.
+* **Dropdown de Autocomplete:** Implementação nativa no textarea do chat. Ao digitar `@`, exibe a listagem de membros do projeto permitindo navegação pelas setas do teclado e fechamento ao apertar Enter ou Escape.
 
-- Sistema de autenticação institucional
-- Dashboard com métricas
-- Notificações
-- Upload de documentos
-- Comunicação interna
-- Relatórios automáticos
+### 2. Kanban com Checklists e Detecção de Atraso
+* **Drag & Drop Responsivo:** Inteiramente desenvolvido em HTML5 Drag & Drop API, comunicando-se assincronamente com o endpoint `/api/projeto/<id>/tasks`.
+* **Deadlines e Atraso Visual:** Ao carregar as tarefas no client-side, o script calcula a diferença entre o fuso horário local e a data de entrega. Prazos estourados pintam o badge visual de vermelho (`📅 DD/MM/YYYY`), enquanto prazos a expirar em até 2 dias recebem tonalidades laranjas.
+* **Contagem de Checklists:** Um objeto JSON na coluna `checklist` armazena sub-itens. A interface calcula automaticamente a razão (ex: `3/5`) e exibe uma barra de progresso em tons de roxo integrada no card.
 
----
+### 3. Métricas de Progresso (Gantt & Burn-down)
+* **Gráfico de Burn-down:** Utilizando Chart.js sob o contexto da aba de métricas, o script cruza as datas de criação e conclusão das tarefas para projetar a reta de "Progresso Ideal" contra os passos do "Progresso Real" no projeto.
+* **Diagrama de Gantt Acadêmico:** As tarefas do Kanban contendo prazos são organizadas de forma escalar na aba "Métricas". As durações estimadas entre data inicial e final de entrega são transformadas em larguras e distanciamentos percentuais usando CSS puro, desenhando um mapa visual do progresso.
 
-# 📌 Metodologia
+### 4. Emissão de Documentação Executiva (ReportLab)
+* **Certificados em PDF:** Desenho vetorial diretamente via código no canvas do ReportLab. Configuração de margens seguras, molduras geométricas nos tons corporativos do UniCEUB, inserção dinâmica do nome do estudante, categoria, nome do orientador e data formatada por extenso em português.
+* **Relatório Corporativo PDF:** Consolida métricas gerais do sistema (número de alunos, projetos ativos e encerrados, médias gerais de satisfação por critérios) estruturadas em tabelas automáticas (`TableFlowable`) com paginação e logo no cabeçalho.
 
-Backlog estruturado com base nos princípios do Scrum Guide, de Ken Schwaber e Jeff Sutherland.
-
----
-
-### 💻 Tecnologia e Arquitetura
-
-O **SisCPTI** é construído utilizando uma arquitetura web dinâmica com as seguintes tecnologias:
-
-- **Backend:** Python com o microframework **Flask** e gerenciamento de banco de dados via **Flask-SQLAlchemy**.
-- **Frontend:** HTML5 semântico, CSS3 personalizado (suportando temas claro e escuro dinamicamente) e JavaScript nativo para interações dinâmicas e requisições assíncronas (AJAX).
-- **Visualização de Dados:** **Chart.js** integrado no painel de administração para geração de gráficos estatísticos interativos de forma responsiva.
-- **Banco de Dados:** **SQLite** integrado para persistência de dados de usuários, projetos, logs e mensagens.
-- **Versionamento e Deploy:** Git para controle de versão com repositório no GitHub.
-
----
-
-### 📊 Stakeholders
-
-- **Coordenação do Curso:** valida diretrizes e acompanha resultados.  
-- **Professor Responsável pelo Caderno (CPTI):** gerencia projetos e centraliza informações.  
-- **Alunos:** consultam, participam e sugerem projetos.  
-- **Professores Orientadores:** apoiam e acompanham os projetos.  
-- **Empresas Parceiras:** submetem propostas e se beneficiam da interação.  
-- **Equipe Técnica de TI:** garante suporte e infraestrutura do sistema.  
+### 5. Ativação de Contas e SMTP Premium
+* **Processo de Homologação:** Contas criadas por estudantes iniciam como inativas (`ativo = False`), impedindo o login no ecossistema de projetos.
+* **Design de E-mail Responsivo (HTML):** O corpo do e-mail é gerado com formatação em inline-styling para compatibilidade com leitores móveis e desktop. O design apresenta:
+  * Logotipo oficial do UniCEUB centralizado em alta definição.
+  * Título da plataforma e descrição da ação.
+  * Botão de chamada para ação (CTA) roxo proeminente com o link de ativação seguro.
+  * Rodapé com disclaimer jurídico institucional.
 
 ---
 
-### 📌 Evolução do Escopo (PI I para PI II)
+## 💻 Tecnologia e Stack Completa
 
-O que antes era um protótipo navegável estático (desenvolvido no PI I) evoluiu para um sistema web completo e dinâmico funcional:
-- **Autenticação de Usuários:** Cadastro e login protegidos com hash de senhas e perfis de permissão bem definidos.
-- **Processo Seletivo de Alunos:** Candidatura estruturada nos projetos e fluxo de aprovação de propostas no painel administrativo.
-- **Workspace Colaborativo:** Área de desenvolvimento própria para cada projeto com chat integrado e upload de arquivos.
-- **Auditoria de Eventos:** Logs detalhados de atividades do sistema para os administradores.
-- **Acessibilidade e Temas:** Alternância dinâmica nativa de tema claro/escuro com paletas de cores harmônicas e logo do UNICEUB auto-adaptável (inversão automática para cor branca no modo escuro).
-
----
-
-### 🗂️ Registro de Alterações (Changelog)
-
-Para ver o histórico completo das implementações desenvolvidas semana a semana no PI II, acesse o documento de histórico de desenvolvimento:
-* 📄 [Diário de Bordo / Changelog](file:///d:/SISCPTI-main/changelog/change_log.md)
+* **Linguagem Principal:** [Python 3.10+](https://www.python.org/)
+* **Framework Web:** [Flask 3.0.2](https://flask.palletsprojects.com/)
+* **ORM:** [Flask-SQLAlchemy](https://flask-sqlalchemy.palletsprojects.com/)
+* **Banco de Dados (Produção):** [Supabase PostgreSQL](https://supabase.com/) conectado via Connection Pooler (Porta `6543`)
+* **Armazenamento de Imagens/Anexos:** [Supabase Storage](https://supabase.com/docs/guides/storage)
+* **Conexão Realtime:** [Flask-SocketIO](https://flask-socketio.readthedocs.io/)
+* **Processador de PDFs:** [ReportLab 4.1.0](https://www.reportlab.com/)
+* **Envio de E-mails:** Protocolo SMTP (Gmail API com suporte a TLS e porta `587`)
+* **Pesquisa Client-side:** [Fuse.js](https://fusejs.io/) (Busca Fuzzy)
+* **Gráficos:** [Chart.js 4.4.x](https://www.chartjs.org/)
 
 ---
 
-### 📈 Métricas de Sucesso
+## ⚙️ Guia de Variáveis de Ambiente (.env)
 
-- ✅ % de alunos que conhecem e acessam o catálogo.  
-- ✅ Número de projetos submetidos e aprovados por semestre.  
-- ✅ Engajamento: proporção de alunos que se inscrevem em projetos.  
-- ✅ Auditoria de uso através dos logs administrativos.
+Crie um arquivo `.env` no diretório principal `SISCPTI/` contendo as seguintes definições para habilitar a integração em nuvem e o disparo de e-mails:
+
+```ini
+# Configuração de Conexão com o Supabase PostgreSQL (Pooler IPv4)
+DATABASE_URL=postgresql://postgres.[PROJETO_ID]:[SENHA_DB]@aws-1-sa-east-1.pooler.supabase.com:6543/postgres
+
+# Parâmetros de Integração com o Supabase Storage
+SUPABASE_URL=https://[PROJETO_ID].supabase.co
+# IMPORTANTE: Use a "service_role" key para permitir o bypass das políticas RLS no upload do chat/perfil
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_BUCKET=uploads
+
+# Configurações do Servidor de E-mail (SMTP Gmail com TLS)
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USER=seu-email-siscpti@gmail.com
+# Use uma Senha de App do Google (App Password)
+MAIL_PASS=sua-senha-de-app-do-google
+```
 
 ---
 
-### 🛠️ Roadmap de Desenvolvimento
+## 🛠️ Instalação e Execução Local
+
+Siga o passo a passo abaixo para rodar o projeto localmente em sua máquina de desenvolvimento:
+
+### 1. Clonar o repositório
+```bash
+git clone https://github.com/Guizzin00/Projeto-Integardor-II.git
+cd Projeto-Integardor-II/SISCPTI
+```
+
+### 2. Configurar o Ambiente Virtual (Virtualenv)
+No Windows (PowerShell):
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
+No Linux / macOS:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### 3. Instalar as Dependências
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Configurar as Variáveis de Ambiente
+Renomeie ou crie o arquivo `.env` conforme a seção anterior e insira as credenciais do Supabase e do e-mail.
+
+### 5. Iniciar o Servidor de Desenvolvimento
+```bash
+python app.py
+```
+O servidor estará disponível localmente em: `http://127.0.0.1:5000`
+
+---
+
+## 🧼 Scripts de Manutenção e Testes
+
+Para agilizar o desenvolvimento e garantir o correto funcionamento do ecossistema, dois scripts utilitários foram disponibilizados no diretório `/SISCPTI`:
+
+### A. Limpeza do Banco de Dados (`reset_db.py`)
+Remove todas as tabelas e dados do banco conectado e reconstrói o esquema limpo (PostgreSQL do Supabase ou SQLite).
+* **Modo Interativo (Seguro):**
+  ```bash
+  venv\Scripts\python reset_db.py
+  ```
+* **Modo Forçado (Bypass de confirmação):**
+  ```bash
+  venv\Scripts\python reset_db.py --force
+  ```
+
+### B. Carregamento de Massa de Testes (`seed_db.py`)
+Zera o banco e carrega um ecossistema realista composto por:
+* 11 usuários de teste contendo os 7 perfis (Senha padrão de todos: `1234`).
+* 4 projetos em diferentes status com tags e escopos preenchidos.
+* Tarefas de Kanban associadas com checklists completos e pendentes.
+* Histórico de mensagens no chat do workspace, candidaturas, ratings multidimensionais, notificações e logs.
+* **Comando:**
+  ```bash
+  venv\Scripts\python seed_db.py --force
+  ```
+
+---
+
+## 📌 Evolução do Escopo (PI I vs PI II)
+
+| Característica / Recurso | MVP (Projeto Integrador I) | Versão Completa (Projeto Integrador II) |
+| :--- | :--- | :--- |
+| **Banco de Dados** | SQLite local (básico / sem persistência dinâmica) | PostgreSQL em Nuvem (Supabase) + Pooler IPv4 |
+| **Níveis de Usuários** | 4 Perfis básicos estáticos | 7 Roles complexos com controle de permissão |
+| **Kanban do Workspace**| Sem funcionalidade interativa | Drag & Drop funcional + checklist JSON + deadlines |
+| **Ambiente de Chat** | Chat simulado por formulário simples | WebSockets instantâneos + autocomplete + menções |
+| **Processamento de Mídia**| Armazenamento local temporário | Supabase Storage integrado com caminhos absolutos |
+| **Controle de Cadastro** | Abertura geral automática de contas | Verificação obrigatória via e-mail corporativo |
+| **Visual / Design** | Layout estático ou páginas básicas | Tema claro/escuro nativo automático e CSS com variáveis |
+| **Documentação PDF** | Sem emissão de arquivos | Certificados de TCC e Relatórios executivos em PDF |
+
+---
+
+## 🚨 Guia de Resolução de Problemas (Troubleshooting)
+
+#### 1. Erro de Truncamento de Senha (`psycopg2.errors.StringDataRightTruncation`)
+* **Problema:** A coluna `password` na tabela `user` no banco local de SQLite aceitava strings longas, mas o PostgreSQL do Supabase rejeitava hashes complexos do `scrypt` (com mais de 100 caracteres).
+* **Solução:** O modelo `User` foi alterado para `db.String(255)`. O backend no `app.py` realiza automaticamente a migração segura da coluna ao iniciar.
+
+#### 2. Erro de Assinatura Inválida do Token (`400 Invalid Compact JWS`)
+* **Problema:** Ocorre no Supabase Storage quando o backend tenta criar e fazer o upload de arquivos usando a chave pública anon key que esbarra nas regras RLS.
+* **Solução:** Certifique-se de configurar a variável `SUPABASE_KEY` no `.env` utilizando a chave privada secreta **`service_role`**, permitindo o bypass de permissões das pastas.
+
+#### 3. E-mails SMTP não chegam no Vercel (Timeout de Rede)
+* **Problema:** O Vercel bloqueia a porta padrão `465` (SSL direta) em contêineres serverless.
+* **Solução:** O método de envio em `utils.py` foi atualizado para utilizar a porta **`587`** baseando-se no protocolo de segurança TLS (`starttls()`).
+
+---
+
+## 🗂️ Diário de Bordo / Changelog
+
+O histórico de entregas semanais, correções de bugs de responsividade e log de commits do projeto pode ser acompanhado detalhadamente no arquivo:
+* 📄 [Diário de Bordo / Changelog](changelog/change_log.md)
+
+---
+
+## 🛠️ Roadmap de Desenvolvimento
 
 #### ✅ Fase I (Projeto Integrador I - Concluída)
-- Levantamento de requisitos iniciais e modelagem do Documento de Visão.
-- Design de telas conceituais e protótipo estático navegável no Figma.
-- Estruturação inicial do Product Backlog do MVP.
+* Levantamento de requisitos iniciais e design de telas no Figma.
+* Modelagem conceitual do Product Backlog e MVP.
 
 #### ✅ Fase II (Projeto Integrador II - Concluída / Atual)
-- Implementação do backend funcional com Flask.
-- Banco de dados SQLite integrado e persistência com ORM (SQLAlchemy).
-- Sistema de controle de acesso (Login/Cadastro/Perfis) e recuperação de senha.
-- Criação do workspace de equipes com chat e envio de anexos.
-- Painel de controle do Administrador com logs de auditoria e exportação CSV.
-- Interface responsiva com suporte a Dark/Light Theme e gráficos interativos Chart.js.
+* Migração e persistência no PostgreSQL do Supabase + Storage.
+* Sistema de 7 Roles, ativação e redefinição de senhas com e-mail HTML premium e logo CEUB.
+* Workspace Kanban com Drag & Drop, checklists e datas limite.
+* Chat em tempo real por WebSockets (Socket.IO) com menções `@username`.
+* Métricas e visualizações (Burn-down e Gantt CSS).
+* Certificados de TCC e relatórios analíticos em PDF (ReportLab).
+* Ferramentas automáticas `reset_db.py` e `seed_db.py`.
 
 #### 🔄 Fase III (Projeto Integrador III - Planejado)
-- Integração de e-mails reais para notificações e recuperação de senha.
-- Sistema de autenticação institucional unificado (Ex: LDAP/Azure AD do UNICEUB).
-- Implementação de filtros avançados no dashboard e geração de relatórios em PDF.
-- Aprimoramento da segurança e preparação do ambiente para produção.
+* Integração de Single Sign-On (SSO) com o sistema de autenticação corporativo do UniCEUB.
+* Integração de chamadas de vídeo/áudio integradas diretamente na aba de reuniões do Workspace.
+* Módulo de entrega final e exportação automatizada para o Portal de Repositório de Monografias do CEUB.
 
 ---
 
-### 🤝 Equipe do Projeto
+## 🤝 Equipe do Projeto
 
-Este projeto foi desenvolvido com dedicação pelo seguinte grupo:
+Este projeto foi construído pelo grupo de acadêmicos da Faculdade de Tecnologia da Informação do UniCEUB:
 
-| Nome | Função | GitHub |
-| :--- | :--- | :--- |
-| Guilherme Gouveia | Scrum Master | [GuilhermeGouveia12](https://github.com/GuilhermeGouveia12) |
-| Davi Souza | Desenvolvedor | [davi-ssg](https://github.com/davi-ssg) |
-| Arthur Grangeiro | Product Owner | [ArthurGrangeiro](https://github.com/ArthurGrangeiro) | 
-| Guilherme Oliveira | Desenvolvedor | [Guizzin00](https://github.com/Guizzin00)           |
----
-
-### 📄 Licença
- 
-Licenciado sob [MIT License](LICENSE).  
+* **Guilherme Gouveia** (Scrum Master) — [GitHub Profile](https://github.com/GuilhermeGouveia12)
+* **Davi Souza** (Desenvolvedor) — [GitHub Profile](https://github.com/davi-ssg)
+* **Arthur Grangeiro** (Product Owner) — [GitHub Profile](https://github.com/ArthurGrangeiro)
+* **Guilherme Oliveira** (Desenvolvedor) — [GitHub Profile](https://github.com/Guizzin00)
 
 ---
 
+## 📄 Licença
+
+Distribuído sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.

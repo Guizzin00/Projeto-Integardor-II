@@ -1,42 +1,38 @@
 # 🚀 Como Iniciar o Projeto (SisCPTI)
 
-Este documento orienta sobre como configurar e executar o **Sistema de Gestão do Caderno de Projetos de TI (SisCPTI)** localmente em seu computador.
+Este guia orienta sobre como configurar, popular e testar o **Sistema de Gestão do Caderno de Projetos de TI (SisCPTI)**.
+
+A plataforma está preparada para operar em **dois modos**:
+1. **Modo 100% Local (Padrão/Recomendado para Testes Rápidos):** Utiliza um banco de dados local SQLite, salva uploads localmente no disco e exibe links de ativação/recuperação diretamente no terminal.
+2. **Modo Nuvem (Opcional):** Utiliza banco PostgreSQL no Supabase, armazenamento em Supabase Storage e disparos de e-mail de ativação reais via SMTP.
 
 ---
 
 ## 📋 Pré-requisitos
 
-Certifique-se de ter instalado em sua máquina:
-1. **Python 3.10 ou superior** (com o instalador `pip` atualizado).
-2. Um terminal de sua escolha (PowerShell, Command Prompt, Git Bash ou terminal do Linux/macOS).
+Certifique-se de possuir em seu computador:
+1. **Python 3.10 ou superior** instalado.
+2. Um terminal (PowerShell, Command Prompt, bash, etc.).
 
 ---
 
-## 🛠️ Passo a Passo para Execução
-
-Siga os passos abaixo no seu terminal para rodar o aplicativo:
+## 🛠️ Passo a Passo para Configuração e Inicialização
 
 ### Passo 1: Navegar até a pasta do projeto
-Abra o seu terminal na pasta raiz do repositório e navegue até o diretório onde o backend do Flask está localizado:
+Abra o terminal na pasta raiz do repositório e acesse a pasta da aplicação:
 ```bash
 cd SISCPTI
 ```
 
-### Passo 2: Criar e ativar um Ambiente Virtual (Venv)
-Recomenda-se criar um ambiente virtual isolado para não misturar os pacotes com outras aplicações do computador.
+### Passo 2: Criar e ativar o Ambiente Virtual (Venv)
+O ambiente virtual isola as dependências da aplicação para evitar conflitos de bibliotecas.
 
 * **No Windows (PowerShell):**
   ```powershell
   python -m venv venv
-  .\venv\Scripts\activate
+  .\venv\Scripts\Activate.ps1
   ```
-  *(Nota: Se houver restrições de execução de scripts no PowerShell, execute `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` antes).*
-
-* **No Windows (Command Prompt - cmd):**
-  ```cmd
-  python -m venv venv
-  call venv\Scripts\activate
-  ```
+  *(Caso o script seja bloqueado por políticas de segurança do Windows, execute `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` e tente ativar novamente).*
 
 * **No Linux / macOS:**
   ```bash
@@ -45,113 +41,105 @@ Recomenda-se criar um ambiente virtual isolado para não misturar os pacotes com
   ```
 
 ### Passo 3: Instalar as Dependências
-Com o ambiente virtual ativado, instale todas as bibliotecas requeridas executando:
+Com a venv ativa, instale todas as bibliotecas necessárias:
 ```bash
 pip install -r requirements.txt
 ```
 
-### Passo 4: Executar a Aplicação
-Inicie o servidor de desenvolvimento do Flask:
+### Passo 4: Configurar o arquivo de Ambiente (`.env`)
+Na pasta `SISCPTI/`, você encontrará ou poderá criar o arquivo `.env`.
+
+* **Para rodar 100% LOCAL (Recomendado):**
+  Deixe o arquivo `.env` vazio ou sem variáveis de nuvem. O Flask ativará automaticamente os fallbacks locais:
+  * Banco de Dados: SQLite local (`siscpti.db` criado na pasta `instance/`).
+  * Uploads de Imagens: Salvos localmente na pasta `static/img/uploads/`.
+  * E-mails: Impressos diretamente no console do terminal (Console Fallback) para que você possa copiar os links de ativação/recuperação.
+
+* **Para rodar em NUVEM (Opcional):**
+  Preencha as chaves do Supabase e do SMTP no arquivo `.env`:
+  ```ini
+  DATABASE_URL=postgresql://postgres.[PROJETO_ID]:[SENHA_DB]@aws-1-sa-east-1.pooler.supabase.com:6543/postgres
+  SUPABASE_URL=https://[PROJETO_ID].supabase.co
+  SUPABASE_KEY=sua-service-role-key-do-supabase
+  SUPABASE_BUCKET=uploads
+  
+  MAIL_SERVER=smtp.gmail.com
+  MAIL_PORT=587
+  MAIL_USER=seu-email-siscpti@gmail.com
+  MAIL_PASS=sua-senha-de-app-do-google
+  ```
+
+### Passo 5: Popular o Banco de Dados de Teste
+Para preencher o banco de dados (seja ele o SQLite local ou o PostgreSQL do Supabase configurado) com dados fictícios estruturados de teste:
+```bash
+# Com a venv ativa e dentro da pasta SISCPTI/
+python seed_db.py --force
+```
+
+### Passo 6: Iniciar o Servidor
+Execute a aplicação Flask localmente:
 ```bash
 python app.py
 ```
 
-### Passo 5: Acessar no Navegador
-Quando o terminal exibir que o servidor está rodando, abra o seu navegador de preferência e acesse:
-```
-http://127.0.0.1:5000
-```
-ou
-```
-http://localhost:5000
-```
+### Passo 7: Acessar a Plataforma
+Abra o navegador e acesse: [http://localhost:5000](http://localhost:5000)
 
 ---
 
-## 🗂️ Estrutura dos Arquivos Principais
+## 👥 Credenciais de Acesso (Dados de Teste)
 
-Agora que o projeto está modularizado, os arquivos principais do sistema dentro da pasta `SISCPTI/` são:
-* **`app.py`**: Ponto de entrada que carrega a aplicação, executa as migrações de banco de dados e inicia o servidor local.
-* **`app_instance.py`**: Declara a instância central unificada do Flask e ativa o banco de dados (evitando problemas de importação duplicada ou erro 404).
-* **`models.py`**: Modelos relacionais das tabelas do banco de dados (User, Project, Submission, etc.).
-* **`utils.py`**: Funções auxiliares (envio de e-mail e registro de logs de atividade).
-* **`routes_core.py`**: Rotas da página inicial (`/`), página sobre (`/sobre`) e páginas de erros (404, 403, 500).
-* **`routes_auth.py`**: Rotas de controle de acesso (login, logout, cadastro, recuperação de senha e alteração de perfil).
-* **`routes_project.py`**: Rotas de visualização de projetos, candidaturas de alunos, submissão de propostas por empresas e workspace com chat integrado.
-* **`routes_admin.py`**: Rotas do painel do administrador, auditorias de log, exportações de relatórios em CSV e gráficos estatísticos.
+Todos os usuários abaixo são gerados automaticamente pelo script `seed_db.py` e possuem a senha padrão **`1234`**:
 
----
-
-## 👥 Criando Contas e Acesso
-Como o banco de dados é gerado automaticamente na primeira execução (`siscpti.db` na pasta `instance/` ou pasta do app):
-1. **Primeiro Acesso**: Acesse a rota `/cadastro` para criar seu usuário principal.
-2. **Cargos (Roles)**: Os usuários são criados por padrão com papel de `'user'` (aluno/empresa). Para testar a funcionalidade de administrador, você pode alterar o campo `role` para `'admin'` diretamente no banco de dados SQLite ou criar um usuário com o script adequado.
-
----
-
-## 🧪 Banco de Dados de Teste (Dados Reais para QA)
-
-Para facilitar testes completos da plataforma, disponibilizamos o script **`scratch/populate_db.py`** que **apaga e recria** o banco de dados com dados realistas e completos.
-
-### ▶️ Como popular o banco de dados de teste:
-```bash
-# A partir da raiz do repositório (Projeto-Integardor-II/)
-python scratch/populate_db.py
-```
-
-> ⚠️ **Atenção**: Este comando **apaga todos os dados existentes** e recria o banco do zero. Use apenas em ambiente local de desenvolvimento.
-
----
-
-### 🔑 Credenciais de Acesso (Dados de Teste)
-
-| Tipo | Usuário | Senha | Papel |
+| Usuário | E-mail associado | Cargo (Role) | Objetivo de Teste |
 | :--- | :--- | :--- | :--- |
-| 👑 Administrador | `admin` | `admin123` | admin |
-| 🎓 Aluno | `gabriel.silva` | `teste123` | user |
-| 🎓 Aluna | `julia.souza` | `teste123` | user |
-| 🎓 Aluno | `lucas.nunes` | `teste123` | user |
-| 🎓 Aluna | `mariana.costa` | `teste123` | user |
-| 👨‍🏫 Professor | `prof.flavio` | `teste123` | user |
-| 👨‍🏫 Professora | `prof.ana` | `teste123` | user |
-| 👨‍🏫 Professor | `prof.ricardo` | `teste123` | user |
-| 🏢 Empresa | `google_brasil` | `teste123` | user |
-| 🏢 Empresa | `meta_devs` | `teste123` | user |
-| 🏢 Empresa | `softex_df` | `teste123` | user |
+| `admin` | `admin@ceub.br` | Administrador | CRUD de usuários, logs e relatórios globais |
+| `coord1` | `coord1@ceub.br` | Coordenador | Aprovação de propostas e atribuição de orientador |
+| `prof.ana` | `ana.silva@ceub.br` | Professor | Orientação, mover projetos, inserir avaliação |
+| `prof.carlos`| `carlos.souza@ceub.br` | Professor | Orientação de projetos e supervisão |
+| `lider.bruno`| `bruno.lima@aluno.ceub.br` | Líder (Scrum Master) | Criar/editar tarefas no Kanban e subtarefas |
+| `aluno.lucas`| `lucas.silva@aluno.ceub.br` | Aluno (Dev) | Interação no chat, alteração de checklists |
+| `aluno.julia`| `julia.santos@aluno.ceub.br` | Aluno (Dev) | Verificação de tarefas atribuídas no Kanban |
+| `empresa.tech`| `contato@techsolutions.com` | Empresa | Leitura de workspaces e chat de PO |
+| `cliente.maria`| `maria.po@cliente.com` | Cliente (PO) | Acompanhamento apenas-leitura |
+| `user.inativo`| `inativo@aluno.ceub.br` | Aluno (Inativo) | Teste de bloqueio de login e link de ativação |
 
 ---
 
-### 📦 O que o banco de teste contém:
+## 🔬 Roteiro de Testes Acadêmicos Recomendados
 
-| Entidade | Quantidade | Descrição |
-| :--- | :---: | :--- |
-| **Usuários** | 11 | 1 admin, 4 alunos, 3 professores, 3 empresas |
-| **Projetos** | 4 | Web, Mobile, IA e IoT em diferentes status |
-| **Submissões** | 3 | 1 em análise, 1 aprovada, 1 rejeitada |
-| **Candidaturas** | 5 | 2 aprovadas, 1 pendente, 1 rejeitada em projetos diferentes |
-| **Mensagens (Chat)** | 5 | Conversa completa no workspace do Projeto #1 |
-| **Avaliações** | 3 | Com notas de 4 e 5 estrelas e comentários detalhados |
-| **Notificações** | 3 | Algumas lidas, outras não lidas (para testar o sino) |
-| **Logs de Auditoria** | 6 | Histórico de ações do sistema para o painel admin |
+### Cenário 1: Cadastro e Ativação de Conta (Bloqueio Pedagógico)
+1. Acesse `/cadastro` e crie um novo usuário.
+2. Tente logar com os dados informados. O sistema deve **recusar** com o alerta: *"Esta conta ainda não foi ativada"*.
+3. **No Modo Local:** Vá até a janela do terminal onde a aplicação está rodando. O link de ativação foi impresso no console. Copie-o e cole-o no seu navegador.
+4. Tente o login novamente: o acesso estará liberado com sucesso.
+
+### Cenário 2: Aprovação de Projetos (Fluxo do Coordenador)
+1. Faça login como `coord1` (senha `1234`).
+2. Acesse o **Painel Coord.** no cabeçalho.
+3. Visualize as propostas de empresas e selecione **Aprovar**. Escolha a professora `Ana Silva` no seletor e envie.
+4. O novo projeto será criado no catálogo automaticamente e atribuído à orientadora.
+
+### Cenário 3: Kanban e Limitações de Acesso
+1. Faça login como `cliente.maria` (Cliente) ou `empresa.tech` e acesse o Workspace do Projeto #1.
+2. Tente arrastar um cartão ou alterar itens do checklist da tarefa.
+3. O sistema **bloqueará a ação** e restaurará a posição do card, exibindo aviso de permissão de leitura.
+4. Repita o teste logando com `lider.bruno` (Líder). Você poderá arrastar cartões e salvar alterações livremente.
+
+### Cenário 4: Chat Realtime e Notificações de Menção
+1. Abra duas abas anônimas lado a lado no navegador.
+2. Faça login na Aba A como `aluno.julia` e na Aba B como `aluno.lucas`.
+3. Na Aba A, envie uma mensagem no chat contendo `@aluno.lucas`.
+4. Na Aba B, o chat será atualizado na hora (sem recarregar a página) e uma notificação flutuante avisará: *"Você foi mencionado por @aluno.julia!"*. A bolha da mensagem ficará em destaque dourado.
+
+### Cenário 5: Emissão de Certificados PDF
+1. Faça login como `aluno.julia`.
+2. Acesse os detalhes do Projeto #3 (que possui status **CONCLUÍDO** no banco).
+3. Clique em **Emitir Certificado**. Um documento PDF em formato paisagem com layout acadêmico oficial, assinaturas digitais da coordenação e orientador será gerado na hora.
 
 ---
 
-### 🔬 Cenários de Teste Recomendados
+## 🗂️ Organização das Ferramentas Úteis (`/SISCPTI`)
 
-1. **Testar painel admin** → Login com `admin` / `admin123`, acesse `/admin`.
-2. **Testar workspace com chat** → Login com `gabriel.silva` / `teste123`, acesse `/projeto/1/workspace`.
-3. **Testar candidatura pendente** → Login com `lucas.nunes` / `teste123`, veja sua candidatura **PENDENTE** no perfil do Projeto #1.
-4. **Testar candidatura rejeitada** → Login com `mariana.costa` / `teste123`, veja a candidatura **REJEITADA** no Projeto #2.
-5. **Testar notificação não lida** → Login com `lucas.nunes` / `teste123`, o sino 🔔 deve exibir uma notificação não lida.
-6. **Testar avaliação de projetos** → Login com qualquer usuário e avalie o Projeto #3 (Concluído).
-7. **Testar exportação de CSV** → Login com `admin`, vá em `/admin` e exporte candidaturas ou usuários.
-
----
-
-## 📂 Pasta `scratch/`
-A pasta `scratch/` na raiz do projeto é uma área de rascunho utilizada para **scripts temporários, testes experimentais e depurações rápidas**.
-* **`create_admin.py`**: Cria ou redefine o usuário administrador do sistema.
-* **`populate_db.py`**: Popula o banco com dados realistas completos para testes de QA.
-* Os demais arquivos são experimentos de validação técnica e **não são necessários** para a execução do sistema.
-
-
+* **`reset_db.py`**: Limpa as tabelas existentes no banco local ou na nuvem do Supabase.
+* **`seed_db.py`**: Limpa o banco de dados e insere a massa de testes completa documentada neste guia.
