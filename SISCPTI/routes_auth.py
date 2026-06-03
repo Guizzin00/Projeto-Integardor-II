@@ -76,11 +76,29 @@ def cadastro():
 
         link = url_for('verificar_conta', token=token, _external=True)
         corpo = f"""
-        <h2>Ativação de Conta – SisCPTI</h2>
-        <p>Olá {username}, obrigado por se cadastrar no SisCPTI!</p>
-        <p>Clique no link abaixo para ativar sua conta e liberar seu acesso:</p>
-        <p><a href="{link}">{link}</a></p>
-        <p>Se você não realizou este cadastro, por favor ignore este e-mail.</p>
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #F6F8FA; padding: 40px 20px; text-align: center;">
+          <div style="max-width: 500px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E1E4E8; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: left;">
+            <div style="background-color: #7A1BB5; padding: 30px; text-align: center;">
+              <h1 style="color: #FFFFFF; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 1px;">SisCPTI</h1>
+              <p style="color: #E9D5FF; margin: 5px 0 0; font-size: 13px;">Caderno de Projetos de TI · UniCEUB</p>
+            </div>
+            <div style="padding: 40px 30px; color: #24292E; line-height: 1.6;">
+              <h2 style="margin-top: 0; font-size: 20px; color: #7A1BB5; font-weight: 700;">Ativação de Conta</h2>
+              <p style="font-size: 15px; color: #586069;">Olá <strong>{username}</strong>, obrigado por se cadastrar no SisCPTI do UniCEUB!</p>
+              <p style="font-size: 15px; color: #586069;">Para liberar o seu acesso à plataforma de projetos e começar a interagir com sua equipe, clique no botão de ativação abaixo:</p>
+              
+              <div style="margin: 30px 0; text-align: center;">
+                <a href="{link}" style="display: inline-block; background-color: #7A1BB5; color: #FFFFFF; font-weight: 700; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-size: 15px; box-shadow: 0 4px 6px rgba(122,27,181,0.2);">Confirmar E-mail e Ativar Conta</a>
+              </div>
+              
+              <p style="font-size: 12px; color: #888888; border-top: 1px solid #EEEEEE; padding-top: 20px; margin-bottom: 0;">Se o botão acima não funcionar, copie e cole o link no seu navegador:<br><a href="{link}" style="color: #7A1BB5; text-decoration: none; word-break: break-all;">{link}</a></p>
+            </div>
+          </div>
+          <div style="margin-top: 20px; font-size: 12px; color: #586069;">
+            Este é um e-mail automático. Por favor, não responda.<br>
+            © 2026 UniCEUB · Coordenação de Tecnologia da Informação
+          </div>
+        </div>
         """
         enviado = enviar_email(email, 'Ativação de Conta – SisCPTI', corpo)
         if enviado:
@@ -180,10 +198,30 @@ def recuperar_senha():
             db.session.commit()
             link = url_for('redefinir_senha', token=token, _external=True)
             corpo = f"""
-            <h2>Redefinição de Senha – SisCPTI</h2>
-            <p>Clique no link abaixo para redefinir sua senha. O link expira em 1 hora.</p>
-            <p><a href="{link}">{link}</a></p>
-            <p>Se você não solicitou isso, ignore este e-mail.</p>
+            <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #F6F8FA; padding: 40px 20px; text-align: center;">
+              <div style="max-width: 500px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E1E4E8; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: left;">
+                <div style="background-color: #7A1BB5; padding: 30px; text-align: center;">
+                  <h1 style="color: #FFFFFF; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 1px;">SisCPTI</h1>
+                  <p style="color: #E9D5FF; margin: 5px 0 0; font-size: 13px;">Caderno de Projetos de TI · UniCEUB</p>
+                </div>
+                <div style="padding: 40px 30px; color: #24292E; line-height: 1.6;">
+                  <h2 style="margin-top: 0; font-size: 20px; color: #7A1BB5; font-weight: 700;">Redefinição de Senha</h2>
+                  <p style="font-size: 15px; color: #586069;">Olá <strong>{user.username}</strong>,</p>
+                  <p style="font-size: 15px; color: #586069;">Recebemos uma solicitação para redefinir a senha da sua conta no SisCPTI. Clique no botão abaixo para escolher uma nova senha:</p>
+                  
+                  <div style="margin: 30px 0; text-align: center;">
+                    <a href="{link}" style="display: inline-block; background-color: #7A1BB5; color: #FFFFFF; font-weight: 700; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-size: 15px; box-shadow: 0 4px 6px rgba(122,27,181,0.2);">Criar Nova Senha</a>
+                  </div>
+                  
+                  <p style="font-size: 13px; color: #D93025; font-weight: 500;">⚠️ Importante: Este link expira em 1 hora por motivos de segurança.</p>
+                  <p style="font-size: 12px; color: #888888; border-top: 1px solid #EEEEEE; padding-top: 20px; margin-bottom: 0;">Se o botão acima não funcionar, copie e cole o link no seu navegador:<br><a href="{link}" style="color: #7A1BB5; text-decoration: none; word-break: break-all;">{link}</a></p>
+                </div>
+              </div>
+              <div style="margin-top: 20px; font-size: 12px; color: #586069;">
+                Se você não solicitou a recuperação, pode ignorar este e-mail com segurança.<br>
+                © 2026 UniCEUB · Coordenação de Tecnologia da Informação
+              </div>
+            </div>
             """
             enviado = enviar_email(email, 'Recuperação de Senha – SisCPTI', corpo)
             if enviado:
