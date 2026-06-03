@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=4">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=14">
 
 
   <style>
@@ -60,11 +60,17 @@
 </head>
 
 <body>
+  <!-- Container para os Pop-ups de alerta (Toasts) -->
+  <div id="toast-container" class="toast-container"></div>
+
   <!-- ===== CABEÇALHO CEUB ===== -->
   <header class="ceub-header">
   <div class="ceub-container">
     <a href="{{ url_for('index') }}">
-      <img src="{{ url_for('static', filename='logoCEUB.png') }}" alt="Logo CEUB" class="ceub-logo">
+      <img src="{{ url_for('static', filename='logoCEUB.png') }}?v=2"
+           alt="Logo CEUB"
+           class="ceub-logo"
+           onerror="this.onerror=null; this.src='/static/logoCEUB.png?v=2';">
     </a>
 
     <!-- Botão hambúrguer (aparece só no mobile) -->
@@ -75,19 +81,17 @@
     </button>
 
     <nav class="ceub-nav">
+      <!-- Links Principais -->
       <ul class="nav-links">
         <li><a href="{{ url_for('index') }}">Início</a></li>
         <li><a href="{{ url_for('projetos') }}">Projetos</a></li>
         <li><a href="{{ url_for('sobre') }}">Sobre</a></li>
+      </ul>
 
+      <!-- Controles e Usuário -->
+      <ul class="nav-controls">
+        <!-- Sino de Notificações com Dropdown -->
         {% if session.get('logged_in') %}
-          {% if session.get('role') == 'admin' %}
-            <li><a href="{{ url_for('admin_dashboard') }}">Painel Admin</a></li>
-          {% endif %}
-          <li><a href="{{ url_for('perfil') }}">Meu Perfil</a></li>
-          <li><a href="{{ url_for('submissao') }}">Submissão</a></li>
-          
-          <!-- Sino de Notificações com Dropdown -->
           <li class="notification-container" style="position: relative;">
             <button id="notification-btn" class="theme-toggle-btn" title="Notificações" type="button" style="position: relative;">
               🔔
@@ -103,14 +107,36 @@
               </ul>
             </div>
           </li>
-          
-          <li><a href="{{ url_for('logout') }}">Sair ({{ session.get('user') }})</a></li>
-        {% else %}
-          <li><a href="{{ url_for('login') }}">Login</a></li>
         {% endif %}
+
+        <!-- Alternar Tema -->
         <li>
           <button id="theme-toggle" class="theme-toggle-btn" title="Alternar Tema" type="button">🌓</button>
         </li>
+
+        <!-- Dropdown de Usuário -->
+        {% if session.get('logged_in') %}
+          <li class="user-menu-container" style="position: relative;">
+            <button id="user-menu-btn" class="user-menu-btn" type="button">
+              <span>👤 {{ session.get('user') }}</span>
+              <span class="arrow">▼</span>
+            </button>
+            <div id="user-menu-dropdown" class="user-dropdown-menu" style="display: none;">
+              {% if session.get('role') == 'admin' %}
+                <a href="{{ url_for('admin_dashboard') }}" class="dropdown-item admin-item">⚙️ Painel Admin</a>
+              {% endif %}
+              {% if session.get('role') == 'coordenador' %}
+                <a href="{{ url_for('coordenador_dashboard') }}" class="dropdown-item admin-item">📋 Painel Coord.</a>
+              {% endif %}
+              <a href="{{ url_for('perfil') }}" class="dropdown-item">👤 Meu Perfil</a>
+              <a href="{{ url_for('submissao') }}" class="dropdown-item">📤 Submissão</a>
+              <div class="dropdown-divider"></div>
+              <a href="{{ url_for('logout') }}" class="dropdown-item logout-item">🚪 Sair</a>
+            </div>
+          </li>
+        {% else %}
+          <li><a href="{{ url_for('login') }}" class="btn-login-header">Login</a></li>
+        {% endif %}
       </ul>
     </nav>
   </div>
@@ -122,17 +148,6 @@
 
   <!-- ===== CONTEÚDO PRINCIPAL ===== -->
   <main>
-    <div class="flash-container" style="width: 90%; margin: 1rem auto;">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            <div class="alert alert-{{ category }}">
-              {{ message }}
-            </div>
-          {% endfor %}
-        {% endif %}
-      {% endwith %}
-    </div>
     {% block content %}{% endblock %}
   </main>
 
@@ -141,6 +156,26 @@
     <p>© 2025 UniCEUB · Sistema de Gestão do Caderno de Projetos de TI (SisCPTI)</p>
   </footer>
 
-  <script src="{{ url_for('static', filename='script.js') }}?v=3"></script>
+  <script src="{{ url_for('static', filename='script.js') }}?v=6"></script>
+
+  <!-- Processa mensagens do Flask e exibe como Toasts -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            {% set toast_type = 'info' %}
+            {% if category == 'success' %}{% set toast_type = 'success' %}{% endif %}
+            {% if category == 'error' or category == 'danger' %}{% set toast_type = 'error' %}{% endif %}
+            {% if category == 'warning' %}{% set toast_type = 'warning' %}{% endif %}
+            
+            if (window.showToast) {
+              window.showToast("{{ message }}", "{{ toast_type }}");
+            }
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    });
+  </script>
 
 </html>

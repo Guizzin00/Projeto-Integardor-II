@@ -1,0 +1,336 @@
+{% extends 'base.html' %}
+{% block title %}Painel do Coordenador · SisCPTI{% endblock %}
+{% block content %}
+
+<div class="admin-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <h2>Painel do Coordenador Acadêmico</h2>
+    <p>Aprovação de propostas de empresas e atribuição de Professores Orientadores.</p>
+  </div>
+  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+    <a href="{{ url_for('admin_relatorio_pdf') }}" class="btn" style="margin: 0; background: #28a745; font-size: 0.85rem;" id="btn-pdf-relatorio">
+      📄 Relatório Semestral PDF
+    </a>
+    <a href="{{ url_for('admin_exportar_projetos') }}" class="btn" style="margin: 0; background: var(--purple-primary); font-size: 0.85rem;" id="btn-exportar-projetos">
+      📊 Projetos CSV
+    </a>
+    <a href="{{ url_for('admin_exportar_satisfacao') }}" class="btn" style="margin: 0; background: var(--purple-primary); font-size: 0.85rem;" id="btn-exportar-satisfacao">
+      ⭐ Satisfação CSV
+    </a>
+    <a href="{{ url_for('admin_exportar_logs') }}" class="btn" style="margin: 0; background: var(--purple-primary); font-size: 0.85rem;" id="btn-exportar-logs">
+      📝 Logs CSV
+    </a>
+  </div>
+</div>
+
+<div class="admin-stats">
+  <div class="stat-card">
+    <h3>Projetos Ativos</h3>
+    <h2>{{ projetos|length }}</h2>
+  </div>
+  <div class="stat-card">
+    <h3>Propostas Recebidas</h3>
+    <h2>{{ submissoes|length }}</h2>
+  </div>
+  <div class="stat-card">
+    <h3>Professores Disponíveis</h3>
+    <h2>{{ professores|length }}</h2>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="charts-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 2.5rem; margin-top: 1rem;">
+  <div class="stat-card" style="padding: 1.5rem; text-align: left; border-left: none; border-top: 5px solid var(--purple-primary); display: flex; flex-direction: column;">
+    <h3 style="margin: 0 0 1rem 0; text-align: center; color: var(--text-primary); border-left: none; padding-left: 0; font-size: 1.1rem;">Estatísticas de Satisfação Multidimensional</h3>
+    <div style="position: relative; height: 220px; width: 100%; flex: 1;">
+      <canvas id="satisfactionChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="admin-tabs">
+  <button class="tab-link active" onclick="openTab(event, 'tab-projetos')">Gestão de Orientadores (Projetos)</button>
+  <button class="tab-link" onclick="openTab(event, 'tab-submissoes')">Propostas de Projetos ({{ submissoes|length }})</button>
+</div>
+
+<div id="tab-projetos" class="tab-content active" style="display:block;">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Projeto</th>
+        <th>Categoria</th>
+        <th>Professor Orientador Atual</th>
+        <th>Alterar Orientador</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in projetos %}
+      <tr>
+        <td>#{{ p.id }}</td>
+        <td><strong>{{ p.titulo }}</strong></td>
+        <td>{{ p.categoria }}</td>
+        <td class="professor-name-cell">
+          {% if p.orientador %}
+            👤 {{ p.orientador.username }}
+          {% else %}
+            <em style="color: var(--text-secondary);">Nenhum orientador atribuído</em>
+          {% endif %}
+        </td>
+        <td>
+          <form class="assign-prof-form" data-proj-id="{{ p.id }}" style="display: flex; gap: 8px; align-items: center; margin: 0;">
+            <select name="professor_id" class="form-control" style="padding: 0.3rem 0.5rem; border-radius: 4px; border: 1px solid var(--border-color); font-size: 0.85rem;">
+              <option value="">-- Selecione um Professor --</option>
+              {% for prof in professores %}
+                <option value="{{ prof.id }}" {% if p.professor_id == prof.id %}selected{% endif %}>{{ prof.username }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn-sm btn-success" style="padding: 0.35rem 0.75rem;">Salvar</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" style="text-align: center;">Nenhum projeto cadastrado no momento.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div id="tab-submissoes" class="tab-content" style="display:none;">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Proposta</th>
+        <th>Proponente</th>
+        <th>Orientador Recomendado</th>
+        <th>Status</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in submissoes %}
+      <tr id="sub-row-{{ s.id }}">
+        <td>#{{ s.id }}</td>
+        <td>
+          <strong>{{ s.nome_projeto }}</strong><br>
+          <small>{{ s.categoria }}</small>
+        </td>
+        <td>{{ s.proponente }} <br> <small>{{ s.email }}</small></td>
+        <td>
+          {% if s.status == 'EM ANÁLISE' %}
+            <select id="sub-prof-{{ s.id }}" class="form-control" style="padding: 0.3rem 0.5rem; border-radius: 4px; border: 1px solid var(--border-color); font-size: 0.85rem;">
+              <option value="">-- Selecione Orientador --</option>
+              {% for prof in professores %}
+                <option value="{{ prof.id }}">{{ prof.username }}</option>
+              {% endfor %}
+            </select>
+          {% else %}
+            <span style="font-size: 0.85rem; color: var(--text-secondary);">Processado</span>
+          {% endif %}
+        </td>
+        <td class="status-cell">
+          <span class="badge {% if s.status == 'APROVADA' %}status-green{% elif s.status == 'REJEITADA' %}status-red{% else %}status-orange{% endif %}">
+            {{ s.status }}
+          </span>
+        </td>
+        <td class="actions-cell">
+          {% if s.status == 'EM ANÁLISE' %}
+            <button type="button" class="btn-sm btn-success coord-action" data-action="aprovar" data-id="{{ s.id }}">Aprovar</button>
+            <button type="button" class="btn-sm btn-delete coord-action" data-action="rejeitar" data-id="{{ s.id }}">Rejeitar</button>
+          {% else %}
+            <button type="button" class="btn-sm btn-edit coord-action" data-action="reavaliar" data-id="{{ s.id }}" style="background-color: var(--purple-primary);">Reavaliar</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align: center;">Nenhuma proposta recebida.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+// Gerenciamento de abas
+function openTab(evt, tabName) {
+  const tabcontents = document.getElementsByClassName("tab-content");
+  for (let i = 0; i < tabcontents.length; i++) {
+    tabcontents[i].style.display = "none";
+  }
+  const tablinks = document.getElementsByClassName("tab-link");
+  for (let i = 0; i < tablinks.length; i++) {
+    tablinks[i].classList.remove("active");
+  }
+  document.getElementById(tabName).style.display = "block";
+  evt.currentTarget.classList.add("active");
+}
+
+// Carregar estatísticas de satisfação multidimensionais e plotar gráfico
+document.addEventListener("DOMContentLoaded", async () => {
+  const isDark = document.body.classList.contains("dark-theme");
+  const textColor = isDark ? '#f3f4f6' : '#1c1c1c';
+  const gridColor = isDark ? '#374151' : '#e5e7eb';
+  
+  try {
+    const res = await fetch('/api/admin/satisfacao');
+    if (res.ok) {
+      const data = await res.json();
+      const ctx = document.getElementById('satisfactionChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Geral', 'Organização', 'Orientação', 'Aprendizado'],
+          datasets: [{
+            label: 'Média de Notas (1-5)',
+            data: [data.nota, data.nota_organizacao, data.nota_orientacao, data.nota_aprendizado],
+            backgroundColor: [
+              'rgba(122, 27, 181, 0.75)',
+              'rgba(40, 167, 69, 0.75)',
+              'rgba(23, 162, 184, 0.75)',
+              'rgba(255, 193, 7, 0.75)'
+            ],
+            borderRadius: 6,
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { color: textColor }
+            },
+            y: {
+              beginAtZero: true,
+              max: 5,
+              ticks: { precision: 1, color: textColor },
+              grid: { color: gridColor }
+            }
+          }
+        }
+      });
+    }
+  } catch(err) {
+    console.error("Erro ao obter satisfação para o gráfico", err);
+  }
+});
+
+// Ações AJAX para atribuição de orientadores em projetos existentes
+document.addEventListener("DOMContentLoaded", () => {
+  const forms = document.querySelectorAll(".assign-prof-form");
+  forms.forEach(form => {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const projId = form.getAttribute("data-proj-id");
+      const profSelect = form.querySelector("select[name='professor_id']");
+      const selectedValue = profSelect.value;
+      const professorNameCell = form.closest("tr").querySelector(".professor-name-cell");
+
+      try {
+        const formData = new FormData();
+        formData.append("professor_id", selectedValue);
+        
+        const response = await fetch(`/coordenador/projeto/${projId}/atribuir`, {
+          method: "POST",
+          body: formData
+        });
+        
+        if (response.ok) {
+          const resJson = await response.json();
+          if (resJson.status === "success") {
+            professorNameCell.innerHTML = `👤 ${resJson.professor}`;
+            if (window.showToast) {
+              window.showToast("Professor orientador atualizado com sucesso!", "success");
+            }
+          } else {
+            if (window.showToast) window.showToast("Erro ao atribuir professor.", "error");
+          }
+        } else {
+          if (window.showToast) window.showToast("Falha na comunicação com o servidor.", "error");
+        }
+      } catch (err) {
+        console.error(err);
+        if (window.showToast) window.showToast("Erro inesperado.", "error");
+      }
+    });
+  });
+
+  // Ações AJAX para submissões no painel do coordenador
+  document.addEventListener("click", async (e) => {
+    const btn = e.target.closest(".coord-action");
+    if (!btn) return;
+    
+    e.preventDefault();
+    const subId = btn.getAttribute("data-id");
+    const action = btn.getAttribute("data-action");
+    const row = document.getElementById(`sub-row-${subId}`);
+    if (!row) return;
+
+    const statusCell = row.querySelector(".status-cell");
+    const actionsCell = row.querySelector(".actions-cell");
+
+    let url = `/admin/submissao/${subId}/${action}`;
+    
+    if (action === 'aprovar') {
+      const select = document.getElementById(`sub-prof-${subId}`);
+      const profId = select ? select.value : '';
+      url += `?professor_id=${profId}`;
+    }
+
+    try {
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+
+      const response = await fetch(`${url}${url.includes('?') ? '&' : '?'}ajax=1`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.status === 'success') {
+          const newStatus = data.new_status;
+          if (newStatus === "APROVADA") {
+            statusCell.innerHTML = `<span class="badge status-green">APROVADA</span>`;
+            actionsCell.innerHTML = `<button type="button" class="btn-sm btn-edit coord-action" data-action="reavaliar" data-id="${subId}" style="background-color: var(--purple-primary);">Reavaliar</button>`;
+            const selectContainer = row.cells[3];
+            selectContainer.innerHTML = `<span style="font-size: 0.85rem; color: var(--text-secondary);">Processado</span>`;
+            if (window.showToast) window.showToast("Proposta aprovada e projeto criado!", "success");
+          } else if (newStatus === "REJEITADA") {
+            statusCell.innerHTML = `<span class="badge status-red">REJEITADA</span>`;
+            actionsCell.innerHTML = `<button type="button" class="btn-sm btn-edit coord-action" data-action="reavaliar" data-id="${subId}" style="background-color: var(--purple-primary);">Reavaliar</button>`;
+            const selectContainer = row.cells[3];
+            selectContainer.innerHTML = `<span style="font-size: 0.85rem; color: var(--text-secondary);">Processado</span>`;
+            if (window.showToast) window.showToast("Proposta marcada como recusada.", "info");
+          } else {
+            statusCell.innerHTML = `<span class="badge status-orange">EM ANÁLISE</span>`;
+            actionsCell.innerHTML = `
+              <button type="button" class="btn-sm btn-success coord-action" data-action="aprovar" data-id="${subId}">Aprovar</button>
+              <button type="button" class="btn-sm btn-delete coord-action" data-action="rejeitar" data-id="${subId}">Rejeitar</button>
+            `;
+            // Restaura o select de professores
+            const selectContainer = row.cells[3];
+            selectContainer.innerHTML = `
+              <select id="sub-prof-${subId}" class="form-control" style="padding: 0.3rem 0.5rem; border-radius: 4px; border: 1px solid var(--border-color); font-size: 0.85rem;">
+                <option value="">-- Selecione Orientador --</option>
+                {% for prof in professores %}
+                  <option value="{{ prof.id }}">{{ prof.username }}</option>
+                {% endfor %}
+              </select>
+            `;
+            if (window.showToast) window.showToast("Proposta voltou para Em Análise.", "warning");
+          }
+        }
+      }
+    } catch(err) {
+      console.error(err);
+      if (window.showToast) window.showToast("Erro ao processar ação.", "error");
+    } finally {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
+  });
+});
+</script>
+{% endblock %}

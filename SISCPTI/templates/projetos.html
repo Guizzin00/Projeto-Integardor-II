@@ -14,81 +14,132 @@
     </p>
   </div>
 
-  <!-- Barra de busca e filtros -->
-  <div class="search-filter-bar">
-    <input type="text" id="searchInput" placeholder="🔍  Buscar por título ou professor..."
-           class="search-input" autocomplete="off">
-
-    <select id="filterCategoria" class="filter-select">
-      <option value="all">Todas as Categorias</option>
-      <option value="Responsabilidade Social">Responsabilidade Social</option>
-      <option value="Projetos do CEUB">Projetos do CEUB</option>
-      <option value="Empresas do Setor Privado">Empresas do Setor Privado</option>
-    </select>
-
-    <select id="filterStatus" class="filter-select">
-      <option value="all">Todos os Status</option>
-      <option value="EXECUTADO">Executado</option>
-      <option value="EM EXECUÇÃO">Em Execução</option>
-      <option value="INDISPONÍVEL">Indisponível</option>
-    </select>
-  </div>
-
-  <!-- Contador de resultados -->
-  <div id="results-count" style="margin-bottom: 1.5rem; color: var(--text-secondary); font-size: 0.9rem;">
-    Exibindo <strong id="count-num">{{ projetos|length }}</strong> projetos
-  </div>
-
-  <!-- Grid unificado de todos os projetos com data-attributes para filtro JS -->
-  <div class="card-grid" id="projects-grid">
-    {% for p in projetos %}
-    <a href="{{ url_for('projeto_detalhes', projeto_id=p.id) }}" class="card-link"
-       data-titulo="{{ p.titulo|lower }}"
-       data-professor="{{ p.professor|lower }}"
-       data-categoria="{{ p.categoria }}"
-       data-status="{{ p.status }}">
-      <div class="card">
-
-        <!-- Skeleton loader (escondido por padrão) -->
-        <div class="skeleton skeleton-img" style="display:none;"></div>
-
-        <img src="{{ url_for('static', filename=p.imagem) }}" class="card-cover"
-             alt="Capa do projeto {{ p.titulo }}"
-             loading="lazy"
-             onerror="this.src='{{ url_for('static', filename='img/default.png') }}'">
-
-        <div class="card-body">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.5rem;">
-            <h2 style="font-size: 1rem; margin: 0; font-family: var(--font-title); line-height: 1.3;">{{ p.titulo }}</h2>
-            <span class="badge {% if 'EXECUTADO' in p.status %}status-green{% elif 'EXECUÇÃO' in p.status %}status-orange{% elif 'INDISPONÍVEL' in p.status %}status-red{% else %}status-gray{% endif %}"
-                  style="white-space: nowrap; flex-shrink: 0;">{{ p.status }}</span>
-          </div>
-
-          <p style="margin: 0 0 0.4rem; font-size: 0.82rem; color: var(--purple-primary); font-weight: 600;">
-            👨‍🏫 {{ p.professor }}
-          </p>
-          <p style="margin: 0 0 0.8rem; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
-            {{ p.descricao_curta[:100] }}{% if p.descricao_curta|length > 100 %}…{% endif %}
-          </p>
-
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <span class="categoria-tag">{{ p.categoria }}</span>
-            <span style="font-size: 0.78rem; color: var(--text-secondary);">Ver detalhes →</span>
-          </div>
+  <div class="projects-layout" style="display: flex; gap: 2rem; flex-wrap: wrap;">
+    
+    <!-- Sidebar de Tags -->
+    <div class="tags-sidebar" style="flex: 0 0 240px; min-width: 200px;">
+      <h3 style="font-size: 1.1rem; margin-top: 0; margin-bottom: 1rem; font-family: var(--font-title);">Filtro por Tags</h3>
+      
+      {% if selected_tag %}
+        <div style="margin-bottom: 1rem;">
+          <a href="{{ url_for('projetos') }}" class="btn-sm btn-delete" style="text-decoration: none; display: inline-block;">
+            Limpar Filtro [x]
+          </a>
         </div>
+      {% endif %}
+      
+      <div class="tags-list" style="display: flex; flex-direction: column; gap: 8px;">
+        {% for tag in unique_tags %}
+          <a href="{{ url_for('projetos', tag=tag) }}" 
+             class="sidebar-tag-link {% if tag == selected_tag %}active{% endif %}"
+             style="text-decoration: none; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; color: var(--text-primary); transition: all 0.2s;">
+            <span># {{ tag }}</span>
+            {% if tag == selected_tag %}
+              <span style="color: var(--purple-primary);">✓</span>
+            {% endif %}
+          </a>
+        {% endfor %}
+        {% if not unique_tags %}
+          <p style="font-size: 0.85rem; color: var(--text-secondary); font-style: italic;">Nenhuma tag cadastrada.</p>
+        {% endif %}
       </div>
-    </a>
-    {% endfor %}
-  </div>
+    </div>
 
-  <!-- Mensagem sem resultados -->
-  <div id="no-results" style="display: none; text-align: center; padding: 4rem 2rem;">
-    <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
-    <h3 style="font-family: var(--font-title); margin: 0 0 0.5rem;">Nenhum projeto encontrado</h3>
-    <p style="color: var(--text-secondary);">Tente outros termos ou limpe os filtros.</p>
-    <button onclick="clearFilters()" class="btn" style="margin-top: 1rem;">Limpar Filtros</button>
-  </div>
+    <!-- Conteúdo principal de projetos -->
+    <div class="projects-content" style="flex: 1; min-width: 300px;">
+      
+      <!-- Barra de busca client-side e contagem -->
+      <div class="search-filter-bar" style="margin-bottom: 1.5rem;">
+        <input type="text" id="searchInput" placeholder="🔍  Filtrar nesta página por título ou professor..."
+               class="search-input" autocomplete="off" style="width: 100%;">
+      </div>
 
+      <!-- Contador de resultados -->
+      <div id="results-count" style="margin-bottom: 1.5rem; color: var(--text-secondary); font-size: 0.9rem;">
+        Exibindo <strong id="count-num">{{ projetos|length }}</strong> projetos nesta página
+        {% if selected_tag %}
+          filtrados pela tag <strong>#{{ selected_tag }}</strong>
+        {% endif %}
+      </div>
+
+      <!-- Grid unificado de todos os projetos com data-attributes -->
+      <div class="card-grid" id="projects-grid">
+        {% for p in projetos %}
+        <a href="{{ url_for('projeto_detalhes', projeto_id=p.id) }}" class="card-link"
+           data-titulo="{{ p.titulo|lower }}"
+           data-professor="{{ p.professor|lower }}"
+           data-categoria="{{ p.categoria }}"
+           data-status="{{ p.status }}">
+          <div class="card">
+
+            <div class="card-cover-wrapper {% if 'default_capa_1' in p.imagem %}cover-grad-1{% elif 'default_capa_2' in p.imagem %}cover-grad-2{% elif 'default_capa_3' in p.imagem %}cover-grad-3{% endif %}">
+              <img src="{{ url_for('static', filename=p.imagem) }}" class="card-cover {% if 'default_capa' in p.imagem %}is-default-cover{% endif %}"
+                   alt="Capa do projeto {{ p.titulo }}"
+                   loading="lazy"
+                   onerror="this.onerror=null; this.src='{{ url_for('static', filename='default_capa_1.jpg') }}';">
+            </div>
+
+            <div class="card-body">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <h2 style="font-size: 1rem; margin: 0; font-family: var(--font-title); line-height: 1.3;">{{ p.titulo }}</h2>
+                <span class="badge {% if 'EXECUTADO' in p.status %}status-green{% elif 'EXECUÇÃO' in p.status %}status-orange{% elif 'INDISPONÍVEL' in p.status %}status-red{% else %}status-gray{% endif %}"
+                      style="white-space: nowrap; flex-shrink: 0;">{{ p.status }}</span>
+              </div>
+
+              <p style="margin: 0 0 0.4rem; font-size: 0.82rem; color: var(--purple-primary); font-weight: 600;">
+                👨‍🏫 Orientador: {{ p.professor }}
+              </p>
+              <p style="margin: 0 0 0.8rem; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+                {{ p.descricao_curta[:100] }}{% if p.descricao_curta|length > 100 %}…{% endif %}
+              </p>
+
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span class="categoria-tag">{{ p.categoria }}</span>
+                <span style="font-size: 0.78rem; color: var(--text-secondary);">Ver detalhes →</span>
+              </div>
+            </div>
+          </div>
+        </a>
+        {% else %}
+        <div style="grid-column: 1/-1; text-align: center; padding: 4rem 2rem;">
+          <div style="font-size: 3rem; margin-bottom: 1rem;">📂</div>
+          <h3 style="font-family: var(--font-title); margin: 0 0 0.5rem;">Nenhum projeto nesta página</h3>
+          <p style="color: var(--text-secondary);">Tente voltar ou limpar os filtros de tags.</p>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Paginação -->
+      {% if pagination and pagination.pages > 1 %}
+      <div class="pagination-container" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 2.5rem; flex-wrap: wrap;">
+        {% if pagination.has_prev %}
+          <a href="{{ url_for('projetos', page=pagination.prev_num, tag=selected_tag) }}" class="btn-pagination">« Anterior</a>
+        {% else %}
+          <span class="btn-pagination disabled">« Anterior</span>
+        {% endif %}
+        
+        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+          {% if page_num %}
+            {% if page_num == pagination.page %}
+              <span class="btn-pagination active">{{ page_num }}</span>
+            {% else %}
+              <a href="{{ url_for('projetos', page=page_num, tag=selected_tag) }}" class="btn-pagination">{{ page_num }}</a>
+            {% endif %}
+          {% else %}
+            <span class="pagination-ellipsis" style="color: var(--text-secondary);">…</span>
+          {% endif %}
+        {% endfor %}
+        
+        {% if pagination.has_next %}
+          <a href="{{ url_for('projetos', page=pagination.next_num, tag=selected_tag) }}" class="btn-pagination">Próxima »</a>
+        {% else %}
+          <span class="btn-pagination disabled">Próxima »</span>
+        {% endif %}
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
 </div>
 
 <style>
@@ -116,83 +167,107 @@
   border-color: var(--purple-primary);
   box-shadow: 0 0 0 3px rgba(122,27,181,0.15);
 }
-.filter-select {
-  padding: 0.65rem 1rem;
-  border: 1.5px solid var(--border-color);
-  border-radius: 50px;
-  font-size: 0.88rem;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  cursor: pointer;
-  font-family: var(--font-body);
-  transition: border-color 0.2s;
-}
-.filter-select:focus { outline: none; border-color: var(--purple-primary); }
 .categoria-tag {
   display: inline-block;
-  background: rgba(122,27,181,0.1);
+  background: rgba(122,27,181,0.08);
   color: var(--purple-primary);
   border-radius: 50px;
   padding: 2px 10px;
   font-size: 0.75rem;
   font-weight: 600;
 }
-@media (max-width: 600px) {
-  .search-input { min-width: 100%; }
-  .filter-select { width: 100%; }
+.sidebar-tag-link:hover {
+  background-color: rgba(122, 27, 181, 0.05);
+  border-color: var(--purple-primary) !important;
+}
+.sidebar-tag-link.active {
+  background-color: var(--purple-primary);
+  color: #ffffff !important;
+  border-color: var(--purple-primary) !important;
+}
+.btn-pagination {
+  text-decoration: none;
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background-color: var(--bg-surface);
+  transition: all 0.2s;
+}
+.btn-pagination:hover:not(.disabled) {
+  border-color: var(--purple-primary);
+  color: var(--purple-primary);
+  background-color: rgba(122, 27, 181, 0.05);
+}
+.btn-pagination.active {
+  background-color: var(--purple-primary);
+  color: #fff;
+  border-color: var(--purple-primary);
+}
+.btn-pagination.disabled {
+  color: var(--text-secondary);
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
 <script>
 (function() {
   const searchInput = document.getElementById('searchInput');
-  const filterCat = document.getElementById('filterCategoria');
-  const filterSt = document.getElementById('filterStatus');
   const cards = document.querySelectorAll('#projects-grid .card-link');
-  const noResults = document.getElementById('no-results');
   const countNum = document.getElementById('count-num');
 
+  // Build the list for Fuse search
+  const projectList = [];
+  cards.forEach((card, index) => {
+    projectList.push({
+      index: index,
+      titulo: card.dataset.titulo || '',
+      professor: card.dataset.professor || '',
+      categoria: card.dataset.categoria ? card.dataset.categoria.toLowerCase() : '',
+    });
+  });
+
+  // Initialize Fuse.js
+  const fuse = new Fuse(projectList, {
+    keys: [
+      { name: 'titulo', weight: 0.6 },
+      { name: 'professor', weight: 0.3 },
+      { name: 'categoria', weight: 0.1 }
+    ],
+    threshold: 0.4
+  });
+
   function applyFilters() {
-    const q = searchInput.value.toLowerCase().trim();
-    const cat = filterCat.value;
-    const st = filterStatus.value;
+    const q = searchInput.value.trim();
     let visible = 0;
 
-    cards.forEach(card => {
-      const titulo = card.dataset.titulo || '';
-      const prof = card.dataset.professor || '';
-      const categoria = card.dataset.categoria || '';
-      const status = card.dataset.status || '';
-
-      const matchSearch = !q || titulo.includes(q) || prof.includes(q);
-      const matchCat = cat === 'all' || categoria === cat;
-      const matchSt = st === 'all' || status.includes(st);
-
-      if (matchSearch && matchCat && matchSt) {
+    if (!q) {
+      cards.forEach(card => {
         card.style.display = '';
         visible++;
-      } else {
-        card.style.display = 'none';
-      }
-    });
+      });
+    } else {
+      const results = fuse.search(q);
+      const visibleIndices = new Set(results.map(r => r.item.index));
+
+      cards.forEach((card, index) => {
+        if (visibleIndices.has(index)) {
+          card.style.display = '';
+          visible++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
 
     countNum.textContent = visible;
-    noResults.style.display = visible === 0 ? 'block' : 'none';
   }
 
-  // Corrige referência ao select de status
-  const filterStatus = document.getElementById('filterStatus');
-
   searchInput.addEventListener('input', applyFilters);
-  filterCat.addEventListener('change', applyFilters);
-  filterStatus.addEventListener('change', applyFilters);
-
-  window.clearFilters = function() {
-    searchInput.value = '';
-    filterCat.value = 'all';
-    filterStatus.value = 'all';
-    applyFilters();
-  };
 })();
 </script>
 

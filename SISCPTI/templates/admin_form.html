@@ -42,8 +42,30 @@
     </div>
 
     <div class="form-group">
-      <label for="detalhes">Detalhes:</label>
-      <textarea id="detalhes" name="detalhes" rows="5">{{ projeto.get('detalhes', [''])[0] }}</textarea>
+      <label for="detalhes">Detalhes (Pressione Enter para criar novos parágrafos):</label>
+      <textarea id="detalhes" name="detalhes" rows="6" placeholder="Escreva os parágrafos de detalhes aqui. Cada linha ou parágrafo separado por quebra de linha será exibido como um parágrafo diferente.">{% if projeto.get('detalhes') %}{{ "\n\n".join(projeto.detalhes) }}{% endif %}</textarea>
+    </div>
+
+    <!-- Seção de Links Relacionados -->
+    <div class="form-group">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <label style="margin-bottom: 0; font-weight: 600; color: var(--purple-primary);">🔗 Links Relacionados:</label>
+        <button type="button" class="btn-add-link" id="add-link-btn">
+          ➕ Adicionar Link
+        </button>
+      </div>
+      
+      <div id="links-container" style="display: flex; flex-direction: column; gap: 0.8rem;">
+        {% if projeto.get('links') %}
+          {% for nome, url in projeto.links.items() %}
+            <div class="link-row">
+              <input type="text" name="link_nome[]" placeholder="Nome (ex: GitHub)" value="{{ nome }}" required style="flex: 1;">
+              <input type="url" name="link_url[]" placeholder="URL completa (ex: https://...)" value="{{ url }}" required style="flex: 2;">
+              <button type="button" class="btn-remove-link" onclick="this.parentElement.remove()" title="Remover Link">🗑️</button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      </div>
     </div>
 
     <div class="form-group">
@@ -131,5 +153,63 @@
   .btn-save:hover {
     background: var(--purple-hover);
   }
+
+  .btn-add-link {
+    background: transparent;
+    border: 1.5px solid var(--purple-primary);
+    color: var(--purple-primary);
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  .btn-add-link:hover {
+    background: var(--purple-primary);
+    color: #fff;
+  }
+  .link-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    animation: fadeIn 0.2s ease;
+  }
+  .btn-remove-link {
+    background: #ef4444;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    width: 38px;
+    height: 38px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .btn-remove-link:hover {
+    background: #dc2626;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 </style>
+
+<script>
+  document.getElementById('add-link-btn').addEventListener('click', function() {
+    const container = document.getElementById('links-container');
+    const row = document.createElement('div');
+    row.className = 'link-row';
+    row.innerHTML = `
+      <input type="text" name="link_nome[]" placeholder="Nome (ex: GitHub)" required style="flex: 1;">
+      <input type="url" name="link_url[]" placeholder="URL completa (ex: https://...)" required style="flex: 2;">
+      <button type="button" class="btn-remove-link" onclick="this.parentElement.remove()" title="Remover Link">🗑️</button>
+    `;
+    container.appendChild(row);
+  });
+</script>
 {% endblock %}

@@ -7,9 +7,23 @@
     <h2>Painel Administrativo Corporativo</h2>
     <p>Gestão e controle do ecossistema de projetos, {{ session.user }}.</p>
   </div>
-  <a href="{{ url_for('admin_logs') }}" class="btn" style="margin: 0; background: var(--text-secondary); font-size: 0.85rem;" id="btn-ver-logs">
-    📋 Ver Logs de Atividade
-  </a>
+  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+    <a href="{{ url_for('admin_relatorio_pdf') }}" class="btn" style="margin: 0; background: #28a745; font-size: 0.85rem;" id="btn-pdf-relatorio">
+      📄 Relatório Semestral PDF
+    </a>
+    <a href="{{ url_for('admin_exportar_projetos') }}" class="btn" style="margin: 0; background: var(--purple-primary); font-size: 0.85rem;" id="btn-exportar-projetos">
+      📊 Projetos CSV
+    </a>
+    <a href="{{ url_for('admin_exportar_satisfacao') }}" class="btn" style="margin: 0; background: var(--purple-primary); font-size: 0.85rem;" id="btn-exportar-satisfacao">
+      ⭐ Satisfação CSV
+    </a>
+    <a href="{{ url_for('admin_exportar_logs') }}" class="btn" style="margin: 0; background: var(--purple-primary); font-size: 0.85rem;" id="btn-exportar-logs">
+      📝 Logs CSV
+    </a>
+    <a href="{{ url_for('admin_logs') }}" class="btn" style="margin: 0; background: var(--text-secondary); font-size: 0.85rem;" id="btn-ver-logs">
+      📋 Logs de Atividade
+    </a>
+  </div>
 </div>
 
 <div class="admin-stats">
@@ -106,10 +120,18 @@
         <td>#{{ s.id }}</td>
         <td><strong>{{ s.nome_projeto }}</strong><br><small>{{ s.categoria }}</small></td>
         <td>{{ s.proponente }} <br> <small>{{ s.email }}</small></td>
-        <td><span class="badge">{{ s.status }}</span></td>
-        <td>
-          <a href="{{ url_for('acao_submissao', sub_id=s.id, acao='aprovar') }}" class="btn-sm btn-success">Aprovar</a>
-          <a href="{{ url_for('acao_submissao', sub_id=s.id, acao='rejeitar') }}" class="btn-sm btn-delete">Rejeitar</a>
+        <td class="status-cell">
+          <span class="badge {% if s.status == 'APROVADA' %}status-green{% elif s.status == 'REJEITADA' %}status-red{% else %}status-orange{% endif %}">
+            {{ s.status }}
+          </span>
+        </td>
+        <td class="actions-cell">
+          {% if s.status == 'EM ANÁLISE' %}
+            <a href="{{ url_for('acao_submissao', sub_id=s.id, acao='aprovar') }}" class="btn-sm btn-success ajax-action" data-type="submission" data-id="{{ s.id }}">Aprovar</a>
+            <a href="{{ url_for('acao_submissao', sub_id=s.id, acao='rejeitar') }}" class="btn-sm btn-delete ajax-action" data-type="submission" data-id="{{ s.id }}">Rejeitar</a>
+          {% else %}
+            <a href="{{ url_for('acao_submissao', sub_id=s.id, acao='reavaliar') }}" class="btn-sm btn-edit ajax-action" data-type="submission" data-id="{{ s.id }}" style="background-color: var(--purple-primary);">Reavaliar</a>
+          {% endif %}
         </td>
       </tr>
       {% else %}
@@ -145,10 +167,18 @@
           <strong>Motivo:</strong> {{ c.motivo }}<br>
           <strong>Exp:</strong> {{ c.experiencia }}
         </td>
-        <td><span class="badge">{{ c.status }}</span></td>
-        <td>
-          <a href="{{ url_for('acao_candidatura', cand_id=c.id, acao='aprovar') }}" class="btn-sm btn-success">Aprovar</a>
-          <a href="{{ url_for('acao_candidatura', cand_id=c.id, acao='rejeitar') }}" class="btn-sm btn-delete">Rejeitar</a>
+        <td class="status-cell">
+          <span class="badge {% if c.status == 'APROVADA' %}status-green{% elif c.status == 'REJEITADA' %}status-red{% else %}status-orange{% endif %}">
+            {{ c.status }}
+          </span>
+        </td>
+        <td class="actions-cell">
+          {% if c.status == 'PENDENTE' %}
+            <a href="{{ url_for('acao_candidatura', cand_id=c.id, acao='aprovar') }}" class="btn-sm btn-success ajax-action" data-type="candidatura-admin" data-id="{{ c.id }}">Aprovar</a>
+            <a href="{{ url_for('acao_candidatura', cand_id=c.id, acao='rejeitar') }}" class="btn-sm btn-delete ajax-action" data-type="candidatura-admin" data-id="{{ c.id }}">Rejeitar</a>
+          {% else %}
+            <a href="{{ url_for('acao_candidatura', cand_id=c.id, acao='reavaliar') }}" class="btn-sm btn-edit ajax-action" data-type="candidatura-admin" data-id="{{ c.id }}" style="background-color: var(--purple-primary);">Reavaliar</a>
+          {% endif %}
         </td>
       </tr>
       {% else %}
@@ -317,6 +347,82 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (err) {
     console.error("Erro ao carregar estatísticas do admin:", err);
   }
+});
+</script>
+
+<script>
+// Interceptar cliques em ações do admin via AJAX (sem recarregar a página)
+document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("click", async (e) => {
+    const button = e.target.closest(".ajax-action");
+    if (!button) return;
+
+    e.preventDefault();
+
+    const href = button.getAttribute("href");
+    const dataType = button.getAttribute("data-type");
+    const id = button.getAttribute("data-id");
+
+    const actionMatch = href.match(/\/(aprovar|rejeitar|reavaliar)$/);
+    if (!actionMatch) return;
+    const baseHref = href.substring(0, actionMatch.index);
+
+    try {
+      button.style.opacity = "0.5";
+      button.style.pointerEvents = "none";
+
+      const response = await fetch(`${href}?ajax=1`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.status === "success") {
+          const newStatus = data.new_status;
+          const tr = button.closest("tr");
+          if (!tr) return;
+
+          const statusCell = tr.querySelector(".status-cell");
+          const actionsCell = tr.querySelector(".actions-cell");
+
+          if (dataType === "submission") {
+            if (newStatus === "APROVADA") {
+              statusCell.innerHTML = `<span class="badge status-green">APROVADA</span>`;
+              actionsCell.innerHTML = `<a href="${baseHref}/reavaliar" class="btn-sm btn-edit ajax-action" data-type="submission" data-id="${id}" style="background-color: var(--purple-primary);">Reavaliar</a>`;
+              if (window.showToast) window.showToast("Submissão aprovada e transformada em projeto!", "success");
+            } else if (newStatus === "REJEITADA") {
+              statusCell.innerHTML = `<span class="badge status-red">REJEITADA</span>`;
+              actionsCell.innerHTML = `<a href="${baseHref}/reavaliar" class="btn-sm btn-edit ajax-action" data-type="submission" data-id="${id}" style="background-color: var(--purple-primary);">Reavaliar</a>`;
+              if (window.showToast) window.showToast("Submissão marcada como rejeitada.", "info");
+            } else {
+              statusCell.innerHTML = `<span class="badge status-orange">EM ANÁLISE</span>`;
+              actionsCell.innerHTML = `
+                <a href="${baseHref}/aprovar" class="btn-sm btn-success ajax-action" data-type="submission" data-id="${id}">Aprovar</a>
+                <a href="${baseHref}/rejeitar" class="btn-sm btn-delete ajax-action" data-type="submission" data-id="${id}">Rejeitar</a>
+              `;
+              if (window.showToast) window.showToast("Proposta voltou para Em Análise.", "warning");
+            }
+          } else if (dataType === "candidatura-admin") {
+            if (newStatus === "APROVADA") {
+              statusCell.innerHTML = `<span class="badge status-green">APROVADA</span>`;
+              actionsCell.innerHTML = `<a href="${baseHref}/reavaliar" class="btn-sm btn-edit ajax-action" data-type="candidatura-admin" data-id="${id}" style="background-color: var(--purple-primary);">Reavaliar</a>`;
+              if (window.showToast) window.showToast("Candidatura aprovada com sucesso!", "success");
+            } else if (newStatus === "REJEITADA") {
+              statusCell.innerHTML = `<span class="badge status-red">REJEITADA</span>`;
+              actionsCell.innerHTML = `<a href="${baseHref}/reavaliar" class="btn-sm btn-edit ajax-action" data-type="candidatura-admin" data-id="${id}" style="background-color: var(--purple-primary);">Reavaliar</a>`;
+              if (window.showToast) window.showToast("Candidatura rejeitada.", "info");
+            } else {
+              statusCell.innerHTML = `<span class="badge status-orange">PENDENTE</span>`;
+              actionsCell.innerHTML = `
+                <a href="${baseHref}/aprovar" class="btn-sm btn-success ajax-action" data-type="candidatura-admin" data-id="${id}">Aprovar</a>
+                <a href="${baseHref}/rejeitar" class="btn-sm btn-delete ajax-action" data-type="candidatura-admin" data-id="${id}">Rejeitar</a>
+              `;
+              if (window.showToast) window.showToast("Candidatura voltou para Pendente.", "warning");
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Erro na requisição AJAX:", err);
+    }
+  });
 });
 </script>
 

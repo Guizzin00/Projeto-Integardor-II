@@ -1,13 +1,36 @@
 // Controle de Tema (Modo Escuro / Modo Claro)
 document.addEventListener("DOMContentLoaded", () => {
   const themeToggle = document.getElementById("theme-toggle");
-  
-  // Carrega o tema salvo
-  const savedTheme = localStorage.getItem("theme");
-  if (savedTheme === "dark") {
-    document.body.classList.add("dark-theme");
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+  // Função para aplicar o tema com base nas preferências
+  function applyTheme() {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "dark") {
+      document.body.classList.add("dark-theme");
+    } else if (savedTheme === "light") {
+      document.body.classList.remove("dark-theme");
+    } else {
+      // Sem preferência salva, usa a do sistema
+      if (mediaQuery.matches) {
+        document.body.classList.add("dark-theme");
+      } else {
+        document.body.classList.remove("dark-theme");
+      }
+    }
   }
-  
+
+  // Executa no carregamento inicial
+  applyTheme();
+
+  // Escuta mudanças de preferência de tema no sistema operacional
+  mediaQuery.addEventListener("change", () => {
+    // Apenas atualiza automaticamente se o usuário não escolheu manualmente um tema antes
+    if (!localStorage.getItem("theme")) {
+      applyTheme();
+    }
+  });
+
   if (themeToggle) {
     themeToggle.addEventListener("click", () => {
       const isDark = document.body.classList.toggle("dark-theme");
@@ -118,7 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-// SISTEMA DE NOTIFICAÇÕES (Sino e Dropdown)
+// SISTEMA DE NOTIFICAÇÕES (Sino e Dropdown) & DROPDOWN DE USUÁRIO
 document.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("notification-btn");
   const dropdown = document.getElementById("notification-dropdown");
@@ -126,100 +149,119 @@ document.addEventListener("DOMContentLoaded", () => {
   const list = document.getElementById("notification-list");
   const markAllBtn = document.getElementById("notif-mark-all-btn");
 
-  if (!btn || !dropdown) return;
+  const userBtn = document.getElementById("user-menu-btn");
+  const userDropdown = document.getElementById("user-menu-dropdown");
 
-  // Toggle do Dropdown ao clicar no Sino
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const isShowing = dropdown.style.display === "flex";
-    dropdown.style.display = isShowing ? "none" : "flex";
-  });
-
-  // Fechar dropdown ao clicar fora
+  // Fechar dropdowns ao clicar fora
   document.addEventListener("click", () => {
-    dropdown.style.display = "none";
-  });
-  dropdown.addEventListener("click", (e) => {
-    e.stopPropagation();
+    if (dropdown) dropdown.style.display = "none";
+    if (userDropdown) userDropdown.style.display = "none";
   });
 
-  // Função para renderizar notificações na lista
-  function renderNotifications(notifs) {
-    // Atualiza o Badge vermelho
-    if (notifs.length > 0) {
-      badge.textContent = notifs.length;
-      badge.style.display = "block";
-    } else {
-      badge.style.display = "none";
-    }
+  // Only initialize notifications if all elements are present in the DOM (e.g. when logged in)
+  if (btn && dropdown && badge && list && markAllBtn) {
+    // Toggle do Dropdown ao clicar no Sino
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (userDropdown) userDropdown.style.display = "none";
+      const isShowing = dropdown.style.display === "flex";
+      dropdown.style.display = isShowing ? "none" : "flex";
+    });
+    dropdown.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
 
-    // Limpa a lista
-    list.innerHTML = "";
+    // Função para renderizar notificações na lista
+    function renderNotifications(notifs) {
+      // Atualiza o Badge vermelho
+      if (notifs.length > 0) {
+        badge.textContent = notifs.length;
+        badge.style.display = "block";
+      } else {
+        badge.style.display = "none";
+      }
 
-    if (notifs.length === 0) {
-      list.innerHTML = `<li class="notif-empty">Nenhuma notificação não lida.</li>`;
-      return;
-    }
+      // Limpa a lista
+      list.innerHTML = "";
 
-    notifs.forEach(n => {
-      const li = document.createElement("li");
-      li.className = "notif-item";
-      li.setAttribute("data-id", n.id);
-      li.style.cursor = "pointer";
+      if (notifs.length === 0) {
+        list.innerHTML = `<li class="notif-empty">Nenhuma notificação não lida.</li>`;
+        return;
+      }
 
-      li.innerHTML = `
-        <div>${n.mensagem}</div>
-        <small>${n.data}</small>
-      `;
+      notifs.forEach(n => {
+        const li = document.createElement("li");
+        li.className = "notif-item";
+        li.setAttribute("data-id", n.id);
+        li.style.cursor = "pointer";
 
-      // Clique individual para ler e redirecionar
-      li.addEventListener("click", async () => {
-        try {
-          await fetch(`/api/notificacoes/ler/${n.id}`, { method: "POST" });
-          if (n.link) {
-            window.location.href = n.link;
-          } else {
-            // Se não tiver link específico, apenas recarrega para sumir da lista
-            window.location.reload();
+        li.innerHTML = `
+          <div>${n.mensagem}</div>
+          <small>${n.data}</small>
+        `;
+
+        // Clique individual para ler e redirecionar
+        li.addEventListener("click", async () => {
+          try {
+            await fetch(`/api/notificacoes/ler/${n.id}`, { method: "POST" });
+            if (n.link) {
+              window.location.href = n.link;
+            } else {
+              // Se não tiver link específico, apenas recarrega para sumir da lista
+              window.location.reload();
+            }
+          } catch (err) {
+            console.error("Erro ao ler notificação:", err);
+            if (n.link) window.location.href = n.link;
           }
-        } catch (err) {
-          console.error("Erro ao ler notificação:", err);
-          if (n.link) window.location.href = n.link;
-        }
-      });
+        });
 
-      list.appendChild(li);
+        list.appendChild(li);
+      });
+    }
+
+    // Buscar notificações (Polling a cada 4 segundos)
+    async function fetchNotifications() {
+      try {
+        const response = await fetch("/api/notificacoes");
+        if (response.ok) {
+          const notifs = await response.json();
+          renderNotifications(notifs);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar notificações:", err);
+      }
+    }
+
+    // Primeiro carregamento
+    fetchNotifications();
+    setInterval(fetchNotifications, 4000);
+
+    // Marcar todas como lidas
+    markAllBtn.addEventListener("click", async () => {
+      try {
+        const response = await fetch("/api/notificacoes/ler-todas", { method: "POST" });
+        if (response.ok) {
+          renderNotifications([]);
+        }
+      } catch (err) {
+        console.error("Erro ao limpar notificações:", err);
+      }
     });
   }
 
-  // Buscar notificações (Polling a cada 4 segundos)
-  async function fetchNotifications() {
-    try {
-      const response = await fetch("/api/notificacoes");
-      if (response.ok) {
-        const notifs = await response.json();
-        renderNotifications(notifs);
-      }
-    } catch (err) {
-      console.error("Erro ao carregar notificações:", err);
-    }
+  if (userBtn && userDropdown) {
+    // Toggle do Dropdown ao clicar no Botão do Usuário
+    userBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (dropdown) dropdown.style.display = "none";
+      const isShowing = userDropdown.style.display === "block" || userDropdown.style.display === "flex";
+      userDropdown.style.display = isShowing ? "none" : "block";
+    });
+    userDropdown.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
   }
-
-  // Primeiro carregamento
-  fetchNotifications();
-  setInterval(fetchNotifications, 4000);
-
-  // Marcar todas como lidas
-  markAllBtn.addEventListener("click", async () => {
-    try {
-      const response = await fetch("/api/notificacoes/ler-todas", { method: "POST" });
-      if (response.ok) {
-        renderNotifications([]);
-      }
-    } catch (err) {
-      console.error("Erro ao limpar notificações:", err);
-    }
-  });
 });
 
 // Validação de Formulários em Tempo Real (Cadastro e Submissão)
@@ -228,20 +270,23 @@ document.addEventListener("DOMContentLoaded", () => {
   function showFeedback(inputElement, isValid, message) {
     if (!inputElement) return;
 
+    const formGroup = inputElement.closest(".form-group");
+    if (!formGroup) return;
+
     if (isValid) {
       inputElement.classList.remove("is-invalid");
       inputElement.classList.add("is-valid");
-      const feedback = inputElement.parentNode.querySelector(".invalid-feedback");
+      const feedback = formGroup.querySelector(".invalid-feedback");
       if (feedback) feedback.style.display = "none";
     } else {
       inputElement.classList.remove("is-valid");
       inputElement.classList.add("is-invalid");
       
-      let feedback = inputElement.parentNode.querySelector(".invalid-feedback");
+      let feedback = formGroup.querySelector(".invalid-feedback");
       if (!feedback) {
         feedback = document.createElement("div");
         feedback.className = "invalid-feedback";
-        inputElement.parentNode.appendChild(feedback);
+        formGroup.appendChild(feedback);
       }
       feedback.textContent = message;
       feedback.style.display = "block";
@@ -330,6 +375,58 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
+
+// Função Global para Exibir Toast Pop-ups (some em 1.5 segundos)
+window.showToast = function(message, type = "info") {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+
+  // Escolhe o emoji com base no tipo de feedback
+  let icon = "🔔";
+  if (type === "success") icon = "✅";
+  else if (type === "error" || type === "danger") {
+    icon = "❌";
+    type = "error"; // Corrige danger para erro no estilo
+    toast.className = "toast toast-error";
+  } else if (type === "warning") icon = "⚠️";
+
+  toast.innerHTML = `
+    <span style="font-size: 1.2rem; display: flex; align-items: center;">${icon}</span>
+    <span style="flex-grow: 1; line-height: 1.4;">${message}</span>
+    <button class="toast-close" type="button" aria-label="Fechar">&times;</button>
+  `;
+
+  container.appendChild(toast);
+
+  // Iniciar transição de entrada
+  requestAnimationFrame(() => {
+    toast.classList.add("show");
+  });
+
+  // Função auxiliar para remover o toast com transição de saída
+  function removeToast() {
+    toast.classList.replace("show", "fade-out");
+    toast.addEventListener("transitionend", () => {
+      toast.remove();
+    });
+  }
+
+  // Desaparecer automaticamente em 1.5 segundos (1500ms)
+  const timeoutId = setTimeout(removeToast, 1500);
+
+  // Clique no botão fechar manual
+  const closeBtn = toast.querySelector(".toast-close");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      clearTimeout(timeoutId);
+      removeToast();
+    });
+  }
+};
+
 
 
 

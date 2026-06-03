@@ -3,11 +3,11 @@
 {% block content %}
 
 <!-- Hero com imagem de capa -->
-<div class="project-hero">
+<div class="project-hero {% if 'default_capa_1' in projeto.imagem %}cover-grad-1{% elif 'default_capa_2' in projeto.imagem %}cover-grad-2{% elif 'default_capa_3' in projeto.imagem %}cover-grad-3{% endif %}">
   <img src="{{ url_for('static', filename=projeto.imagem) }}"
        alt="Capa de {{ projeto.get('titulo', '') }}"
-       class="project-hero-img"
-       onerror="this.src='{{ url_for('static', filename='img/default.png') }}'">
+       class="project-hero-img {% if 'default_capa' in projeto.imagem %}is-default-cover{% endif %}"
+       onerror="this.onerror=null; this.src='{{ url_for('static', filename='default_capa_1.jpg') }}';">
   <div class="project-hero-overlay">
     <div class="ceub-container">
       <span class="badge {% if 'EXECUTADO' in projeto.status %}status-green{% elif 'EXECUÇÃO' in projeto.status %}status-orange{% elif 'INDISPONÍVEL' in projeto.status %}status-red{% else %}status-gray{% endif %}"
@@ -78,26 +78,60 @@
 
         {% if session.get('logged_in') %}
         <div style="background: var(--bg-primary); border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border-color);">
-          <h3 style="font-family: var(--font-title); margin: 0 0 1rem; font-size: 1rem;">Deixe sua avaliação</h3>
+          <h3 style="font-family: var(--font-title); margin: 0 0 1.2rem; font-size: 1rem; color: var(--purple-primary);">Deixe sua Avaliação Multidimensional</h3>
           <form method="POST" action="{{ url_for('avaliar_projeto', projeto_id=projeto.get('id')) }}">
-            <div style="margin-bottom: 0.8rem;">
-              <label style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.4rem; display: block;">Sua nota:</label>
-              <div class="star-picker" id="star-picker">
-                {% for i in range(1, 6) %}
-                <button type="button" class="star-btn" data-val="{{ i }}" title="{{ i }} estrela{{ 's' if i > 1 }}">★</button>
-                {% endfor %}
+            
+            <div style="margin-bottom: 0.8rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+              <div>
+                <label style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.2rem; display: block;">Nota Geral:</label>
+                <div class="star-picker" data-target="nota">
+                  {% for i in range(1, 6) %}
+                  <button type="button" class="star-btn" data-val="{{ i }}">★</button>
+                  {% endfor %}
+                </div>
+                <input type="hidden" name="nota" id="nota-input" value="">
               </div>
-              <input type="hidden" name="nota" id="nota-input" value="">
+
+              <div>
+                <label style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.2rem; display: block;">Organização:</label>
+                <div class="star-picker" data-target="nota_organizacao">
+                  {% for i in range(1, 6) %}
+                  <button type="button" class="star-btn" data-val="{{ i }}">★</button>
+                  {% endfor %}
+                </div>
+                <input type="hidden" name="nota_organizacao" id="nota_organizacao-input" value="5">
+              </div>
+
+              <div>
+                <label style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.2rem; display: block;">Orientação:</label>
+                <div class="star-picker" data-target="nota_orientacao">
+                  {% for i in range(1, 6) %}
+                  <button type="button" class="star-btn" data-val="{{ i }}">★</button>
+                  {% endfor %}
+                </div>
+                <input type="hidden" name="nota_orientacao" id="nota_orientacao-input" value="5">
+              </div>
+
+              <div>
+                <label style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.2rem; display: block;">Aprendizado:</label>
+                <div class="star-picker" data-target="nota_aprendizado">
+                  {% for i in range(1, 6) %}
+                  <button type="button" class="star-btn" data-val="{{ i }}">★</button>
+                  {% endfor %}
+                </div>
+                <input type="hidden" name="nota_aprendizado" id="nota_aprendizado-input" value="5">
+              </div>
             </div>
+
             <div style="margin-bottom: 1rem;">
-              <label style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.4rem; display: block;">Comentário <small style="color: var(--text-secondary);">(opcional)</small></label>
+              <label style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.4rem; display: block;">Comentário Adicional <small style="color: var(--text-secondary);">(opcional)</small></label>
               <textarea name="comentario" rows="3"
                         style="width: 100%; padding: 0.65rem 0.9rem; border: 1.5px solid var(--border-color);
                                border-radius: 8px; background: var(--bg-surface); color: var(--text-primary);
                                font-family: var(--font-body); font-size: 0.9rem; resize: vertical; box-sizing: border-box;"
-                        placeholder="O que achou deste projeto?"></textarea>
+                        placeholder="O que achou do projeto, da mentoria e do aprendizado?"></textarea>
             </div>
-            <button type="submit" class="btn" id="btn-avaliar" style="margin: 0;" disabled>
+            <button type="submit" class="btn" id="btn-avaliar" style="margin: 0; width: 100%;" disabled>
               ⭐ Enviar Avaliação
             </button>
           </form>
@@ -145,9 +179,25 @@
   position: relative; height: 320px; overflow: hidden;
   background: #1a0a2e;
 }
+.project-hero.cover-grad-1 {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.18), rgba(124, 58, 237, 0.18)) !important;
+  background-color: var(--bg-surface) !important;
+}
+.project-hero.cover-grad-2 {
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.18), rgba(37, 99, 235, 0.18)) !important;
+  background-color: var(--bg-surface) !important;
+}
+.project-hero.cover-grad-3 {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.18), rgba(236, 72, 153, 0.18)) !important;
+  background-color: var(--bg-surface) !important;
+}
 .project-hero-img {
   width: 100%; height: 100%; object-fit: cover; opacity: 0.45;
   transition: opacity 0.3s;
+}
+.project-hero-img.is-default-cover {
+  mix-blend-mode: multiply;
+  opacity: 1 !important;
 }
 .project-hero-overlay {
   position: absolute; inset: 0;
@@ -160,7 +210,7 @@
   font-weight: 800; color: #fff; margin: 0 0 0.4rem; line-height: 1.2;
   text-shadow: 0 2px 12px rgba(0,0,0,0.5);
 }
-.project-hero-sub { color: rgba(255,255,255,0.8); margin: 0; font-size: 0.95rem; }
+.project-hero-title-sub { color: rgba(255,255,255,0.8); margin: 0; font-size: 0.95rem; }
 
 /* ---- Layout ---- */
 .project-layout {
@@ -247,7 +297,7 @@
 /* ---- Stars ---- */
 .star-picker { display: flex; gap: 0.3rem; margin-bottom: 0.5rem; }
 .star-btn {
-  background: none; border: none; font-size: 2rem; cursor: pointer;
+  background: none; border: none; font-size: 1.6rem; cursor: pointer;
   color: var(--border-color); transition: color 0.15s, transform 0.15s;
   padding: 0;
 }
@@ -266,28 +316,35 @@
 </style>
 
 <script>
-// Star picker
-const stars = document.querySelectorAll('.star-btn');
-const notaInput = document.getElementById('nota-input');
-const btnAvaliar = document.getElementById('btn-avaliar');
-
-if (stars.length) {
+// Star picker logic for all multidimensional pickers
+document.querySelectorAll('.star-picker').forEach(picker => {
+  const targetId = picker.dataset.target + '-input';
+  const input = document.getElementById(targetId);
+  const stars = picker.querySelectorAll('.star-btn');
+  
+  const initialVal = parseInt(input.value || 0);
+  stars.forEach((s, i) => s.classList.toggle('lit', i < initialVal));
+  
   stars.forEach((btn, idx) => {
     btn.addEventListener('mouseenter', () => {
       stars.forEach((s, i) => s.classList.toggle('lit', i <= idx));
     });
     btn.addEventListener('mouseleave', () => {
-      const selected = parseInt(notaInput?.value || 0);
+      const selected = parseInt(input.value || 0);
       stars.forEach((s, i) => s.classList.toggle('lit', i < selected));
     });
     btn.addEventListener('click', () => {
       const val = btn.dataset.val;
-      if (notaInput) notaInput.value = val;
+      input.value = val;
       stars.forEach((s, i) => s.classList.toggle('lit', i < parseInt(val)));
-      if (btnAvaliar) btnAvaliar.disabled = false;
+      
+      if (picker.dataset.target === 'nota') {
+        const btnAvaliar = document.getElementById('btn-avaliar');
+        if (btnAvaliar) btnAvaliar.disabled = false;
+      }
     });
   });
-}
+});
 
 // Carregar avaliações via API
 async function loadAvaliacoes() {
@@ -308,7 +365,12 @@ async function loadAvaliacoes() {
 
     lista.innerHTML = data.avaliacoes.map(a => `
       <div class="review-card">
-        <div class="review-stars">${'★'.repeat(a.nota)}${'☆'.repeat(5 - a.nota)}</div>
+        <div class="review-stars">Geral: ${'★'.repeat(a.nota)}${'☆'.repeat(5 - a.nota)}</div>
+        <div class="dimensions-ratings" style="display: flex; flex-wrap: wrap; gap: 15px; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.6rem;">
+          <span>Organização: ${'★'.repeat(a.nota_organizacao)}${'☆'.repeat(5 - a.nota_organizacao)}</span>
+          <span>Orientação: ${'★'.repeat(a.nota_orientacao)}${'☆'.repeat(5 - a.nota_orientacao)}</span>
+          <span>Aprendizado: ${'★'.repeat(a.nota_aprendizado)}${'☆'.repeat(5 - a.nota_aprendizado)}</span>
+        </div>
         <div class="review-meta">@${a.username} · ${a.data}</div>
         ${a.comentario ? `<p class="review-text">${a.comentario}</p>` : ''}
       </div>

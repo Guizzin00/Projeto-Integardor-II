@@ -18,6 +18,34 @@
   </a>
 </div>
 
+<!-- Seção de Recomendações de Projetos -->
+{% if recomendacoes %}
+<div class="recomendacoes-section" style="margin-top: 1.5rem; margin-bottom: 2rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem;">
+  <h3 style="margin-top: 0; font-family: var(--font-title); font-size: 1.2rem; color: var(--purple-primary); display: flex; align-items: center; gap: 8px;">
+    ✨ Projetos Recomendados para Você
+  </h3>
+  <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0; margin-bottom: 1.2rem;">
+    Encontramos projetos que coincidem com os interesses do seu perfil acadêmico!
+  </p>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+    {% for proj in recomendacoes %}
+      <div style="border: 1px solid var(--border-color); border-radius: 6px; padding: 1rem; display: flex; flex-direction: column; justify-content: space-between; background: var(--bg-primary);">
+        <div>
+          <h4 style="margin: 0 0 0.5rem; font-family: var(--font-title); font-size: 1rem;">{{ proj.titulo }}</h4>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0 0 0.8rem; line-height: 1.4;">
+            {{ proj.descricao_curta[:80] }}{% if proj.descricao_curta|length > 80 %}...{% endif %}
+          </p>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+          <span class="badge" style="font-size: 0.72rem;">{{ proj.categoria }}</span>
+          <a href="{{ url_for('projeto_detalhes', projeto_id=proj.id) }}" style="font-size: 0.8rem; color: var(--purple-primary); text-decoration: none; font-weight: 600;">Conhecer →</a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <style>
 .perfil-avatar-lg {
   width: 60px; height: 60px;
@@ -64,7 +92,7 @@
           {% elif cand.status == 'REJEITADA' %}
             <span class="badge status-red">{{ cand.status }}</span>
           {% else %}
-            <span class="badge">{{ cand.status }}</span>
+            <span class="badge status-orange">{{ cand.status }}</span>
             <div style="margin-top: 8px;">
               <a href="{{ url_for('editar_candidatura', cand_id=cand.id) }}" class="btn-sm btn-edit">Editar</a>
               <a href="{{ url_for('cancelar_candidatura', cand_id=cand.id) }}" class="btn-sm btn-delete" onclick="return confirm('Tem certeza que deseja cancelar esta candidatura?')">Cancelar</a>
@@ -152,10 +180,18 @@
             <td><strong>{{ cand.username }}</strong></td>
             <td style="font-size: 0.9rem; max-width: 250px;">{{ cand.motivo }}</td>
             <td style="font-size: 0.9rem; max-width: 200px;">{{ cand.experiencia }}</td>
-            <td><span class="badge">{{ cand.status }}</span></td>
-            <td>
-              <a href="{{ url_for('dono_acao_candidatura', cand_id=cand.id, acao='aprovar') }}" class="btn-sm btn-success">Aceitar</a>
-              <a href="{{ url_for('dono_acao_candidatura', cand_id=cand.id, acao='rejeitar') }}" class="btn-sm btn-delete">Recusar</a>
+            <td class="status-cell">
+              <span class="badge {% if cand.status == 'APROVADA' %}status-green{% elif cand.status == 'REJEITADA' %}status-red{% else %}status-orange{% endif %}">
+                {{ cand.status }}
+              </span>
+            </td>
+            <td class="actions-cell">
+              {% if cand.status == 'PENDENTE' %}
+                <a href="{{ url_for('dono_acao_candidatura', cand_id=cand.id, acao='aprovar') }}" class="btn-sm btn-success ajax-action" data-type="candidatura-owner" data-id="{{ cand.id }}">Aceitar</a>
+                <a href="{{ url_for('dono_acao_candidatura', cand_id=cand.id, acao='rejeitar') }}" class="btn-sm btn-delete ajax-action" data-type="candidatura-owner" data-id="{{ cand.id }}">Recusar</a>
+              {% else %}
+                <a href="{{ url_for('dono_acao_candidatura', cand_id=cand.id, acao='reavaliar') }}" class="btn-sm btn-edit ajax-action" data-type="candidatura-owner" data-id="{{ cand.id }}" style="background-color: var(--purple-primary);">Reavaliar</a>
+              {% endif %}
             </td>
           </tr>
           {% else %}
@@ -182,6 +218,65 @@ function openTab(evt, tabName) {
   document.getElementById(tabName).style.display = "block";
   evt.currentTarget.className += " active";
 }
+</script>
+
+<script>
+// Interceptar cliques em ações de candidaturas via AJAX (sem recarregar a página)
+document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("click", async (e) => {
+    const button = e.target.closest(".ajax-action");
+    if (!button) return;
+
+    e.preventDefault();
+
+    const href = button.getAttribute("href");
+    const dataType = button.getAttribute("data-type");
+    const id = button.getAttribute("data-id");
+
+    const actionMatch = href.match(/\/(aprovar|rejeitar|reavaliar)$/);
+    if (!actionMatch) return;
+    const baseHref = href.substring(0, actionMatch.index);
+
+    try {
+      button.style.opacity = "0.5";
+      button.style.pointerEvents = "none";
+
+      const response = await fetch(`${href}?ajax=1`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.status === "success") {
+          const newStatus = data.new_status;
+          const tr = button.closest("tr");
+          if (!tr) return;
+
+          const statusCell = tr.querySelector(".status-cell");
+          const actionsCell = tr.querySelector(".actions-cell");
+
+          if (dataType === "candidatura-owner") {
+            if (newStatus === "APROVADA") {
+              statusCell.innerHTML = `<span class="badge status-green">APROVADA</span>`;
+              actionsCell.innerHTML = `<a href="${baseHref}/reavaliar" class="btn-sm btn-edit ajax-action" data-type="candidatura-owner" data-id="${id}" style="background-color: var(--purple-primary);">Reavaliar</a>`;
+              if (window.showToast) window.showToast("Candidatura aceita com sucesso!", "success");
+            } else if (newStatus === "REJEITADA") {
+              statusCell.innerHTML = `<span class="badge status-red">REJEITADA</span>`;
+              actionsCell.innerHTML = `<a href="${baseHref}/reavaliar" class="btn-sm btn-edit ajax-action" data-type="candidatura-owner" data-id="${id}" style="background-color: var(--purple-primary);">Reavaliar</a>`;
+              if (window.showToast) window.showToast("Candidatura recusada.", "info");
+            } else {
+              statusCell.innerHTML = `<span class="badge status-orange">PENDENTE</span>`;
+              actionsCell.innerHTML = `
+                <a href="${baseHref}/aprovar" class="btn-sm btn-success ajax-action" data-type="candidatura-owner" data-id="${id}">Aceitar</a>
+                <a href="${baseHref}/rejeitar" class="btn-sm btn-delete ajax-action" data-type="candidatura-owner" data-id="${id}">Recusar</a>
+              `;
+              if (window.showToast) window.showToast("Candidatura voltou para Pendente.", "warning");
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Erro na requisição AJAX:", err);
+    }
+  });
+});
 </script>
 
 {% endblock %}

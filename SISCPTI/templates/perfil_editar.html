@@ -41,6 +41,12 @@
       </div>
     </div>
 
+    <div class="form-group">
+      <label for="interesses">✨ Meus Interesses de Tecnologia <small style="color: var(--text-secondary);">(Separados por vírgula. Ex: Python, React, Mobile)</small></label>
+      <input type="text" id="interesses" name="interesses" class="form-control"
+             value="{{ user.interesses or '' }}" placeholder="Ex: React, Django, UX Design, Data Science">
+    </div>
+
     <div class="form-section-title" style="margin-top: 1.5rem;">Alterar Senha <small style="font-weight: 400; color: var(--text-secondary);">(deixe em branco para manter)</small></div>
 
     <div class="form-group">

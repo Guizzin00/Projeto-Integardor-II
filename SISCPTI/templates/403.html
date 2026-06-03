@@ -21,21 +21,23 @@
       background: var(--bg-primary);
       position: relative;
       overflow: hidden;
+      box-sizing: border-box;
     }
 
+    /* Orbs de fundo animados */
     .error-page::before,
     .error-page::after {
       content: '';
       position: absolute;
       border-radius: 50%;
       filter: blur(80px);
-      opacity: 0.18;
+      opacity: 0.22;
       animation: floatOrb 8s ease-in-out infinite;
       pointer-events: none;
     }
     .error-page::before {
       width: 500px; height: 500px;
-      background: radial-gradient(circle, #b81c1c, transparent);
+      background: radial-gradient(circle, #ef4444, transparent);
       top: -150px; left: -150px;
     }
     .error-page::after {
@@ -50,19 +52,41 @@
       50% { transform: translateY(30px) scale(1.05); }
     }
 
+    .error-card {
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 3rem 2.5rem;
+      border-radius: 24px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
+      max-width: 550px;
+      width: 100%;
+      box-sizing: border-box;
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: all var(--transition-speed) ease;
+    }
+    body.dark-theme .error-card {
+      background: rgba(30, 27, 75, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+    }
+
     .error-code {
       font-family: 'Outfit', sans-serif;
-      font-size: clamp(6rem, 20vw, 12rem);
+      font-size: clamp(5rem, 15vw, 9rem);
       font-weight: 800;
       line-height: 1;
-      background: linear-gradient(135deg, #c0392b, #e74c3c);
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin: 0;
+      margin: 0 0 0.5rem;
       letter-spacing: -4px;
-      position: relative;
-      z-index: 1;
       animation: pulse 3s ease-in-out infinite;
     }
 
@@ -72,11 +96,9 @@
     }
 
     .error-icon {
-      font-size: 4rem;
-      margin-bottom: 1rem;
+      font-size: 3.5rem;
+      margin-bottom: 0.5rem;
       animation: shake 3s ease-in-out infinite;
-      position: relative;
-      z-index: 1;
     }
 
     @keyframes shake {
@@ -87,25 +109,38 @@
       98% { transform: rotate(5deg); }
     }
 
+    .alert-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+      border-radius: 50px;
+      padding: 0.4rem 1.2rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
     .error-title {
       font-family: 'Outfit', sans-serif;
-      font-size: clamp(1.4rem, 4vw, 2rem);
+      font-size: 1.8rem;
       font-weight: 700;
       color: var(--text-primary);
-      margin: 1rem 0 0.5rem;
-      position: relative;
-      z-index: 1;
+      margin: 0.5rem 0;
     }
 
     .error-message {
       font-family: 'Inter', sans-serif;
-      font-size: 1rem;
+      font-size: 0.95rem;
       color: var(--text-secondary);
-      max-width: 480px;
-      line-height: 1.7;
-      margin: 0 auto 2.5rem;
-      position: relative;
-      z-index: 1;
+      max-width: 420px;
+      line-height: 1.6;
+      margin: 0.5rem auto 2rem;
     }
 
     .error-actions {
@@ -113,31 +148,36 @@
       gap: 1rem;
       flex-wrap: wrap;
       justify-content: center;
-      position: relative;
-      z-index: 1;
-    }
-
-    .btn-primary-error {
+      width: 100%;
+    }    .btn-primary-error {
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.8rem 2rem;
-      background: linear-gradient(135deg, var(--purple-primary), var(--purple-hover));
-      color: #fff;
+      padding: 0.75rem 1.8rem;
+      background: #4B006E !important;
+      background: linear-gradient(135deg, #4B006E, #7A1BB5) !important;
+      color: #ffffff !important;
       border: none;
       border-radius: 50px;
       font-family: 'Inter', sans-serif;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       font-weight: 600;
       text-decoration: none;
       cursor: pointer;
       transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
-      box-shadow: 0 4px 20px rgba(122, 27, 181, 0.35);
+      box-shadow: 0 4px 16px rgba(122, 27, 181, 0.25);
+    }
+
+    body.dark-theme .btn-primary-error {
+      background: #a855f7 !important;
+      background: linear-gradient(135deg, #a855f7, #c084fc) !important;
+      color: #ffffff !important;
+      box-shadow: 0 4px 16px rgba(168, 85, 247, 0.25);
     }
 
     .btn-primary-error:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 30px rgba(122, 27, 181, 0.5);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(122, 27, 181, 0.4);
       filter: brightness(1.1);
     }
 
@@ -145,78 +185,72 @@
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.8rem 2rem;
-      background: transparent;
-      color: var(--purple-primary);
-      border: 2px solid var(--purple-primary);
+      padding: 0.75rem 1.8rem;
+      background: transparent !important;
+      color: #4B006E !important;
+      border: 2px solid #4B006E !important;
       border-radius: 50px;
       font-family: 'Inter', sans-serif;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       font-weight: 600;
       text-decoration: none;
       cursor: pointer;
-      transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+      transition: all 0.2s ease;
+    }
+
+    body.dark-theme .btn-ghost-error {
+      color: #a855f7 !important;
+      border-color: #a855f7 !important;
     }
 
     .btn-ghost-error:hover {
       background: var(--purple-primary);
       color: #fff;
-      transform: translateY(-3px);
+      transform: translateY(-2px);
     }
-
     .divider-line {
-      width: 60px;
+      width: 50px;
       height: 4px;
-      background: linear-gradient(135deg, #c0392b, #e74c3c);
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
       border-radius: 4px;
-      margin: 1.2rem auto;
-      position: relative;
-      z-index: 1;
-    }
-
-    .alert-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: rgba(192, 57, 43, 0.12);
-      border: 1px solid rgba(192, 57, 43, 0.3);
-      color: #c0392b;
-      border-radius: 50px;
-      padding: 0.4rem 1.2rem;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.8rem;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      margin-bottom: 0.5rem;
-      position: relative;
-      z-index: 1;
+      margin: 1rem auto;
     }
   </style>
 </head>
 <body id="errorBody">
   <div class="error-page">
-    <div class="error-icon">🔒</div>
-    <p class="error-code">403</p>
-    <div class="divider-line"></div>
-    <span class="alert-badge">⛔ Acesso Restrito</span>
-    <h1 class="error-title">Você não tem permissão</h1>
-    <p class="error-message">
-      Esta área é restrita. Você não possui as permissões necessárias para
-      acessar este recurso. Se você acredita que isso é um engano, entre em
-      contato com o administrador do sistema.
-    </p>
-    <div class="error-actions">
-      <a href="{{ url_for('index') }}" class="btn-primary-error" id="btn-home-403">
-        🏠 Ir para o Início
-      </a>
-      <a href="{{ url_for('login') }}" class="btn-ghost-error" id="btn-login-403">
-        🔑 Fazer Login
-      </a>
+    <!-- Logo CEUB unificado -->
+    <a href="{{ url_for('index') }}" style="margin-bottom: 2rem; position: relative; z-index: 10;">
+      <img src="{{ url_for('static', filename='logoCEUB.png') }}?v=2"
+           alt="CEUB"
+           style="height: 45px; opacity: 0.85;"
+           onerror="this.onerror=null; this.src='/static/logoCEUB.png?v=2';">
+    </a>
+
+    <div class="error-card">
+      <div class="error-icon">🔒</div>
+      <p class="error-code">403</p>
+      <div class="divider-line"></div>
+      <span class="alert-badge">⛔ Acesso Restrito</span>
+      <h1 class="error-title">Acesso Negado</h1>
+      <p class="error-message">
+        Esta área é restrita. Você não possui as permissões necessárias para
+        acessar este recurso. Se você acredita que isso é um engano, entre em
+        contato com o administrador do sistema.
+      </p>
+      <div class="error-actions">
+        <a href="{{ url_for('index') }}" class="btn-primary-error" id="btn-home-403">
+          🏠 Ir para o Início
+        </a>
+        <a href="{{ url_for('login') }}" class="btn-ghost-error" id="btn-login-403">
+          🔑 Fazer Login
+        </a>
+      </div>
     </div>
   </div>
 
   <script>
+    // Aplicar tema salvo
     (function() {
       const theme = localStorage.getItem('theme');
       if (theme === 'dark') {

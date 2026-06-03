@@ -14,15 +14,25 @@
 
     <div class="form-group">
       <label for="password">Senha:</label>
-      <input type="password" id="password" name="password" value="{{ usuario.password if usuario else '' }}" required placeholder="Senha de acesso">
+      <input type="password" id="password" name="password" {% if not usuario %}required{% endif %} placeholder="{% if usuario %}Deixe em branco para não alterar{% else %}Senha de acesso{% endif %}">
     </div>
 
     <div class="form-group">
       <label for="role">Papel / Nível de Acesso (Role):</label>
-      <select id="role" name="role" required>
-        <option value="user" {% if usuario and usuario.role == 'user' %}selected{% endif %}>Usuário Comum (Estudante/Professor)</option>
-        <option value="admin" {% if usuario and usuario.role == 'admin' %}selected{% endif %}>Administrador do Sistema</option>
+      <select id="role" name="role" required {% if usuario and usuario.username == session.get('user') %}disabled{% endif %}>
+        <option value="user" {% if usuario and usuario.role == 'user' %}selected{% endif %}>Usuário Comum (user)</option>
+        <option value="admin" {% if usuario and usuario.role == 'admin' %}selected{% endif %}>Administrador do Sistema (admin)</option>
+        <option value="coordenador" {% if usuario and usuario.role == 'coordenador' %}selected{% endif %}>Coordenador Acadêmico (coordenador)</option>
+        <option value="professor" {% if usuario and usuario.role == 'professor' %}selected{% endif %}>Professor Orientador (professor)</option>
+        <option value="empresa" {% if usuario and usuario.role == 'empresa' %}selected{% endif %}>Empresa Representante (empresa)</option>
+        <option value="cliente" {% if usuario and usuario.role == 'cliente' %}selected{% endif %}>Cliente PO (cliente)</option>
+        <option value="aluno" {% if usuario and usuario.role == 'aluno' %}selected{% endif %}>Aluno Candidato/Membro (aluno)</option>
+        <option value="lider" {% if usuario and usuario.role == 'lider' %}selected{% endif %}>Líder da Equipe / Scrum Master (lider)</option>
       </select>
+      {% if usuario and usuario.username == session.get('user') %}
+      <input type="hidden" name="role" value="{{ usuario.role }}">
+      <small style="color: #f39c12; display: block; margin-top: 0.5rem; font-weight: 500;">⚠️ Você não pode alterar o seu próprio papel.</small>
+      {% endif %}
     </div>
 
     <div style="margin-top: 1.5rem; display: flex; gap: 10px;">

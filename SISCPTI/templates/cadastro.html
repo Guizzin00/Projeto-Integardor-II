@@ -2,95 +2,267 @@
 {% block title %}Cadastrar · SisCPTI{% endblock %}
 {% block content %}
 
-<section class="register-section">
-  <h2>Crie sua Conta</h2>
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <div class="auth-header">
+      <img src="{{ url_for('static', filename='logoCEUB.png') }}?v=2" 
+           alt="CEUB Logo" 
+           class="auth-logo"
+           onerror="this.onerror=null; this.src='/static/logoCEUB.png?v=2';">
+      <h2>Crie sua Conta</h2>
+      <p>Cadastre seu usuário para participar dos projetos</p>
+    </div>
 
-  <form class="register-form" method="POST" action="{{ url_for('cadastro') }}">
-    <label for="username">Usuário:</label>
-    <input type="text" id="username" name="username" placeholder="Seu nome de usuário" required>
+    <!-- Alert / Flash Messages Inside Form Card -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="auth-alerts">
+          {% for category, message in messages %}
+            <div class="auth-alert alert-{{ category }}">
+              {% if category == 'success' %}✅{% elif category == 'error' %}❌{% else %}ℹ️{% endif %} {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
 
-    <label for="password">Senha:</label>
-    <input type="password" id="password" name="password" placeholder="Digite sua senha" required>
+    <form class="auth-form" method="POST" action="{{ url_for('cadastro') }}">
+      <div class="form-group">
+        <label for="username">Usuário</label>
+        <div class="input-wrapper">
+          <span class="input-icon">👤</span>
+          <input type="text" id="username" name="username" placeholder="Crie seu nome de usuário" required>
+        </div>
+      </div>
 
-    <label for="confirm">Confirmar senha:</label>
-    <input type="password" id="confirm" name="confirm" placeholder="Confirme a senha" required>
+      <div class="form-group">
+        <label for="email">E-mail</label>
+        <div class="input-wrapper">
+          <span class="input-icon">📧</span>
+          <input type="email" id="email" name="email" placeholder="Digite seu e-mail" required>
+        </div>
+      </div>
 
-    <button type="submit" class="btn">Cadastrar</button>
-  </form>
+      <div class="form-group">
+        <label for="password">Senha</label>
+        <div class="input-wrapper">
+          <span class="input-icon">🔑</span>
+          <input type="password" id="password" name="password" placeholder="Digite uma senha forte" required>
+        </div>
+      </div>
 
-  <div class="login-redirect">
-    <p>Já tem uma conta?</p>
-    <a href="{{ url_for('login') }}" class="btn btn-secondary">Fazer Login</a>
+      <div class="form-group">
+        <label for="confirm">Confirmar Senha</label>
+        <div class="input-wrapper">
+          <span class="input-icon">🔄</span>
+          <input type="password" id="confirm" name="confirm" placeholder="Repita a senha" required>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit">Criar Conta</button>
+    </form>
+
+    <div class="auth-footer">
+      <p>Já possui cadastro no SisCPTI?</p>
+      <a href="{{ url_for('login') }}" class="btn-secondary-auth">Fazer Login</a>
+    </div>
   </div>
-</section>
+</div>
 
 <style>
-  .register-section {
+  /* --- SIMPLE AND LESS ROUND AUTH STYLING --- */
+  .auth-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 200px);
+    padding: 3rem 1.5rem;
+    background: transparent;
+  }
+
+  .auth-card {
+    width: 100%;
     max-width: 400px;
-    margin: 3rem auto;
     background: var(--bg-surface);
-    padding: 2.5rem;
-    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 2.5rem 2rem;
     box-shadow: var(--shadow-light);
+    animation: fadeInUp 0.4s ease-out;
+    transition: background var(--transition-speed) ease, border-color var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .auth-header {
     text-align: center;
+    margin-bottom: 1.8rem;
   }
 
-  .register-section h2 {
-    color: var(--purple-primary);
-    margin-bottom: 1.5rem;
+  .auth-logo {
+    height: 42px;
+    width: auto;
+    margin-bottom: 1rem;
+    object-fit: contain;
+    transition: filter var(--transition-speed) ease;
+  }
+  body.dark-theme .auth-logo {
+    filter: brightness(0) invert(1);
   }
 
-  .register-form {
+  .auth-header h2 {
+    font-family: var(--font-title);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 0.3rem;
+  }
+
+  .auth-header p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .auth-form .form-group {
+    display: flex;
+    flex-direction: column;
     text-align: left;
   }
 
-  .register-form label {
-    display: block;
+  .auth-form label {
+    font-size: 0.85rem;
     font-weight: 600;
     color: var(--purple-primary);
     margin-bottom: 0.3rem;
   }
 
-  .register-form input {
-    width: 100%;
-    padding: 0.6rem;
-    margin-bottom: 1rem;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 1rem;
-    background: var(--bg-primary);
-    color: var(--text-primary);
+  .input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
   }
 
-  .btn {
+  .input-icon {
+    position: absolute;
+    left: 12px;
+    font-size: 1rem;
+    color: var(--text-secondary);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .input-wrapper input {
     width: 100%;
+    padding: 0.65rem 0.65rem 0.65rem 36px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .input-wrapper input:focus {
+    border-color: var(--purple-primary);
+    box-shadow: 0 0 0 2px rgba(122, 27, 181, 0.12);
+    outline: none;
+  }
+
+  .btn-submit {
+    display: block;
+    width: 100%;
+    padding: 0.75rem;
     background: var(--purple-primary);
     color: var(--text-on-purple);
     border: none;
-    padding: 0.8rem;
-    border-radius: 8px;
-    font-weight: bold;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: background 0.3s;
+    transition: background 0.2s ease, transform 0.1s ease;
   }
 
-  .btn:hover {
+  .btn-submit:hover {
     background: var(--purple-hover);
   }
 
-  .btn-secondary {
-    background: var(--border-color);
-    color: var(--text-primary);
+  .btn-submit:active {
+    transform: translateY(1px);
   }
 
-  .btn-secondary:hover {
-    background: var(--purple-hover);
-    color: var(--text-on-purple);
+  .auth-footer {
+    margin-top: 1.8rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
   }
 
-  .login-redirect {
-    margin-top: 1rem;
+  .auth-footer p {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin: 0 0 0.8rem;
+  }
+
+  .btn-secondary-auth {
+    display: inline-block;
+    padding: 0.5rem 1.2rem;
+    background: transparent;
+    color: var(--purple-primary);
+    border: 1.5px solid var(--purple-primary);
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .btn-secondary-auth:hover {
+    background: var(--purple-primary);
+    color: #fff;
+  }
+
+  .auth-alerts {
+    margin-bottom: 1rem;
+  }
+
+  .auth-alert {
+    padding: 0.65rem 0.85rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    text-align: left;
+    margin-bottom: 0.5rem;
+  }
+  .auth-alert.alert-success {
+    background-color: rgba(40, 167, 69, 0.08);
+    border: 1px solid rgba(40, 167, 69, 0.2);
+    color: #155724;
+  }
+  .auth-alert.alert-error {
+    background-color: rgba(220, 53, 69, 0.08);
+    border: 1px solid rgba(220, 53, 69, 0.2);
+    color: #721c24;
+  }
+  .auth-alert.alert-info {
+    background-color: rgba(108, 117, 125, 0.08);
+    border: 1px solid rgba(108, 117, 125, 0.2);
+    color: #383d41;
+  }
+
+  @media (max-width: 480px) {
+    .auth-card {
+      padding: 1.8rem 1.2rem;
+    }
   }
 </style>
-
 {% endblock %}

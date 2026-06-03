@@ -21,21 +21,23 @@
       background: var(--bg-primary);
       position: relative;
       overflow: hidden;
+      box-sizing: border-box;
     }
 
+    /* Orbs de fundo animados */
     .error-page::before,
     .error-page::after {
       content: '';
       position: absolute;
       border-radius: 50%;
       filter: blur(80px);
-      opacity: 0.18;
+      opacity: 0.22;
       animation: floatOrb 8s ease-in-out infinite;
       pointer-events: none;
     }
     .error-page::before {
       width: 500px; height: 500px;
-      background: radial-gradient(circle, #e67e22, transparent);
+      background: radial-gradient(circle, #f97316, transparent);
       top: -150px; left: -150px;
     }
     .error-page::after {
@@ -50,132 +52,76 @@
       50% { transform: translateY(30px) scale(1.05); }
     }
 
+    .error-card {
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 3rem 2.5rem;
+      border-radius: 24px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
+      max-width: 550px;
+      width: 100%;
+      box-sizing: border-box;
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: all var(--transition-speed) ease;
+    }
+    body.dark-theme .error-card {
+      background: rgba(30, 27, 75, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+    }
+
     .error-code {
       font-family: 'Outfit', sans-serif;
-      font-size: clamp(6rem, 20vw, 12rem);
+      font-size: clamp(5rem, 15vw, 9rem);
       font-weight: 800;
       line-height: 1;
-      background: linear-gradient(135deg, #e67e22, #f39c12);
+      background: linear-gradient(135deg, #f97316, #ea580c);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin: 0;
+      margin: 0 0 0.5rem;
       letter-spacing: -4px;
-      position: relative;
-      z-index: 1;
-      animation: glitch 4s ease-in-out infinite;
+      animation: pulse 3s ease-in-out infinite;
     }
 
-    @keyframes glitch {
-      0%, 85%, 100% { transform: translate(0); filter: brightness(1); }
-      87% { transform: translate(-3px, 1px); filter: brightness(1.2) hue-rotate(20deg); }
-      89% { transform: translate(3px, -1px); filter: brightness(0.9) hue-rotate(-20deg); }
-      91% { transform: translate(-2px, 0px); filter: brightness(1.1); }
-      93% { transform: translate(0); filter: brightness(1); }
+    @keyframes pulse {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.2); }
     }
 
     .error-icon {
-      font-size: 4rem;
-      margin-bottom: 1rem;
-      position: relative;
-      z-index: 1;
-      animation: spin 6s linear infinite;
+      font-size: 3.5rem;
+      margin-bottom: 0.5rem;
+      display: inline-block;
+      animation: spin 8s linear infinite;
     }
 
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      20% { transform: rotate(18deg); }
-      40% { transform: rotate(-18deg); }
-      60% { transform: rotate(10deg); }
-      80% { transform: rotate(-10deg); }
-      100% { transform: rotate(0deg); }
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
 
     .error-title {
       font-family: 'Outfit', sans-serif;
-      font-size: clamp(1.4rem, 4vw, 2rem);
+      font-size: 1.8rem;
       font-weight: 700;
       color: var(--text-primary);
-      margin: 1rem 0 0.5rem;
-      position: relative;
-      z-index: 1;
+      margin: 0.5rem 0;
     }
 
     .error-message {
       font-family: 'Inter', sans-serif;
-      font-size: 1rem;
+      font-size: 0.95rem;
       color: var(--text-secondary);
-      max-width: 500px;
-      line-height: 1.7;
-      margin: 0 auto 2.5rem;
-      position: relative;
-      z-index: 1;
-    }
-
-    .error-actions {
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-      justify-content: center;
-      position: relative;
-      z-index: 1;
-    }
-
-    .btn-primary-error {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.8rem 2rem;
-      background: linear-gradient(135deg, var(--purple-primary), var(--purple-hover));
-      color: #fff;
-      border: none;
-      border-radius: 50px;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.95rem;
-      font-weight: 600;
-      text-decoration: none;
-      cursor: pointer;
-      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
-      box-shadow: 0 4px 20px rgba(122, 27, 181, 0.35);
-    }
-
-    .btn-primary-error:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 30px rgba(122, 27, 181, 0.5);
-      filter: brightness(1.1);
-    }
-
-    .btn-ghost-error {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.8rem 2rem;
-      background: transparent;
-      color: var(--purple-primary);
-      border: 2px solid var(--purple-primary);
-      border-radius: 50px;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.95rem;
-      font-weight: 600;
-      text-decoration: none;
-      cursor: pointer;
-      transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
-    }
-
-    .btn-ghost-error:hover {
-      background: var(--purple-primary);
-      color: #fff;
-      transform: translateY(-3px);
-    }
-
-    .divider-line {
-      width: 60px;
-      height: 4px;
-      background: linear-gradient(135deg, #e67e22, #f39c12);
-      border-radius: 4px;
-      margin: 1.2rem auto;
-      position: relative;
-      z-index: 1;
+      max-width: 440px;
+      line-height: 1.6;
+      margin: 0.5rem auto 1.5rem;
     }
 
     .countdown-wrap {
@@ -185,35 +131,27 @@
       font-family: 'Inter', sans-serif;
       font-size: 0.85rem;
       color: var(--text-secondary);
-      margin-top: -1rem;
-      margin-bottom: 2rem;
-      position: relative;
-      z-index: 1;
+      margin-bottom: 1rem;
     }
 
     #countdown-num {
       font-weight: 700;
-      color: #e67e22;
-      font-size: 1rem;
-      min-width: 20px;
-      display: inline-block;
-      text-align: center;
+      color: #ea580c;
+      font-size: 0.95rem;
     }
 
     .progress-bar-wrap {
-      width: 200px;
+      width: 150px;
       height: 4px;
       background: var(--border-color);
       border-radius: 4px;
       overflow: hidden;
-      margin: 0 auto 2.5rem;
-      position: relative;
-      z-index: 1;
+      margin-bottom: 2rem;
     }
 
     .progress-bar-fill {
       height: 100%;
-      background: linear-gradient(90deg, #e67e22, #f39c12);
+      background: linear-gradient(90deg, #f97316, #ea580c);
       border-radius: 4px;
       width: 0%;
       animation: progressFill 30s linear forwards;
@@ -223,31 +161,117 @@
       from { width: 0%; }
       to { width: 100%; }
     }
+
+    .error-actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .btn-primary-error {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.8rem;
+      background: #4B006E !important;
+      background: linear-gradient(135deg, #4B006E, #7A1BB5) !important;
+      color: #ffffff !important;
+      border: none;
+      border-radius: 50px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+      box-shadow: 0 4px 16px rgba(122, 27, 181, 0.25);
+    }
+
+    body.dark-theme .btn-primary-error {
+      background: #a855f7 !important;
+      background: linear-gradient(135deg, #a855f7, #c084fc) !important;
+      color: #ffffff !important;
+      box-shadow: 0 4px 16px rgba(168, 85, 247, 0.25);
+    }
+
+    .btn-primary-error:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(122, 27, 181, 0.4);
+      filter: brightness(1.1);
+    }
+
+    .btn-ghost-error {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.8rem;
+      background: transparent !important;
+      color: #4B006E !important;
+      border: 2px solid #4B006E !important;
+      border-radius: 50px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    body.dark-theme .btn-ghost-error {
+      color: #a855f7 !important;
+      border-color: #a855f7 !important;
+    }
+
+    .btn-ghost-error:hover {
+      background: var(--purple-primary);
+      color: #fff;
+      transform: translateY(-2px);
+    }
+
+    .divider-line {
+      width: 50px;
+      height: 4px;
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      border-radius: 4px;
+      margin: 1rem auto;
+    }
   </style>
 </head>
 <body id="errorBody">
   <div class="error-page">
-    <div class="error-icon">⚙️</div>
-    <p class="error-code">500</p>
-    <div class="divider-line"></div>
-    <h1 class="error-title">Erro interno no servidor</h1>
-    <p class="error-message">
-      Algo inesperado aconteceu no nosso servidor. Nossa equipe já foi notificada
-      e está trabalhando para resolver o problema. Tente novamente em alguns instantes.
-    </p>
-    <div class="countdown-wrap">
-      ⏱ Redirecionando automaticamente em <span id="countdown-num">30</span>s
-    </div>
-    <div class="progress-bar-wrap">
-      <div class="progress-bar-fill" id="progressBar"></div>
-    </div>
-    <div class="error-actions">
-      <a href="{{ url_for('index') }}" class="btn-primary-error" id="btn-home-500">
-        🏠 Ir para o Início
-      </a>
-      <button onclick="location.reload()" class="btn-ghost-error" id="btn-retry-500">
-        🔄 Tentar Novamente
-      </button>
+    <!-- Logo CEUB unificado -->
+    <a href="{{ url_for('index') }}" style="margin-bottom: 2rem; position: relative; z-index: 10;">
+      <img src="{{ url_for('static', filename='logoCEUB.png') }}?v=2"
+           alt="CEUB"
+           style="height: 45px; opacity: 0.85;"
+           onerror="this.onerror=null; this.src='/static/logoCEUB.png?v=2';">
+    </a>
+
+    <div class="error-card">
+      <div class="error-icon">⚙️</div>
+      <p class="error-code">500</p>
+      <div class="divider-line"></div>
+      <h1 class="error-title">Erro interno no servidor</h1>
+      <p class="error-message">
+        Algo inesperado aconteceu no nosso servidor. Nossa equipe já foi notificada
+        e está trabalhando para resolver o problema. Tente novamente em alguns instantes.
+      </p>
+      <div class="countdown-wrap">
+        ⏱ Redirecionando em <span id="countdown-num">30</span>s
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+      <div class="error-actions">
+        <a href="{{ url_for('index') }}" class="btn-primary-error" id="btn-home-500">
+          🏠 Ir para o Início
+        </a>
+        <button onclick="location.reload()" class="btn-ghost-error" id="btn-retry-500">
+          🔄 Tentar Novamente
+        </button>
+      </div>
     </div>
   </div>
 
