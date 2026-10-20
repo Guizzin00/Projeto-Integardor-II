@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { AprovacoesContasTab } from '../components/AprovacoesContasTab';
+import { SubmissaoDetalhesModal, SubmissaoDetalhes } from '../components/SubmissaoDetalhesModal';
 
 export function AdminDashboard() {
   const { user } = useAuth();
@@ -23,6 +24,7 @@ export function AdminDashboard() {
   const [statusProj, setStatusProj] = useState('TODOS');
 
   const [searchSubm, setSearchSubm] = useState('');
+  const [submissaoAberta, setSubmissaoAberta] = useState<SubmissaoDetalhes | null>(null);
   const [statusSubm, setStatusSubm] = useState('TODOS');
 
   const [searchCand, setSearchCand] = useState('');
@@ -765,6 +767,14 @@ export function AdminDashboard() {
                             </span>
                           </td>
                           <td className="p-4 text-right">
+                            <div className="flex items-center justify-end gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => setSubmissaoAberta(s)}
+                              className="px-3 py-1.5 rounded-lg bg-purple-primary/10 hover:bg-purple-primary/20 text-purple-primary border border-purple-primary/30 text-xs font-semibold cursor-pointer transition-colors"
+                            >
+                              Ver detalhes
+                            </button>
                             {s.status === 'EM ANÁLISE' ? (
                               <div className="flex items-center justify-end gap-2">
                                 <button 
@@ -785,6 +795,7 @@ export function AdminDashboard() {
                             ) : (
                               <span className="text-xs text-text-secondary font-medium italic">Parecer Emitido</span>
                             )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1059,6 +1070,7 @@ export function AdminDashboard() {
         <AprovacoesContasTab onStatusChange={carregarDados} />
       )}
 
+      <SubmissaoDetalhesModal submissao={submissaoAberta} onClose={() => setSubmissaoAberta(null)} />
     </div>
   );
 }

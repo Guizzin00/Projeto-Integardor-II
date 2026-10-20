@@ -65,7 +65,7 @@ function AppLayout() {
           <Route path="/admin/logs" element={<ProtectedRoute allowedRoles={['admin']}><AdminLogs /></ProtectedRoute>} />
           <Route path="/admin/projeto/novo" element={<ProtectedRoute allowedRoles={['admin']}><AdminForm /></ProtectedRoute>} />
           <Route path="/admin/projeto/:id/editar" element={<ProtectedRoute allowedRoles={['admin']}><AdminForm /></ProtectedRoute>} />
-          <Route path="/projeto/:id/editar" element={<ProtectedRoute allowedRoles={['admin']}><AdminForm /></ProtectedRoute>} />
+          <Route path="/projeto/:id/editar" element={<ProtectedRoute><AdminForm /></ProtectedRoute>} />
           <Route path="/admin/usuario/novo" element={<ProtectedRoute allowedRoles={['admin']}><AdminUserForm /></ProtectedRoute>} />
           <Route path="/admin/usuario/:id/editar" element={<ProtectedRoute allowedRoles={['admin']}><AdminUserForm /></ProtectedRoute>} />
 

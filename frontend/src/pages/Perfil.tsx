@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import { SubmissaoDetalhesModal, SubmissaoDetalhes } from '../components/SubmissaoDetalhesModal';
 
 export function Perfil() {
   const { user } = useAuth();
@@ -24,6 +25,7 @@ export function Perfil() {
 
   // Filtros locais para propostas
   const [searchSubm, setSearchSubm] = useState('');
+  const [submissaoAberta, setSubmissaoAberta] = useState<SubmissaoDetalhes | null>(null);
 
   const fetchPerfil = async () => {
     try {
@@ -191,6 +193,16 @@ export function Perfil() {
                 {isEmpresa && 'Cadastre problemas reais do mercado, valide protótipos funcionais e acompanhe as entregas dos MVPs.'}
                 {isAluno && (user.bio || 'Estudante participando de projetos práticos e integradores do UniCEUB.')}
               </p>
+
+              {isAluno && user.interesses && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {user.interesses.split(',').map((i: string) => i.trim()).filter(Boolean).map((i: string) => (
+                    <span key={i} className="px-2 py-0.5 rounded-full bg-purple-primary/10 text-purple-primary text-[11px] font-semibold">
+                      {i}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -420,12 +432,22 @@ export function Perfil() {
                   </div>
 
                   <div className="pt-3 border-t border-border-color flex items-center justify-between gap-2">
-                    <Link 
-                      to={`/projeto/${proj.id}`} 
-                      className="text-xs text-text-secondary hover:text-purple-primary no-underline font-medium"
-                    >
-                      Ver detalhes
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <Link 
+                        to={`/projeto/${proj.id}`} 
+                        className="text-xs text-text-secondary hover:text-purple-primary no-underline font-medium"
+                      >
+                        Ver detalhes
+                      </Link>
+                      {(isProfessor || proj.owner_username === user.username) && (
+                        <Link 
+                          to={`/projeto/${proj.id}/editar`} 
+                          className="text-xs text-purple-primary hover:underline no-underline font-semibold"
+                        >
+                          Editar projeto
+                        </Link>
+                      )}
+                    </div>
                     <Link 
                       to={`/workspace/${proj.id}`} 
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold no-underline transition-colors shadow-sm"
@@ -787,6 +809,13 @@ export function Perfil() {
                         </td>
                         <td className="p-3.5 text-right">
                           <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSubmissaoAberta(subm)}
+                              className="px-2.5 py-1 bg-purple-primary/10 hover:bg-purple-primary/20 text-purple-primary rounded text-xs font-semibold border border-purple-primary/30 cursor-pointer transition-colors"
+                            >
+                              Ver detalhes
+                            </button>
                             {subm.status === 'EM ANÁLISE' ? (
                               <>
                                 <Link 
@@ -853,6 +882,7 @@ export function Perfil() {
 
       </div>
 
+      <SubmissaoDetalhesModal submissao={submissaoAberta} onClose={() => setSubmissaoAberta(null)} />
     </div>
   );
 }

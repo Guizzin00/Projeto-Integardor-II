@@ -14,10 +14,12 @@ export function AdminForm() {
     status: '',
     professor: '',
     descricao_curta: '',
+    tags: '',
     detalhes: '',
     imagem: ''
   });
   
+  const [titulosOriginais, setTitulosOriginais] = useState<string[]>([]);
   const [links, setLinks] = useState<{ nome: string; url: string }[]>([]);
   const [imagemCapa, setImagemCapa] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,6 +34,7 @@ export function AdminForm() {
         const p = res.data.projeto || res.data;
         if (p && p.titulo) {
           let detalhesText = '';
+          setTitulosOriginais(Array.isArray(p.detalhes) ? p.detalhes.filter((i: any) => i && typeof i === 'object' && i.titulo).map((i: any) => String(i.titulo)) : []);
           if (Array.isArray(p.detalhes)) {
             detalhesText = p.detalhes.map((item: any) => {
               if (typeof item === 'object' && item !== null) {
@@ -49,6 +52,7 @@ export function AdminForm() {
             status: p.status || 'DISPONÍVEL',
             professor: p.professor || '',
             descricao_curta: p.descricao_curta || '',
+            tags: p.tags || '',
             detalhes: detalhesText,
             imagem: p.imagem || ''
           });
@@ -97,8 +101,19 @@ export function AdminForm() {
 
     const data = new FormData();
     Object.entries(formData).forEach(([key, value]) => {
-      if (key !== 'imagem') data.append(key, value);
+      if (key !== 'imagem' && key !== 'detalhes') data.append(key, value);
     });
+
+    // Reconstrói os itens "Título: conteúdo" para preservar a estrutura original dos detalhes
+    const itensDetalhes = formData.detalhes
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean)
+      .map(linha => {
+        const titulo = titulosOriginais.find(t => linha.startsWith(`${t}: `));
+        return titulo ? { titulo, conteudo: linha.slice(titulo.length + 2) } : linha;
+      });
+    data.append('detalhes_json', JSON.stringify(itensDetalhes));
     
     links.forEach(l => {
       data.append('link_nome[]', l.nome);
@@ -108,12 +123,11 @@ export function AdminForm() {
     if (imagemCapa) data.append('imagem_capa', imagemCapa);
 
     try {
-      // Fake submit
       const url = id ? `/admin/projeto/${id}/editar` : `/admin/projeto/novo`;
       const res = await api.post(url, data, { headers: { 'Content-Type': 'multipart/form-data' }});
       if (res.data.status === 'success' || res.status === 200) {
         alert(`✅ Projeto ${id ? 'editado' : 'criado'} com sucesso!`);
-        navigate(user?.role === 'admin' ? '/admin' : '/perfil');
+        navigate(user?.role === 'admin' ? '/admin' : `/projeto/${id}`);
       } else {
         setError(res.data.message || 'Erro ao salvar projeto');
       }
@@ -174,6 +188,9 @@ export function AdminForm() {
             <option value="EM EXECUÇÃO">Em Execução</option>
             <option value="EXECUTADO">Executado</option>
             <option value="INDISPONÍVEL">Indisponível</option>
+            {formData.status && !['DISPONÍVEL','EM EXECUÇÃO','EXECUTADO','INDISPONÍVEL'].includes(formData.status) && (
+              <option value={formData.status}>{formData.status}</option>
+            )}
           </select>
         </div>
 
@@ -182,7 +199,9 @@ export function AdminForm() {
           <input 
             type="text" id="professor" name="professor" 
             value={formData.professor} onChange={handleChange}
-            className="p-2.5 border border-border-color rounded-lg text-base bg-bg-primary text-text-primary transition-all focus:border-purple-primary focus:shadow-[0_0_0_2px_rgba(168,85,247,0.2)] focus:outline-none"
+            disabled={user?.role !== 'admin'}
+            title={user?.role !== 'admin' ? 'Somente o administrador altera o professor responsável' : undefined}
+            className="p-2.5 border border-border-color rounded-lg text-base bg-bg-primary text-text-primary transition-all focus:border-purple-primary focus:shadow-[0_0_0_2px_rgba(168,85,247,0.2)] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
           />
         </div>
 
@@ -193,6 +212,18 @@ export function AdminForm() {
             value={formData.descricao_curta} onChange={handleChange}
             className="p-2.5 border border-border-color rounded-lg text-base bg-bg-primary text-text-primary transition-all focus:border-purple-primary focus:shadow-[0_0_0_2px_rgba(168,85,247,0.2)] focus:outline-none resize-y"
           ></textarea>
+        </div>
+
+        <div className="flex flex-col">
+          <label htmlFor="tags" className="font-semibold text-purple-primary mb-1.5">
+            Tags / Tecnologias <small className="font-normal text-text-secondary">(separadas por vírgula; usadas nas recomendações aos alunos)</small>:
+          </label>
+          <input 
+            type="text" id="tags" name="tags" 
+            placeholder="Ex: React, Python, Mobile"
+            value={formData.tags} onChange={handleChange}
+            className="p-2.5 border border-border-color rounded-lg text-base bg-bg-primary text-text-primary transition-all focus:border-purple-primary focus:shadow-[0_0_0_2px_rgba(168,85,247,0.2)] focus:outline-none"
+          />
         </div>
 
         <div className="flex flex-col">
@@ -267,7 +298,7 @@ export function AdminForm() {
             {submitting ? 'Salvando...' : 'Salvar Projeto'}
           </button>
           <Link 
-            to={user?.role === 'admin' ? '/admin' : '/perfil'} 
+            to={user?.role === 'admin' ? '/admin' : (id ? `/projeto/${id}` : '/perfil')} 
             className="flex-1 bg-transparent border-[1.5px] border-border-color text-text-primary rounded-lg p-3 text-base font-bold text-center no-underline transition-colors hover:bg-border-color flex items-center justify-center"
           >
             Cancelar

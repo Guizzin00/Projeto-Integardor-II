@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { AprovacoesContasTab } from '../components/AprovacoesContasTab';
+import { SubmissaoDetalhesModal, SubmissaoDetalhes } from '../components/SubmissaoDetalhesModal';
 
 export function CoordenadorDashboard() {
   const { user } = useAuth();
@@ -37,6 +38,7 @@ export function CoordenadorDashboard() {
   const [searchProj, setSearchProj] = useState('');
   const [onlyWithoutOrientador, setOnlyWithoutOrientador] = useState(false);
   const [searchSubm, setSearchSubm] = useState('');
+  const [submissaoAberta, setSubmissaoAberta] = useState<SubmissaoDetalhes | null>(null);
   const [filterSubmStatus, setFilterSubmStatus] = useState('TODOS');
 
   const carregarDados = async () => {
@@ -690,9 +692,16 @@ export function CoordenadorDashboard() {
                       </div>
                     </div>
 
-                    <p className="text-xs sm:text-sm text-text-secondary leading-relaxed m-0">
+                    <p className="text-xs sm:text-sm text-text-secondary leading-relaxed m-0 line-clamp-3">
                       {subm.descricao}
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => setSubmissaoAberta(subm)}
+                      className="px-3 py-1.5 bg-purple-primary/10 hover:bg-purple-primary/20 text-purple-primary rounded text-xs font-bold border border-purple-primary/30 cursor-pointer transition-colors"
+                    >
+                      Ver detalhes da proposta
+                    </button>
 
                     {/* Ações de Avaliação (caso pendente) */}
                     {(subm.status === 'EM ANÁLISE' || subm.status === 'PENDENTE') && (
@@ -751,6 +760,7 @@ export function CoordenadorDashboard() {
 
       </div>
 
+      <SubmissaoDetalhesModal submissao={submissaoAberta} onClose={() => setSubmissaoAberta(null)} />
     </div>
   );
 }

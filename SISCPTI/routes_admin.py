@@ -323,22 +323,40 @@ def editar_projeto(projeto_id):
     if not projeto_db:
         return jsonify({"status": "error", "message": "Projeto não encontrado."}), 404
 
+    usuario_atual = User.query.filter_by(username=session['user']).first()
     is_owner = (projeto_db.owner_username == session['user'])
     is_admin = (session.get('role') == 'admin')
+    is_orientador = bool(
+        session.get('role') == 'professor' and usuario_atual and (
+            projeto_db.professor_id == usuario_atual.id or projeto_db.professor == usuario_atual.username
+        )
+    )
 
-    if not is_owner and not is_admin:
-        return jsonify({"status": "error", "message": "Acesso negado. Apenas o dono ou admin pode editar."}), 403
+    if not (is_owner or is_admin or is_orientador):
+        return jsonify({"status": "error", "message": "Acesso negado. Apenas o dono, o professor orientador ou admin pode editar."}), 403
 
     if request.method in ['POST', 'PUT']:
         data = request.get_json(silent=True) or request.form
         if 'titulo' in data: projeto_db.titulo = data.get('titulo')
         if 'categoria' in data: projeto_db.categoria = data.get('categoria')
         if 'status' in data: projeto_db.status = data.get('status')
-        if 'professor' in data: projeto_db.professor = data.get('professor')
+        if 'professor' in data and is_admin: projeto_db.professor = data.get('professor')
         if 'descricao_curta' in data: projeto_db.descricao_curta = data.get('descricao_curta')
-        if 'tags' in data: projeto_db.tags = data.get('tags')
+        if 'tags' in data:
+            tags_unicas = {}
+            for t in str(data.get('tags') or '').split(','):
+                if t.strip():
+                    tags_unicas.setdefault(t.strip().lower(), t.strip())
+            projeto_db.tags = ', '.join(tags_unicas.values())
         
         raw_detalhes = data.get('detalhes')
+        if data.get('detalhes_json'):
+            try:
+                parsed = json.loads(data.get('detalhes_json'))
+                if isinstance(parsed, list):
+                    raw_detalhes = parsed
+            except (ValueError, TypeError):
+                pass
         if raw_detalhes is not None:
             if isinstance(raw_detalhes, list):
                 detalhes_linhas = raw_detalhes

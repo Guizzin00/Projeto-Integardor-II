@@ -101,6 +101,12 @@ export function ProjetoDetalhes() {
   else if (projeto.status?.includes('EXECUÇÃO')) statusClass = 'text-[#ff9800]';
   else if (projeto.status?.includes('INDISPONÍVEL')) statusClass = 'text-[#dc3545]';
 
+  const podeEditar = !!user && (
+    user.role === 'admin' ||
+    projeto.owner_username === user.username ||
+    (user.role === 'professor' && (projeto.professor === user.username || projeto.orientador?.username === user.username))
+  );
+
   return (
     <div>
       {/* HERO */}
@@ -116,6 +122,14 @@ export function ProjetoDetalhes() {
             <span className={`inline-block px-2.5 py-1 rounded-full text-[0.85rem] mb-3 font-bold bg-bg-primary uppercase ${statusClass}`}>
               {projeto.status}
             </span>
+            {podeEditar && (
+              <Link
+                to={`/projeto/${projeto.id}/editar`}
+                className="inline-block ml-2 px-3 py-1 rounded-full text-[0.85rem] mb-3 font-bold bg-purple-primary text-white no-underline hover:bg-purple-hover transition-colors"
+              >
+                ✏️ Editar projeto
+              </Link>
+            )}
             <h1 className="font-title text-[clamp(1.4rem,4vw,2.2rem)] font-extrabold text-white m-0 mb-1.5 leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.5)]">
               {projeto.titulo}
             </h1>
