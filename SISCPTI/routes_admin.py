@@ -127,6 +127,9 @@ def api_admin_novo_usuario():
     if not username or not password:
         return jsonify({"status": "error", "message": "Username e senha são obrigatórios."}), 400
         
+    if '@' in username:
+        return jsonify({"status": "error", "message": "O usuário/matrícula não pode conter '@'."}), 400
+
     if User.query.filter_by(username=username).first():
         return jsonify({"status": "error", "message": "Usuário já existe."}), 400
         

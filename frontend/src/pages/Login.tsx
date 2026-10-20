@@ -40,7 +40,7 @@ export function Login() {
         login(loggedUser);
         navigate(getDashboardRoute(loggedUser.role));
       } else {
-        setError(response.data.message || 'Credenciais inválidas. Verifique usuário e senha.');
+        setError(response.data.message || 'Credenciais inválidas. Verifique matrícula/e-mail e senha.');
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Falha de comunicação com o servidor. Tente novamente.');
@@ -104,7 +104,7 @@ export function Login() {
               htmlFor="username" 
               className="block text-xs font-semibold uppercase tracking-wider text-text-secondary mb-1.5"
             >
-              Identificação do Usuário
+              Matrícula ou E-mail
             </label>
             <div className="relative flex items-center">
               <span className="absolute left-3 text-text-secondary pointer-events-none">
@@ -119,7 +119,7 @@ export function Login() {
                 autoComplete="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Nome de usuário ou matrícula"
+                placeholder="Matrícula ou e-mail cadastrado"
                 className="w-full pl-9 pr-3 py-2 text-sm bg-bg-surface text-text-primary border border-border-color rounded-md placeholder:text-text-secondary/60 focus:outline-none focus:border-purple-primary focus:ring-1 focus:ring-purple-primary transition-colors"
               />
             </div>

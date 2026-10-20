@@ -19,10 +19,15 @@ def api_login():
         if not data:
             return jsonify({"status": "error", "message": "Dados não fornecidos"}), 400
 
-        user = data.get('user')
-        password = data.get('password')
+        identificador = (data.get('user') or '').strip()
+        password = data.get('password') or ''
 
-        usuario = User.query.filter_by(username=user).first()
+        # Entrada por matrícula/usuário ou por e-mail cadastrado
+        usuario = User.query.filter_by(username=identificador).first()
+        if not usuario and '@' in identificador:
+            candidatos = User.query.filter(db.func.lower(User.email) == identificador.lower()).limit(2).all()
+            if len(candidatos) == 1:
+                usuario = candidatos[0]
 
         if usuario and check_password_hash(usuario.password, password):
             # Validação de contas aguardando homologação
@@ -54,7 +59,7 @@ def api_login():
                 "user": perfil_payload(usuario)
             })
         else:
-            return jsonify({"status": "error", "message": "Usuário ou senha incorretos"}), 401
+            return jsonify({"status": "error", "message": "Matrícula/e-mail ou senha incorretos"}), 401
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -77,10 +82,16 @@ def api_cadastro():
     if password != confirm:
         return jsonify({"status": "error", "message": "As senhas não coincidem."}), 400
 
+    if '@' in username:
+        return jsonify({"status": "error", "message": "A matrícula/usuário não pode conter '@'. Seu e-mail também serve para entrar."}), 400
+
+    if not email_valido(email):
+        return jsonify({"status": "error", "message": "Informe um e-mail válido."}), 400
+
     if User.query.filter_by(username=username).first():
         return jsonify({"status": "error", "message": "Este nome de usuário já está em uso."}), 400
 
-    if User.query.filter_by(email=email).first():
+    if User.query.filter(db.func.lower(User.email) == email.lower()).first():
         return jsonify({"status": "error", "message": "Este e-mail já está associado a outra conta."}), 400
 
     requested_role = (data.get('role') or 'aluno').strip().lower()

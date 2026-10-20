@@ -168,7 +168,7 @@ export function Register() {
               htmlFor="username" 
               className="block text-xs font-semibold uppercase tracking-wider text-text-secondary mb-1.5"
             >
-              Nome de Usuário
+              Matrícula / Usuário
             </label>
             <div className="relative flex items-center">
               <span className="absolute left-3 text-text-secondary pointer-events-none">
@@ -182,7 +182,9 @@ export function Register() {
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="ex: aluno.silva ou matricula"
+                placeholder="ex: aluno.silva ou 12345678 (sem @)"
+                pattern="[^@]+"
+                title="Não use @ na matrícula/usuário; seu e-mail também serve para entrar."
                 className="w-full pl-9 pr-3 py-2 text-sm bg-bg-surface text-text-primary border border-border-color rounded-md placeholder:text-text-secondary/60 focus:outline-none focus:border-purple-primary focus:ring-1 focus:ring-purple-primary transition-colors"
               />
             </div>
