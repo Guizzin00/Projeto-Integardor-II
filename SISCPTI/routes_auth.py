@@ -2,6 +2,7 @@ from flask import request, session, jsonify, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 import os
+import re
 import uuid
 
 from app_instance import app, base_dir
@@ -50,11 +51,7 @@ def api_login():
             return jsonify({
                 "status": "success", 
                 "message": "Login realizado com sucesso",
-                "user": {
-                    "username": usuario.username,
-                    "role": usuario.role,
-                    "email": usuario.email
-                }
+                "user": perfil_payload(usuario)
             })
         else:
             return jsonify({"status": "error", "message": "Usuário ou senha incorretos"}), 401
@@ -208,16 +205,30 @@ def api_me():
     if not user:
         return jsonify({"status": "error", "message": "Usuário não encontrado"}), 404
         
-    return jsonify({
-        "status": "success",
-        "user": {
-            "username": user.username,
-            "email": user.email,
-            "role": user.role,
-            "bio": user.bio,
-            "interesses": user.interesses
-        }
-    })
+    return jsonify({"status": "success", "user": perfil_payload(user)})
+
+def perfil_payload(user):
+    return {
+        "username": user.username,
+        "email": user.email,
+        "email_secundario": user.email_secundario or "",
+        "role": user.role,
+        "bio": user.bio,
+        "interesses": user.interesses or ""
+    }
+
+def normalizar_interesses(texto):
+    """Normaliza a lista separada por vírgula: remove vazios e duplicados, preservando a ordem."""
+    vistos, itens = set(), []
+    for item in (texto or '').replace(';', ',').split(','):
+        item = item.strip()
+        if item and item.lower() not in vistos:
+            vistos.add(item.lower())
+            itens.append(item)
+    return ', '.join(itens)
+
+def email_valido(valor):
+    return bool(re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', valor))
 
 @app.route('/api/perfil/editar', methods=['POST', 'PUT'])
 def api_perfil_editar():
@@ -225,19 +236,28 @@ def api_perfil_editar():
         return jsonify({"status": "error", "message": "Não autenticado"}), 401
 
     user = User.query.filter_by(username=session['user']).first()
-    data = request.get_json()
+    if not user:
+        return jsonify({"status": "error", "message": "Usuário não encontrado"}), 404
+    data = request.get_json(silent=True)
     if not data:
         return jsonify({"status": "error", "message": "Dados não enviados"}), 400
-    
-    email = data.get('email', '').strip()
-    bio = data.get('bio', '').strip()
-    interesses = data.get('interesses', '').strip()
-    nova_senha = data.get('nova_senha', '').strip()
-    confirmar_senha = data.get('confirmar_senha', '').strip()
 
-    if email: user.email = email
-    user.bio = bio[:300] if bio else None
-    user.interesses = interesses[:300] if interesses else ''
+    email = (data.get('email') or '').strip()
+    email_secundario = (data.get('email_secundario') or '').strip()
+    bio = (data.get('bio') or '').strip()
+    interesses = normalizar_interesses(data.get('interesses'))
+    nova_senha = (data.get('nova_senha') or '').strip()
+    confirmar_senha = (data.get('confirmar_senha') or '').strip()
+
+    if len(interesses) > 300:
+        return jsonify({"status": "error", "message": "Os interesses ultrapassam 300 caracteres. Remova alguns itens."}), 400
+    if email and not email_valido(email):
+        return jsonify({"status": "error", "message": "E-mail principal inválido."}), 400
+    if email_secundario:
+        if not email_valido(email_secundario):
+            return jsonify({"status": "error", "message": "E-mail secundário inválido."}), 400
+        if email_secundario.lower() == (email or user.email or '').lower():
+            return jsonify({"status": "error", "message": "O e-mail secundário deve ser diferente do principal."}), 400
 
     if nova_senha:
         if nova_senha != confirmar_senha:
@@ -246,24 +266,30 @@ def api_perfil_editar():
             return jsonify({"status": "error", "message": "A senha deve ter pelo menos 4 caracteres."}), 400
         user.password = generate_password_hash(nova_senha)
 
-    db.session.commit()
+    if email: user.email = email
+    user.email_secundario = email_secundario or None
+    user.bio = bio[:300] if bio else None
+    user.interesses = interesses
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erro ao salvar perfil: {e}")
+        return jsonify({"status": "error", "message": "Não foi possível salvar o perfil. Tente novamente."}), 500
+
+    log_atividade(user.username, 'Edição de Perfil')
     return jsonify({
-        "status": "success", 
+        "status": "success",
         "message": "Perfil atualizado com sucesso!",
-        "user": {
-            "username": user.username,
-            "email": user.email,
-            "role": user.role,
-            "bio": user.bio,
-            "interesses": user.interesses
-        }
+        "user": perfil_payload(user)
     })
 
 @app.route('/api/recuperar-senha', methods=['POST'])
 def api_recuperar_senha():
     data = request.get_json()
     email = data.get('email', '').strip()
-    user = User.query.filter_by(email=email).first()
+    user = User.query.filter((User.email == email) | (User.email_secundario == email)).first() if email else None
     
     if user:
         PasswordReset.query.filter_by(username=user.username).delete()

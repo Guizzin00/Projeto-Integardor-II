@@ -137,6 +137,8 @@ def api_perfil():
                         continue
                     p_tags = [t.strip().lower() for t in p.tags.split(',') if t.strip()] if p.tags else []
                     overlap = len(set(interesses_list).intersection(set(p_tags)))
+                    texto_proj = f"{p.titulo} {p.categoria} {p.descricao_curta}".lower()
+                    overlap += len([i for i in interesses_list if i not in p_tags and i in texto_proj])
                     if overlap > 0:
                         project_scores.append((p, overlap))
                 
@@ -543,7 +545,7 @@ def obter_submissao(sub_id):
     subm = Submission.query.get(sub_id)
     if not subm:
         return jsonify({"status": "error", "message": "Proposta não encontrada."}), 404
-    if subm.username != session['user'] and session.get('role') not in ['admin', 'coordenador']:
+    if subm.username != session['user'] and session.get('role') not in ['admin', 'coordenador', 'professor']:
         return jsonify({"status": "error", "message": "Acesso negado."}), 403
     return jsonify({"status": "success", "submissao": subm.to_dict()})
 

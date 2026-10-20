@@ -5,6 +5,7 @@ export interface User {
   username: string;
   email: string;
   role: string;
+  email_secundario?: string;
   bio?: string;
   interesses?: string;
   [key: string]: any;

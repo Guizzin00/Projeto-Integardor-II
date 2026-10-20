@@ -4,10 +4,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 
 export function PerfilEditar() {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
+  const [emailSecundario, setEmailSecundario] = useState('');
   const [bio, setBio] = useState('');
   const [interesses, setInteresses] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
@@ -19,6 +20,7 @@ export function PerfilEditar() {
     // Fill initial values from user context if available
     if (user) {
       setEmail(user.email || '');
+      setEmailSecundario(user.email_secundario || '');
       setBio(user.bio || '');
       setInteresses(user.interesses || '');
     }
@@ -38,6 +40,7 @@ export function PerfilEditar() {
     try {
       const payload = {
         email,
+        email_secundario: emailSecundario,
         bio,
         interesses,
         ...(novaSenha ? { nova_senha: novaSenha, confirmar_senha: confirmarSenha } : {})
@@ -45,6 +48,7 @@ export function PerfilEditar() {
 
       const res = await api.post('/perfil/editar', payload);
       if (res.data.status === 'success') {
+        if (res.data.user) login(res.data.user);
         alert("✅ Perfil atualizado com sucesso!");
         navigate('/perfil');
       } else {
@@ -102,6 +106,20 @@ export function PerfilEditar() {
         </div>
 
         <div className="mb-5 flex flex-col">
+          <label htmlFor="email_secundario" className="font-semibold text-[0.9rem] mb-1.5 text-text-primary">
+            📨 E-mail Secundário <small className="text-text-secondary font-normal">(opcional, usado para recuperar o acesso)</small>
+          </label>
+          <input 
+            type="email" 
+            id="email_secundario" 
+            value={emailSecundario}
+            onChange={(e) => setEmailSecundario(e.target.value)}
+            placeholder="email.alternativo@exemplo.com" 
+            className="w-full p-2.5 border-[1.5px] border-border-color rounded-lg text-[0.95rem] bg-bg-primary text-text-primary transition-all focus:outline-none focus:border-purple-primary focus:shadow-[0_0_0_3px_rgba(122,27,181,0.15)]"
+          />
+        </div>
+
+        <div className="mb-5 flex flex-col">
           <label htmlFor="bio" className="font-semibold text-[0.9rem] mb-1.5 text-text-primary">
             📝 Bio <small className="text-text-secondary font-normal">(máx. 300 caracteres)</small>
           </label>
@@ -129,6 +147,7 @@ export function PerfilEditar() {
             value={interesses}
             onChange={(e) => setInteresses(e.target.value)}
             placeholder="Ex: React, Django, UX Design, Data Science" 
+            maxLength={300}
             className="w-full p-2.5 border-[1.5px] border-border-color rounded-lg text-[0.95rem] bg-bg-primary text-text-primary transition-all focus:outline-none focus:border-purple-primary focus:shadow-[0_0_0_3px_rgba(122,27,181,0.15)]"
           />
         </div>

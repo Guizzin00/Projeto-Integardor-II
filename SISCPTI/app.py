@@ -30,6 +30,7 @@ def run_db_migrations(force=False):
                     pg_statements = [
                         'ALTER TABLE "user" ALTER COLUMN password TYPE VARCHAR(255)',
                         'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS email VARCHAR(120)',
+                        'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS email_secundario VARCHAR(120)',
                         'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS bio VARCHAR(300)',
                         'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS interesses VARCHAR(300) DEFAULT \'\'',
                         'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS ativo BOOLEAN DEFAULT TRUE',
@@ -59,6 +60,8 @@ def run_db_migrations(force=False):
                     user_cols = [c['name'] for c in inspector.get_columns('user')]
                     if 'email' not in user_cols:
                         conn.execute(text('ALTER TABLE "user" ADD COLUMN email VARCHAR(120)'))
+                    if 'email_secundario' not in user_cols:
+                        conn.execute(text('ALTER TABLE "user" ADD COLUMN email_secundario VARCHAR(120)'))
                     if 'bio' not in user_cols:
                         conn.execute(text('ALTER TABLE "user" ADD COLUMN bio VARCHAR(300)'))
                     if 'interesses' not in user_cols:

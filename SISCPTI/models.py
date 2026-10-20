@@ -14,6 +14,7 @@ class User(db.Model):
     role = db.Column(db.String(20), nullable=False, default='user')
     email = db.Column(db.String(120), nullable=True)
     bio = db.Column(db.String(300), nullable=True)
+    email_secundario = db.Column(db.String(120), nullable=True)
     interesses = db.Column(db.String(300), nullable=True, default='')
     ativo = db.Column(db.Boolean, nullable=False, default=True)
     status_aprovacao = db.Column(db.String(20), nullable=False, default='APROVADO')  # 'PENDENTE', 'APROVADO', 'REJEITADO'
@@ -27,6 +28,7 @@ class User(db.Model):
             "username": self.username,
             "role": self.role,
             "email": self.email,
+            "email_secundario": getattr(self, 'email_secundario', None) or "",
             "bio": self.bio or "",
             "interesses": self.interesses or "",
             "ativo": bool(self.ativo),

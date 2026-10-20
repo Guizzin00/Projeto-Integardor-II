@@ -29,6 +29,7 @@ CREATE TABLE "user" (
     password   VARCHAR(255) NOT NULL,
     role       VARCHAR(20)  NOT NULL DEFAULT 'user',
     email      VARCHAR(120),
+    email_secundario VARCHAR(120),
     bio        VARCHAR(300),
     interesses VARCHAR(300) DEFAULT '',
     ativo      BOOLEAN      NOT NULL DEFAULT TRUE
