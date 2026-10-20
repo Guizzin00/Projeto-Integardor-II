@@ -105,7 +105,7 @@ export function Header() {
           <img 
             src="/static/logoCEUB.png?v=2" 
             alt="Logo CEUB" 
-            className="w-[170px] h-auto"
+            className="ceub-logo w-[170px] h-auto"
             onError={(e) => { e.currentTarget.src = 'https://www.uniceub.br/imagens/logoCEUB2021.png'; }}
           />
         </Link>

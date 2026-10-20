@@ -1,24 +1,29 @@
 @import 'tailwindcss';
 
-@theme {
+/* Variantes dark: seguem o botão de tema do site (body.dark-theme), não o tema do sistema */
+@custom-variant dark (&:where(.dark-theme, .dark-theme *));
+
+@theme inline {
   --font-sans: 'Inter', 'Segoe UI', sans-serif;
   --font-title: 'Outfit', 'Segoe UI', sans-serif;
-  
-  --color-purple-primary: #4B006E;
-  --color-purple-hover: #7A1BB5;
-  --color-text-primary: #1c1c1c;
-  --color-text-secondary: #555555;
-  --color-bg-primary: #f4f4f4;
-  --color-bg-surface: #ffffff;
-  --color-border-color: #dddddd;
-  
+
+  /* As cores apontam para as variáveis de tema (legacy-style.css), que mudam no modo escuro */
+  --color-purple-primary: var(--purple-primary);
+  --color-purple-hover: var(--purple-hover);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-surface: var(--bg-surface);
+  --color-border-color: var(--border-color);
+  --color-text-on-purple: var(--text-on-purple);
+
   --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.08);
   --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
 body {
-  background-color: var(--color-bg-primary);
-  color: var(--color-text-primary);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   font-family: var(--font-sans);
 }
 
@@ -30,3 +35,31 @@ h1, h2, h3, h4, h5, h6 {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* =====================
+   CONTRASTE (WCAG AA, mínimo 4.5:1 em texto)
+===================== */
+/* Botões preenchidos em roxo: texto branco precisa de fundo suficientemente escuro, nos dois temas */
+body.dark-theme .bg-purple-primary { background-color: #7e22ce; }
+body.dark-theme .hover\:bg-purple-hover:hover { background-color: #6b21a8; }
+/* Roxo usado como cor de texto/borda sobre fundo escuro */
+body.dark-theme .text-purple-primary { color: #c084fc; }
+body.dark-theme .hover\:text-purple-primary:hover { color: #d8b4fe; }
+body.dark-theme .border-purple-primary { border-color: #c084fc; }
+
+/* Verde dos botões de ação: 600 -> 700 (3.8:1 -> 5.5:1 com texto branco) */
+.bg-emerald-600 { background-color: #047857; }
+.hover\:bg-emerald-700:hover { background-color: #065f46; }
+.bg-rose-600 { background-color: #be123c; }
+.hover\:bg-rose-700:hover { background-color: #9f1239; }
+
+/* Texto de status sobre fundo claro: tons 600 -> 700 */
+.text-emerald-600 { color: #047857; }
+.text-rose-600 { color: #be123c; }
+.text-amber-600 { color: #b45309; }
+body.dark-theme .text-emerald-600, body.dark-theme .dark\:text-emerald-400 { color: #6ee7b7; }
+body.dark-theme .text-rose-600, body.dark-theme .dark\:text-rose-400 { color: #fda4af; }
+body.dark-theme .text-amber-600, body.dark-theme .dark\:text-amber-400 { color: #fcd34d; }
+
+/* Foco visível em todos os elementos interativos */
+:focus-visible { outline: 2px solid var(--purple-primary); outline-offset: 2px; }
