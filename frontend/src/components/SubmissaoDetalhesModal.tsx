@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { useModalA11y } from './UIProvider';
 
 export interface SubmissaoDetalhes {
   id: number;
@@ -26,6 +27,8 @@ const statusClasses = (status?: string) =>
     : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30';
 
 export function SubmissaoDetalhesModal({ submissao, onClose }: Props) {
+  const dialogoRef = useRef<HTMLDivElement>(null);
+  useModalA11y(true, onClose, dialogoRef);
   useEffect(() => {
     if (!submissao) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -56,7 +59,8 @@ export function SubmissaoDetalhesModal({ submissao, onClose }: Props) {
       aria-label={`Detalhes da proposta ${submissao.nome_projeto}`}
     >
       <div
-        className="w-full max-w-[640px] max-h-[90vh] overflow-y-auto bg-bg-surface border border-border-color rounded-2xl shadow-xl"
+        ref={dialogoRef}
+      className="w-full max-w-[640px] max-h-[90vh] overflow-y-auto bg-bg-surface border border-border-color rounded-2xl shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 p-5 border-b border-border-color">

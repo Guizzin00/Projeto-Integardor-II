@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { api } from '../services/api';
+import { useUI, useModalA11y } from './UIProvider';
 
 interface UsuarioAprovacao {
   id: number;
@@ -18,6 +19,8 @@ interface AprovacoesContasTabProps {
 }
 
 export function AprovacoesContasTab({ onStatusChange }: AprovacoesContasTabProps) {
+  const { avisar, confirmar } = useUI();
+
   const [usuarios, setUsuarios] = useState<UsuarioAprovacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
@@ -27,6 +30,8 @@ export function AprovacoesContasTab({ onStatusChange }: AprovacoesContasTabProps
   
   // Modal de Recusa
   const [rejectingUser, setRejectingUser] = useState<UsuarioAprovacao | null>(null);
+  const recusaRef = useRef<HTMLDivElement>(null);
+  useModalA11y(!!rejectingUser, () => setRejectingUser(null), recusaRef);
   const [motivoRecusa, setMotivoRecusa] = useState('');
   const [alertFeedback, setAlertFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -53,7 +58,7 @@ export function AprovacoesContasTab({ onStatusChange }: AprovacoesContasTabProps
   }, []);
 
   const handleAprovar = async (u: UsuarioAprovacao) => {
-    if (!window.confirm(`Confirma a aprovação e liberação imediata de acesso para @${u.username} como ${u.role === 'professor' ? 'Professor' : 'Empresa'}?`)) {
+    if (!await confirmar(`Confirma a aprovação e liberação imediata de acesso para @${u.username} como ${u.role === 'professor' ? 'Professor' : 'Empresa'}?`)) {
       return;
     }
 
@@ -69,7 +74,7 @@ export function AprovacoesContasTab({ onStatusChange }: AprovacoesContasTabProps
         if (onStatusChange) onStatusChange();
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Erro ao homologar a conta.');
+      avisar(err.response?.data?.message || 'Erro ao homologar a conta.');
     } finally {
       setActionLoading(null);
     }
@@ -95,7 +100,7 @@ export function AprovacoesContasTab({ onStatusChange }: AprovacoesContasTabProps
         if (onStatusChange) onStatusChange();
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Erro ao rejeitar a solicitação.');
+      avisar(err.response?.data?.message || 'Erro ao rejeitar a solicitação.');
     } finally {
       setActionLoading(null);
     }
@@ -468,7 +473,7 @@ export function AprovacoesContasTab({ onStatusChange }: AprovacoesContasTabProps
       {/* Modal de Confirmação de Recusa */}
       {rejectingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-[fadeIn_0.15s_ease-out]">
-          <div className="bg-bg-surface border border-border-color rounded-2xl max-w-md w-full p-6 shadow-2xl">
+          <div ref={recusaRef} role="dialog" aria-modal="true" aria-label="Recusar solicitação de cadastro" className="bg-bg-surface border border-border-color rounded-2xl max-w-md w-full p-6 shadow-2xl">
             <div className="flex items-center gap-3 pb-3 border-b border-border-color">
               <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-950 flex items-center justify-center text-red-600 dark:text-red-400 text-lg">
                 ⚠️

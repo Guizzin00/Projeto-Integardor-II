@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useUI } from '../components/UIProvider';
 
 export function AdminUserForm() {
+  const { avisar } = useUI();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
@@ -58,7 +60,7 @@ export function AdminUserForm() {
       const url = id ? `/admin/usuario/${id}/editar` : `/admin/usuario/novo`;
       const res = await api.post(url, formData);
       if (res.data.status === 'success' || res.status === 200) {
-        alert(`✅ Usuário ${id ? 'editado' : 'criado'} com sucesso!`);
+        avisar(`✅ Usuário ${id ? 'editado' : 'criado'} com sucesso!`);
         navigate('/admin');
       } else {
         setError(res.data.message || 'Erro ao salvar usuário');

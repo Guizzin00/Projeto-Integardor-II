@@ -12,6 +12,12 @@ export const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Sessão expirada: avisa a aplicação (sem recarregar a página) para pedir novo login.
+    const url: string = error?.config?.url || '';
+    const ehAutenticacao = /^\/(login|logout|me|cadastro|recuperar-senha|redefinir-senha|verificar-conta)/.test(url);
+    if (error?.response?.status === 401 && !ehAutenticacao) {
+      window.dispatchEvent(new Event('sessao-expirada'));
+    }
     return Promise.reject(error);
   }
 );

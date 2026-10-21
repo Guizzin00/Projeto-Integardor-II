@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
+import { useUI } from '../components/UIProvider';
+import { validarSenha, DICA_SENHA } from '../utils/senha';
 
 export function PerfilEditar() {
+  const { avisar } = useUI();
   const { user, login } = useAuth();
   const navigate = useNavigate();
 
@@ -37,6 +40,15 @@ export function PerfilEditar() {
       return;
     }
 
+    if (novaSenha) {
+      const erroSenha = validarSenha(novaSenha);
+      if (erroSenha) {
+        setError(erroSenha);
+        setSubmitting(false);
+        return;
+      }
+    }
+
     try {
       const payload = {
         email,
@@ -49,7 +61,7 @@ export function PerfilEditar() {
       const res = await api.post('/perfil/editar', payload);
       if (res.data.status === 'success') {
         if (res.data.user) login(res.data.user);
-        alert("✅ Perfil atualizado com sucesso!");
+        avisar("✅ Perfil atualizado com sucesso!");
         navigate('/perfil');
       } else {
         setError(res.data.message);
@@ -163,7 +175,8 @@ export function PerfilEditar() {
             id="nova_senha" 
             value={novaSenha}
             onChange={(e) => setNovaSenha(e.target.value)}
-            placeholder="Mínimo 4 caracteres" 
+            placeholder="Mínimo 8, com letras e números"
+            title={DICA_SENHA} 
             className="w-full p-2.5 border-[1.5px] border-border-color rounded-lg text-[0.95rem] bg-bg-primary text-text-primary transition-all focus:outline-none focus:border-purple-primary focus:shadow-[0_0_0_3px_rgba(122,27,181,0.15)]"
           />
         </div>

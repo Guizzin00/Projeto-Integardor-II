@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ErrorPage } from '../pages/ErrorPage';
 
@@ -14,6 +15,7 @@ export function ProtectedRoute({
   allowedRoles 
 }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   // Enquanto verifica o status de autenticação (/api/me)
   if (loading) {
@@ -34,7 +36,8 @@ export function ProtectedRoute({
 
   // 1. Checagem de usuário autenticado
   if ((requireAuth || (allowedRoles && allowedRoles.length > 0)) && !user) {
-    return <ErrorPage code={401} />;
+    // Leva ao login guardando a página de origem para voltar depois
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search, expirada: true }} />;
   }
 
   // 2. Checagem de papéis / permissão específica (ex: admin, coordenador)

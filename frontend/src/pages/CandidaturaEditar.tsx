@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useUI } from '../components/UIProvider';
 
 export function CandidaturaEditar() {
+  const { avisar } = useUI();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
@@ -42,7 +44,7 @@ export function CandidaturaEditar() {
     try {
       const res = await api.post(`/candidatura/${id}/editar`, { motivo, experiencia });
       if (res.data.status === 'success') {
-        alert("✅ Candidatura atualizada com sucesso!");
+        avisar("✅ Candidatura atualizada com sucesso!");
         navigate(`/perfil`);
       } else {
         setError(res.data.message);

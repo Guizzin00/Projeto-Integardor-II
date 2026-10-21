@@ -24,11 +24,10 @@ def api_projetos():
             
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
         
-        all_projects = Project.query.all()
         unique_tags = set()
-        for p in all_projects:
-            if p.tags:
-                for t in p.tags.split(','):
+        for (tags_col,) in db.session.query(Project.tags).filter(Project.tags.isnot(None)).all():
+            if tags_col:
+                for t in tags_col.split(','):
                     cleaned = t.strip()
                     if cleaned:
                         unique_tags.add(cleaned)

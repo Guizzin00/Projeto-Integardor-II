@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useUI } from '../components/UIProvider';
 
 export function Candidatura() {
+  const { avisar } = useUI();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
@@ -36,7 +38,7 @@ export function Candidatura() {
     try {
       const res = await api.post(`/projeto/${id}/candidatar`, { motivo, experiencia });
       if (res.data.status === 'success') {
-        alert("✅ Sua candidatura foi enviada com sucesso!");
+        avisar("✅ Sua candidatura foi enviada com sucesso!");
         navigate(`/projeto/${id}`);
       } else {
         setError(res.data.message);

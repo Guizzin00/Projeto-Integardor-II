@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
+import { usePolling } from '../hooks/usePolling';
 
 interface NotificationItem {
   id: number;
@@ -40,24 +41,28 @@ export function Header() {
   };
 
   // Fetch notifications
-  const fetchNotificacoes = async () => {
-    if (!user) return;
+  const ultimoTotalNotif = useRef(0);
+  const fetchNotificacoes = async (): Promise<boolean> => {
+    if (!user) return false;
     try {
       const res = await api.get('/notificacoes');
       if (res.data.status === 'success' && Array.isArray(res.data.data)) {
         setNotificacoes(res.data.data);
+        const houveNovidade = res.data.data.length !== ultimoTotalNotif.current;
+        ultimoTotalNotif.current = res.data.data.length;
+        return houveNovidade;
       }
     } catch (err) {
       // Silent error for notifications polling
     }
+    return false;
   };
 
+  // Primeira carga ao entrar; depois consulta a cada 30 s, espaçando até 2 min sem novidades e pausando com a aba oculta
   useEffect(() => {
-    if (!user) return; // Bug 5: não criar intervalo se não há usuário logado
-    fetchNotificacoes();
-    const interval = setInterval(fetchNotificacoes, 15000); // 15s polling
-    return () => clearInterval(interval);
+    if (user) fetchNotificacoes();
   }, [user]);
+  usePolling(fetchNotificacoes, 30000, 120000, !!user, [user]);
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -122,6 +127,7 @@ export function Header() {
             <li>
               <button 
                 onClick={toggleTheme}
+                aria-label={theme === 'light' ? 'Ativar tema escuro' : 'Ativar tema claro'}
                 title={theme === 'light' ? 'Ativar tema escuro' : 'Ativar tema claro'}
                 className="text-purple-primary text-xl p-2 rounded-full hover:bg-purple-primary/10 transition-all flex items-center justify-center bg-transparent border-none cursor-pointer"
               >
@@ -136,6 +142,8 @@ export function Header() {
                   <button 
                     onClick={() => { setNotifOpen(!notifOpen); setMenuOpen(false); }}
                     title="Notificações"
+                    aria-label="Notificações"
+                    aria-expanded={notifOpen}
                     className="text-purple-primary text-xl p-2 rounded-full hover:bg-purple-primary/10 transition-all flex items-center justify-center bg-transparent border-none cursor-pointer relative"
                   >
                     🔔
@@ -201,6 +209,8 @@ export function Header() {
                 <li className="relative" ref={menuRef}>
                   <button 
                     onClick={() => { setMenuOpen(!menuOpen); setNotifOpen(false); }}
+                    aria-label="Menu do usuário"
+                    aria-expanded={menuOpen}
                     className="flex items-center gap-1 text-purple-primary font-semibold hover:text-purple-hover bg-transparent border-none cursor-pointer text-base"
                   >
                     <span>👤 {user.username}</span>

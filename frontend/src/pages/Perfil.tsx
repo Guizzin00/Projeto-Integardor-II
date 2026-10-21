@@ -3,8 +3,10 @@ import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { SubmissaoDetalhesModal, SubmissaoDetalhes } from '../components/SubmissaoDetalhesModal';
+import { useUI } from '../components/UIProvider';
 
 export function Perfil() {
+  const { avisar, confirmar } = useUI();
   const { user } = useAuth();
   
   const isProfessor = user?.role === 'professor';
@@ -58,26 +60,26 @@ export function Perfil() {
   }, [user?.role]);
 
   const handleCancelarCandidatura = async (candId: number) => {
-    if (!window.confirm('Tem certeza de que deseja cancelar esta candidatura acadêmica?')) return;
+    if (!await confirmar('Tem certeza de que deseja cancelar esta candidatura acadêmica?')) return;
     try {
       const res = await api.post(`/perfil/candidatura/${candId}/cancelar`);
       if (res.data.status === 'success' || res.status === 200) {
         setMinhasCandidaturas(prev => prev.filter(c => c.id !== candId));
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Erro ao cancelar candidatura.');
+      avisar(err.response?.data?.message || 'Erro ao cancelar candidatura.');
     }
   };
 
   const handleExcluirSubmissao = async (subId: number) => {
-    if (!window.confirm('Tem certeza de que deseja excluir permanentemente esta proposta de projeto?')) return;
+    if (!await confirmar('Tem certeza de que deseja excluir permanentemente esta proposta de projeto?')) return;
     try {
       const res = await api.post(`/submissao/${subId}/excluir`);
       if (res.data.status === 'success' || res.status === 200) {
         setMinhasSubmissoes(prev => prev.filter(s => s.id !== subId));
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Erro ao excluir proposta.');
+      avisar(err.response?.data?.message || 'Erro ao excluir proposta.');
     }
   };
 
@@ -92,7 +94,7 @@ export function Perfil() {
         }));
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || `Erro ao ${acao} candidatura.`);
+      avisar(err.response?.data?.message || `Erro ao ${acao} candidatura.`);
     }
   };
 
