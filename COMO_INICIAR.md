@@ -143,3 +143,11 @@ Todos os usuários abaixo são gerados automaticamente pelo script `seed_db.py` 
 
 * **`reset_db.py`**: Limpa as tabelas existentes no banco local ou na nuvem do Supabase.
 * **`seed_db.py`**: Limpa o banco de dados e insere a massa de testes completa documentada neste guia.
+
+## Variáveis de ambiente de segurança
+
+| Variável | Obrigatória | Descrição |
+|---|---|---|
+| `SECRET_KEY` | Sim, em produção | Chave de assinatura das sessões. Gere com `python -c "import secrets; print(secrets.token_hex(32))"`. Sem ela a aplicação não inicia na Vercel/produção. Em desenvolvimento é gerada uma chave temporária. |
+| `CORS_ORIGINS` | Se o frontend estiver em outro domínio | Origens autorizadas a chamar a API com cookies, separadas por vírgula. `APP_URL` também é aceita. |
+| `SUPABASE_URL` / `SUPABASE_KEY` | Para uploads no Supabase | Sem elas os arquivos são salvos localmente. Não há mais URL padrão no código. |

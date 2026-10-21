@@ -192,8 +192,8 @@ def api_admin_usuario(user_id):
 # =========================
 # Aprovação de Submissões
 # =========================
-@app.route('/api/admin/submissao/<int:sub_id>/<acao>', methods=['GET', 'POST'])
-@app.route('/admin/submissao/<int:sub_id>/<acao>', methods=['GET', 'POST'])
+@app.route('/api/admin/submissao/<int:sub_id>/<acao>', methods=['POST'])
+@app.route('/admin/submissao/<int:sub_id>/<acao>', methods=['POST'])
 def acao_submissao(sub_id, acao):
     if session.get('role') not in ['admin', 'coordenador']:
         return jsonify({"status": "error", "message": "Acesso não autorizado."}), 403
@@ -386,8 +386,8 @@ def editar_projeto(projeto_id):
 
     return jsonify({"status": "success", "projeto": projeto_db.to_dict()})
 
-@app.route('/api/admin/projeto/<int:projeto_id>/excluir', methods=['POST', 'DELETE', 'GET'])
-@app.route('/admin/excluir/<int:projeto_id>', methods=['POST', 'DELETE', 'GET'])
+@app.route('/api/admin/projeto/<int:projeto_id>/excluir', methods=['POST', 'DELETE'])
+@app.route('/admin/excluir/<int:projeto_id>', methods=['POST', 'DELETE'])
 def excluir_projeto(projeto_id):
     if session.get('role') != 'admin':
         return jsonify({"status": "error", "message": "Acesso restrito a administradores."}), 403

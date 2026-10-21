@@ -755,7 +755,7 @@ def email_template_conta_recusada(username: str, role: str, motivo: str = None) 
 
 def upload_file_to_supabase(file):
     # Carrega do ambiente ou usa padrão do usuário se disponível
-    supabase_url = os.environ.get('SUPABASE_URL', 'https://uzawtegjjnlqwjswzxrw.supabase.co').strip()
+    supabase_url = os.environ.get('SUPABASE_URL', '').strip()
     supabase_key = os.environ.get('SUPABASE_KEY', '').strip()
     supabase_bucket = os.environ.get('SUPABASE_BUCKET', 'uploads').strip()
     
