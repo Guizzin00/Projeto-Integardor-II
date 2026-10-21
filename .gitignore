@@ -45,3 +45,6 @@ test_*.py
 check_*.py
 refactor.py
 script.py
+
+# Testes automatizados do projeto (a regra test_*.py acima ignora scripts avulsos)
+!SISCPTI/tests/test_*.py
