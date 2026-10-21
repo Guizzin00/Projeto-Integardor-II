@@ -7,6 +7,9 @@
   --text-primary: #1c1c1c;
   --text-secondary: #555555;
   --purple-primary: #4B006E;
+  /* Fundos roxos (com texto branco) e roxos de texto podem diferir no tema escuro */
+  --purple-bg: var(--purple-primary);
+  --purple-bg-hover: var(--purple-hover);
   --purple-hover: #7A1BB5;
   --text-on-purple: #ffffff;
   --border-color: #dddddd;
@@ -27,9 +30,12 @@ body.dark-theme {
   /* Texto secundário — cinza claro, legível mas hierarquicamente inferior */
   --text-secondary: #9ca3af;
   /* Roxo primário — vibrante e bem legível em fundos escuros */
-  --purple-primary: #a855f7;
+  --purple-primary: #c084fc;
   /* Roxo de hover — mais claro que o primário */
-  --purple-hover: #c084fc;
+  --purple-hover: #d8b4fe;
+  /* Fundos roxos com texto branco (contraste >= 4.5) */
+  --purple-bg: #7e22ce;
+  --purple-bg-hover: #6b21a8;
   --text-on-purple: #ffffff;
   /* Borda — claramente visível para separar elementos */
   --border-color: #374151;
@@ -143,7 +149,7 @@ body.dark-theme .theme-toggle-btn:hover {
 
 .ceub-line {
   height: 4px;
-  background: var(--purple-primary);
+  background: var(--purple-bg);
   width: 100%;
   position: relative;
   top: 6px;
@@ -165,7 +171,7 @@ main {
 ===================== */
 footer {
   text-align: center;
-  background: var(--purple-primary);
+  background: var(--purple-bg);
   color: var(--text-on-purple);
   padding: 1rem;
   margin-top: 3rem;
@@ -179,7 +185,7 @@ footer {
 .hero {
   text-align: center;
   padding: 4rem 2rem;
-  background: linear-gradient(135deg, var(--purple-primary), var(--purple-hover));
+  background: linear-gradient(135deg, var(--purple-bg), var(--purple-bg-hover));
   color: white;
   border-radius: 12px;
   box-shadow: var(--shadow-light);
@@ -188,7 +194,7 @@ footer {
 
 .btn {
   display: inline-block;
-  background: var(--purple-primary);
+  background: var(--purple-bg);
   color: var(--text-on-purple);
   padding: 0.6rem 1.2rem;
   border-radius: 6px;
@@ -199,7 +205,7 @@ footer {
 }
 
 .btn:hover {
-  background: var(--purple-hover);
+  background: var(--purple-bg-hover);
   transform: translateY(-1px);
 }
 
@@ -216,7 +222,7 @@ footer {
 }
 
 .btn-secondary:hover {
-  background: var(--purple-hover);
+  background: var(--purple-bg-hover);
   color: var(--text-on-purple);
   transform: translateY(-1px);
 }
@@ -302,13 +308,13 @@ h3 {
 
 .login-form .btn {
   width: 100%;
-  background: var(--purple-primary);
+  background: var(--purple-bg);
   color: var(--text-on-purple);
   border: none;
 }
 
 .login-form .btn:hover {
-  background: var(--purple-hover);
+  background: var(--purple-bg-hover);
 }
 
 /* =====================
@@ -483,7 +489,7 @@ h3 {
 
 .submit-form button {
   align-self: flex-start;
-  background: var(--purple-primary);
+  background: var(--purple-bg);
   color: var(--text-on-purple);
   border: none;
   padding: 0.8rem 1.5rem;
@@ -495,7 +501,7 @@ h3 {
 }
 
 .submit-form button:hover {
-  background: var(--purple-hover);
+  background: var(--purple-bg-hover);
 }
 
 @media (max-width: 700px) {
@@ -513,7 +519,7 @@ h3 {
 }
 
 .btn-interest {
-  background: var(--purple-primary);
+  background: var(--purple-bg);
   color: var(--text-on-purple);
   padding: 0.8rem 1.5rem;
   border: none;
@@ -525,7 +531,7 @@ h3 {
 }
 
 .btn-interest:hover {
-  background: var(--purple-hover);
+  background: var(--purple-bg-hover);
   transform: translateY(-2px);
 }
 
@@ -604,7 +610,7 @@ h3 {
   width: 100%;
   height: 3px;
   border-radius: 999px;
-  background: var(--purple-primary);
+  background: var(--purple-bg);
   transition: transform 0.2s ease, opacity 0.2s ease, background 0.2s ease;
 }
 
@@ -847,7 +853,7 @@ h3 {
 }
 .highlight-purple {
   color: var(--purple-primary);
-  background: -webkit-linear-gradient(45deg, var(--purple-primary), var(--purple-hover));
+  background: -webkit-linear-gradient(45deg, var(--purple-bg), var(--purple-bg-hover));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -1258,7 +1264,7 @@ body.dark-theme .user-profile-card .profile-status {
   border-top-right-radius: 0;
 }
 body.dark-theme .chat-message-item.my-message .message-bubble-box {
-  background: var(--purple-primary);
+  background: var(--purple-bg);
   color: var(--text-on-purple);
 }
 .msg-text {
@@ -1754,7 +1760,7 @@ body.dark-theme .workspace-stat-card.gray-card {
 
 .btn-login-header {
   display: inline-block;
-  background: var(--purple-primary);
+  background: var(--purple-bg);
   color: var(--text-on-purple) !important;
   padding: 0.5rem 1.2rem;
   border-radius: 6px;
@@ -1765,7 +1771,7 @@ body.dark-theme .workspace-stat-card.gray-card {
 }
 
 .btn-login-header:hover {
-  background: var(--purple-hover);
+  background: var(--purple-bg-hover);
 }
 
 /* ======================
@@ -1835,12 +1841,12 @@ body.dark-theme .workspace-stat-card.gray-card {
   transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
 .page-btn:hover {
-  background: var(--purple-primary);
+  background: var(--purple-bg);
   color: #fff;
   border-color: var(--purple-primary);
 }
 .page-btn.active {
-  background: var(--purple-primary);
+  background: var(--purple-bg);
   color: #fff;
   border-color: var(--purple-primary);
   cursor: default;
@@ -2346,7 +2352,7 @@ body.dark-theme .link-chip {
   color: var(--purple-primary) !important;
 }
 body.dark-theme .link-chip:hover {
-  background: var(--purple-primary) !important;
+  background: var(--purple-bg) !important;
   color: #fff !important;
 }
 body.dark-theme .categoria-tag {
@@ -2362,7 +2368,7 @@ body.dark-theme .page-btn {
 }
 body.dark-theme .page-btn:hover,
 body.dark-theme .page-btn.active {
-  background: var(--purple-primary) !important;
+  background: var(--purple-bg) !important;
   color: #fff !important;
   border-color: var(--purple-primary) !important;
 }

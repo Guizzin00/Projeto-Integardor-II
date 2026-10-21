@@ -63,3 +63,7 @@ body.dark-theme .text-amber-600, body.dark-theme .dark\:text-amber-400 { color: 
 
 /* Foco visível em todos os elementos interativos */
 :focus-visible { outline: 2px solid var(--purple-primary); outline-offset: 2px; }
+
+/* Acessibilidade: títulos roxos dentro de cards escuros com contraste suficiente */
+body.dark-theme .bg-bg-surface h2,
+body.dark-theme .bg-bg-surface h3 { color: #c084fc; }

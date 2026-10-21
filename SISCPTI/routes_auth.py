@@ -1,4 +1,4 @@
-from flask import request, session, jsonify, url_for
+from flask import request, session, jsonify, url_for, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 import os
@@ -56,6 +56,7 @@ def api_login():
             session.clear()
             session['logged_in'] = True
             session['user'] = usuario.username
+            session['uid'] = usuario.id
             session['role'] = usuario.role
             session['pwv'] = assinatura_senha(usuario)
 
@@ -260,14 +261,22 @@ def assinatura_senha(user):
 
 @app.before_request
 def validar_sessao():
-    """Encerra sessões abertas antes de uma troca de senha e de usuários removidos/desativados."""
+    """Resolve o usuário da sessão pelo id (renomear a conta não derruba nem quebra a sessão) e
+    encerra sessões abertas antes de uma troca de senha e de usuários removidos/desativados."""
+    g.user = None
+    g.uid = None
     if not session.get('logged_in'):
         return None
-    user = User.query.filter_by(username=session.get('user')).first()
+    uid = session.get('uid')
+    user = db.session.get(User, uid) if uid else User.query.filter_by(username=session.get('user')).first()
     if not user or not user.ativo or session.get('pwv') != assinatura_senha(user):
         session.clear()
         return None
-    session['role'] = user.role  # reflete mudanças de papel feitas pelo administrador
+    session['uid'] = user.id
+    session['user'] = user.username  # reflete renomeações feitas pelo administrador
+    session['role'] = user.role      # e mudanças de papel
+    g.user = user
+    g.uid = user.id
     return None
 
 

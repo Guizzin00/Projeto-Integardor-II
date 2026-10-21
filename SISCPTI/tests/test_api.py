@@ -223,3 +223,70 @@ def test_politica_de_senha_e_sessoes(cenario):
     assert r.status_code == 200
     assert a.get('/api/me').status_code == 200  # a sessão que trocou a senha continua
     assert b.get('/api/me').status_code == 401  # as demais são encerradas
+
+
+# ---------- #47: formato único de erro
+def test_formato_de_erro_padronizado(cenario):
+    r = logar('fora').post(f'/api/projeto/{cenario.id}/tasks/criar', json={'titulo': 'x'})
+    assert r.status_code == 403
+    corpo = r.get_json()
+    assert corpo['status'] == 'error' and corpo['message'] and 'error' not in corpo
+
+
+# ---------- #54: listas paginadas no servidor
+def test_listas_paginadas(app_ctx):
+    criar_usuario('admin', 'admin')
+    criar_usuario('coord', 'coordenador')
+    for i in range(25):
+        criar_projeto(owner=f'dono{i}')
+    adm = logar('admin')
+    r = adm.get('/api/admin/lista/projetos?per_page=10&page=3').get_json()
+    assert len(r['items']) == 5 and r['total'] == 25 and r['pages'] == 3 and r['page'] == 3
+    assert adm.get('/api/admin/lista/projetos?per_page=500').get_json()['per_page'] == 100
+    assert adm.get('/api/admin/lista/usuarios?q=coord').get_json()['total'] == 1
+    assert adm.get('/api/admin/lista/projetos?status=CONCLUÍDO').get_json()['total'] == 0
+    c = logar('coord')
+    assert c.get('/api/admin/lista/projetos').status_code == 200
+    assert c.get('/api/admin/lista/usuarios').status_code == 403
+    assert flask_app.test_client().get('/api/admin/lista/projetos').status_code == 403
+    d = adm.get('/api/admin/dashboard').get_json()['data']
+    assert d['totais']['projetos'] == 25
+
+
+# ---------- #52: vínculos por id
+def test_vinculos_por_id_sobrevivem_a_renomear(cenario):
+    membro = logar('membro')
+    uid = User.query.filter_by(username='membro').first().id
+    assert Application.query.filter_by(username='membro').first().user_id == uid
+    assert Project.query.get(cenario.id).owner_id == User.query.filter_by(username='dono').first().id
+    adm = logar('admin')
+    assert adm.put(f'/api/admin/usuario/{uid}', json={'username': 'membro.novo'}).status_code == 200
+    # a sessão do usuário renomeado continua válida e o acesso ao projeto se mantém
+    assert membro.get('/api/me').get_json()['user']['username'] == 'membro.novo'
+    assert membro.get(f'/api/projeto/{cenario.id}/tasks').status_code == 200
+    # mesmo que o texto do nome fique desatualizado, o vínculo por id mantém o acesso
+    Application.query.filter_by(user_id=uid).update({'username': 'nome-antigo'})
+    db.session.commit()
+    assert membro.post(f'/api/projeto/{cenario.id}/tasks/criar', json={'titulo': 'ok'}).status_code == 200
+
+
+def test_orientador_vem_do_professor_id(cenario):
+    adm = logar('admin')
+    pid = User.query.filter_by(username='prof').first().id
+    cenario.professor = 'nome-desatualizado'
+    db.session.commit()
+    assert adm.get(f'/api/projeto/{cenario.id}').get_json()['projeto']['professor'] == 'prof'
+    assert pid == cenario.professor_id
+
+
+def test_migracao_preenche_ids(app_ctx):
+    from sqlalchemy import text
+    import app as app_mod
+    criar_usuario('ana')
+    # simula linhas antigas, sem id
+    db.session.execute(text("INSERT INTO notification (username, mensagem, lida) VALUES ('ana', 'oi', 0)"))
+    db.session.commit()
+    assert db.session.execute(text("SELECT user_id FROM notification")).scalar() is None
+    app_mod.run_db_migrations(force=True)
+    db.session.rollback()  # descarta o snapshot da transação anterior
+    assert db.session.execute(text("SELECT user_id FROM notification")).scalar() == User.query.filter_by(username='ana').first().id

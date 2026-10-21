@@ -204,7 +204,7 @@ export function Workspace() {
     try {
       await api.post(`/projeto/${id}/tasks/${taskId}/mover`, { status: novoStatus });
     } catch (err: any) {
-      avisar(err.response?.data?.error || 'Erro ao mover tarefa.');
+      avisar(err.response?.data?.message || 'Erro ao mover tarefa.');
       carregarTasks();
     }
   };
@@ -238,7 +238,7 @@ export function Workspace() {
         setEditingTask(null);
       }
     } catch (err: any) {
-      avisar(err.response?.data?.error || 'Erro ao excluir tarefa.');
+      avisar(err.response?.data?.message || 'Erro ao excluir tarefa.');
     }
   };
 
@@ -281,10 +281,10 @@ export function Workspace() {
         setNewSubtasks([]);
         setTempSubtaskInput('');
       } else {
-        avisar(res.data.error || 'Erro ao registrar tarefa.');
+        avisar(res.data.message || 'Erro ao registrar tarefa.');
       }
     } catch (err: any) {
-      avisar(err.response?.data?.error || 'Erro ao criar tarefa.');
+      avisar(err.response?.data?.message || 'Erro ao criar tarefa.');
     } finally {
       setCreatingTask(false);
     }
@@ -337,10 +337,10 @@ export function Workspace() {
         setTasks(prev => prev.map(t => t.id === editingTask.id ? res.data.task : t));
         setEditingTask(null);
       } else {
-        avisar(res.data.error || 'Erro ao salvar alterações.');
+        avisar(res.data.message || 'Erro ao salvar alterações.');
       }
     } catch (err: any) {
-      avisar(err.response?.data?.error || 'Erro ao atualizar tarefa.');
+      avisar(err.response?.data?.message || 'Erro ao atualizar tarefa.');
     } finally {
       setSavingEdit(false);
     }
@@ -599,8 +599,8 @@ export function Workspace() {
 
               {/* Filtro por Responsável */}
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-slate-500 hidden sm:inline">Filtrar:</span>
-                <select 
+                <span className="text-[11px] font-bold text-slate-600 hidden sm:inline">Filtrar:</span>
+                <select aria-label="Filtrar tarefas por responsável" 
                   value={filterMember}
                   onChange={(e) => setFilterMember(e.target.value)}
                   className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-[#002B49] cursor-pointer"
@@ -666,7 +666,7 @@ export function Workspace() {
                 <div className="flex-1 min-h-0 overflow-y-auto p-2.5 space-y-2.5">
                   {todoTasks.length === 0 ? (
                     <div className="p-6 text-center border-2 border-dashed border-slate-200 rounded-xl my-4">
-                      <p className="text-xs text-slate-500 m-0">Nenhuma tarefa pendente nesta etapa.</p>
+                      <p className="text-xs text-slate-600 m-0">Nenhuma tarefa pendente nesta etapa.</p>
                     </div>
                   ) : (
                     todoTasks.map(task => renderTaskCard(task, 'todo'))
@@ -702,7 +702,7 @@ export function Workspace() {
                 <div className="flex-1 min-h-0 overflow-y-auto p-2.5 space-y-2.5">
                   {doingTasks.length === 0 ? (
                     <div className="p-6 text-center border-2 border-dashed border-slate-200 rounded-xl my-4">
-                      <p className="text-xs text-slate-500 m-0">Nenhuma atividade em andamento no momento.</p>
+                      <p className="text-xs text-slate-600 m-0">Nenhuma atividade em andamento no momento.</p>
                     </div>
                   ) : (
                     doingTasks.map(task => renderTaskCard(task, 'doing'))
@@ -738,7 +738,7 @@ export function Workspace() {
                 <div className="flex-1 min-h-0 overflow-y-auto p-2.5 space-y-2.5">
                   {doneTasks.length === 0 ? (
                     <div className="p-6 text-center border-2 border-dashed border-slate-200 rounded-xl my-4">
-                      <p className="text-xs text-slate-500 m-0">Nenhuma tarefa finalizada até o momento.</p>
+                      <p className="text-xs text-slate-600 m-0">Nenhuma tarefa finalizada até o momento.</p>
                     </div>
                   ) : (
                     doneTasks.map(task => renderTaskCard(task, 'done'))
@@ -777,7 +777,7 @@ export function Workspace() {
                       <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                         <div className="flex items-center gap-1.5 mb-1 px-1">
                           <span className="text-[11px] font-bold text-slate-700">{msg.username}</span>
-                          <span className="text-[10px] text-slate-500">{msg.data_envio}</span>
+                          <span className="text-[10px] text-slate-600">{msg.data_envio}</span>
                         </div>
                         <div className={`p-3 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-xs ${
                           isMe 
@@ -835,19 +835,19 @@ export function Workspace() {
             {/* Cards de Métricas */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Total de Atividades</span>
+                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">Total de Atividades</span>
                 <span className="text-2xl font-bold text-[#002B49]">{totalTasks}</span>
               </div>
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Concluídas</span>
+                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">Concluídas</span>
                 <span className="text-2xl font-bold text-emerald-600">{doneTasksTotal}</span>
               </div>
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Em Andamento</span>
+                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">Em Andamento</span>
                 <span className="text-2xl font-bold text-blue-600">{tasks.filter(t => t.status === 'doing').length}</span>
               </div>
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Taxa de Sucesso</span>
+                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">Taxa de Sucesso</span>
                 <span className="text-2xl font-bold text-[#002B49]">{percentComplete}%</span>
               </div>
             </div>
@@ -938,12 +938,12 @@ export function Workspace() {
         <aside className={`absolute inset-y-0 left-0 w-80 max-w-[85vw] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${leftOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
             <div>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Equipe do Projeto</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">Equipe do Projeto</span>
               <h3 className="text-xs font-bold text-[#002B49] m-0">Integrantes & Orientação</h3>
             </div>
             <button 
               aria-label="Fechar" onClick={() => setLeftOpen(false)}
-              className="text-slate-500 hover:text-slate-800 p-1.5 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
+              className="text-slate-600 hover:text-slate-800 p-1.5 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
             >
               ✕
             </button>
@@ -955,13 +955,13 @@ export function Workspace() {
             </div>
             <div className="min-w-0 flex-1">
               <span className="text-xs font-bold text-slate-800 truncate block">{user?.username}</span>
-              <span className="text-[10px] text-slate-500 uppercase font-semibold">{user?.role || 'Membro'}</span>
+              <span className="text-[10px] text-slate-600 uppercase font-semibold">{user?.role || 'Membro'}</span>
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
             <div className="flex items-center justify-between px-2 mb-1">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Filtrar tarefas no Kanban</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Filtrar tarefas no Kanban</span>
               {filterMember !== 'all' && (
                 <button 
                   onClick={() => { setFilterMember('all'); setLeftOpen(false); }}
@@ -1029,7 +1029,7 @@ export function Workspace() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <span className="text-xs font-semibold text-slate-800 truncate block">{m}</span>
-                  <span className="text-[10px] text-slate-500">Pesquisador</span>
+                  <span className="text-[10px] text-slate-600">Pesquisador</span>
                 </div>
                 <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-bold">
                   {tasks.filter(t => t.assigned_username === m).length}
@@ -1054,7 +1054,7 @@ export function Workspace() {
             <h3 className="text-xs font-bold text-[#002B49] uppercase tracking-wider m-0">Resumo da Pesquisa</h3>
             <button 
               aria-label="Fechar" onClick={() => setRightOpen(false)}
-              className="text-slate-500 hover:text-slate-800 p-1.5 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
+              className="text-slate-600 hover:text-slate-800 p-1.5 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
             >
               ✕
             </button>
@@ -1062,12 +1062,12 @@ export function Workspace() {
 
           <div className="p-4 space-y-4 overflow-y-auto flex-1">
             <div>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Título</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">Título</span>
               <p className="text-xs font-bold text-slate-800 m-0">{projeto.titulo}</p>
             </div>
 
             <div>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Situação</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">Situação</span>
               <span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 {projeto.status}
               </span>
@@ -1082,12 +1082,12 @@ export function Workspace() {
             </div>
 
             <div>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Descrição Curta</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">Descrição Curta</span>
               <p className="text-xs text-slate-600 leading-relaxed m-0">{projeto.descricao_curta}</p>
             </div>
 
             <div>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Tags</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">Tags</span>
               <p className="text-xs text-slate-700 m-0">{projeto.tags || 'Geral'}</p>
             </div>
           </div>
@@ -1104,7 +1104,7 @@ export function Workspace() {
               <h3 className="text-sm font-bold text-[#002B49] m-0">Cadastrar Nova Tarefa & Subtarefas</h3>
               <button 
                 aria-label="Fechar" onClick={() => setShowNewTaskModal(false)}
-                className="text-slate-500 hover:text-slate-800 text-sm p-1 cursor-pointer"
+                className="text-slate-600 hover:text-slate-800 text-sm p-1 cursor-pointer"
               >
                 ✕
               </button>
@@ -1137,7 +1137,7 @@ export function Workspace() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Responsável</label>
-                  <select 
+                  <select aria-label="Responsável pela tarefa" 
                     value={taskAssigned}
                     onChange={(e) => setTaskAssigned(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs text-slate-800 outline-none focus:border-[#002B49]"
@@ -1166,7 +1166,7 @@ export function Workspace() {
                 <label className="block text-xs font-bold text-[#002B49] mb-1">
                   Subtarefas (Checklist)
                 </label>
-                <p className="text-[11px] text-slate-500 m-0 mb-2">
+                <p className="text-[11px] text-slate-600 m-0 mb-2">
                   Divida a entrega em passos práticos. Digite o item e pressione Enter ou clique em Adicionar.
                 </p>
 
@@ -1194,7 +1194,7 @@ export function Workspace() {
                     {newSubtasks.map((st, idx) => (
                       <div key={idx} className="flex items-center justify-between gap-2 p-1.5 bg-white rounded-lg border border-slate-100 text-xs">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="w-4 h-4 rounded border border-slate-300 flex items-center justify-center text-[10px] text-slate-500">
+                          <span className="w-4 h-4 rounded border border-slate-300 flex items-center justify-center text-[10px] text-slate-600">
                             {idx + 1}
                           </span>
                           <span className="truncate text-slate-700">{st}</span>
@@ -1255,7 +1255,7 @@ export function Workspace() {
               </div>
               <button 
                 aria-label="Fechar" onClick={() => setEditingTask(null)}
-                className="text-slate-500 hover:text-slate-800 text-sm p-1 cursor-pointer"
+                className="text-slate-600 hover:text-slate-800 text-sm p-1 cursor-pointer"
               >
                 ✕
               </button>
@@ -1286,7 +1286,7 @@ export function Workspace() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Atribuído a</label>
-                  <select 
+                  <select aria-label="Responsável pela tarefa" 
                     value={editAssigned}
                     onChange={(e) => setEditAssigned(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-[#002B49]"
@@ -1340,7 +1340,7 @@ export function Workspace() {
                 {/* Lista Interativa de Subtarefas */}
                 <div className="space-y-1 bg-slate-50 p-2 rounded-xl border border-slate-200/80 max-h-40 overflow-y-auto">
                   {editSubtasks.length === 0 ? (
-                    <div className="text-center py-4 text-xs text-slate-500">Nenhuma subtarefa adicionada.</div>
+                    <div className="text-center py-4 text-xs text-slate-600">Nenhuma subtarefa adicionada.</div>
                   ) : (
                     editSubtasks.map((st, i) => (
                       <div key={i} className="flex items-center justify-between gap-2 p-1.5 bg-white rounded-lg border border-slate-100">
@@ -1443,7 +1443,7 @@ export function Workspace() {
             {task.deadline && (
               <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md ${
                 columnStatus === 'done' 
-                  ? 'bg-slate-100 text-slate-500'
+                  ? 'bg-slate-100 text-slate-600'
                   : 'bg-amber-50 text-amber-700 border border-amber-200/60'
               }`}>
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1472,7 +1472,7 @@ export function Workspace() {
 
         {/* Descrição Compacta */}
         {task.descricao && (
-          <p className="text-[11px] text-slate-500 m-0 mb-2.5 line-clamp-2 leading-relaxed">
+          <p className="text-[11px] text-slate-600 m-0 mb-2.5 line-clamp-2 leading-relaxed">
             {task.descricao}
           </p>
         )}

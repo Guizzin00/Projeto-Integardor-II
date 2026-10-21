@@ -98,7 +98,7 @@ export function ProjetoDetalhes() {
 
   let statusClass = 'text-[#6c757d]';
   if (projeto.status?.includes('CONCLUÍDO')) statusClass = 'text-[#28a745]';
-  else if (projeto.status?.includes('EXECUÇÃO')) statusClass = 'text-[#ff9800]';
+  else if (projeto.status?.includes('EXECUÇÃO')) statusClass = 'text-amber-700 dark:text-amber-400';
   else if (projeto.status?.includes('INDISPONÍVEL')) statusClass = 'text-[#dc3545]';
 
   const podeEditar = !!user && (
@@ -170,9 +170,9 @@ export function ProjetoDetalhes() {
                   if (typeof item === 'object' && item !== null) {
                     return (
                       <div key={index} className="mb-5 pb-4 border-b border-border-color last:border-b-0 last:pb-0">
-                        <h4 className="font-title text-base font-bold text-purple-primary mb-1.5">
+                        <h3 className="font-title text-base font-bold text-purple-primary mb-1.5">
                           {item.titulo || `Tópico ${index + 1}`}
-                        </h4>
+                        </h3>
                         <p className="leading-[1.8] text-text-primary text-[0.95rem] m-0">
                           {item.conteudo || ''}
                         </p>
@@ -222,7 +222,7 @@ export function ProjetoDetalhes() {
               {/* Formulário de Envio de Avaliação */}
               {user ? (
                 <form onSubmit={handleEnviarAvaliacao} className="pt-4 border-t border-border-color flex flex-col gap-3">
-                  <h4 className="m-0 font-title text-sm font-bold text-purple-primary">Deixe sua avaliação</h4>
+                  <h3 className="m-0 font-title text-sm font-bold text-purple-primary">Deixe sua avaliação</h3>
                   {msgAvaliacao && (
                     <div className="text-sm p-2 rounded bg-purple-primary/10 text-purple-primary font-medium">
                       {msgAvaliacao}

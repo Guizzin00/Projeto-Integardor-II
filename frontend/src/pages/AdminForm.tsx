@@ -144,9 +144,9 @@ export function AdminForm() {
 
   return (
     <div className="max-w-[700px] mx-auto my-12 bg-bg-surface p-10 rounded-xl shadow-light transition-all">
-      <h2 className="text-purple-primary text-[1.8rem] text-center mb-6 font-title font-bold m-0">
+      <h1 className="text-purple-primary text-[1.8rem] text-center mb-6 font-title font-bold m-0">
         {id ? 'Editar' : 'Novo'} Projeto
-      </h2>
+      </h1>
 
       {error && (
         <div className="mb-4 bg-[rgba(220,53,69,0.08)] border border-[rgba(220,53,69,0.2)] text-[#721c24] p-2.5 rounded-md text-sm font-medium">

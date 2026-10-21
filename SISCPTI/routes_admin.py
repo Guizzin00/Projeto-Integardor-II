@@ -1,4 +1,4 @@
-from flask import request, redirect, url_for, flash, session, abort, jsonify, Response
+from flask import request, redirect, url_for, flash, session, abort, jsonify, Response, g
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 import json, os, uuid, io, csv
@@ -15,41 +15,107 @@ def api_admin_dashboard():
     if session.get('role') != 'admin':
         return jsonify({"status": "error", "message": "Acesso restrito."}), 403
 
-    projetos_db = Project.query.all()
-    projetos = [p.to_dict() for p in projetos_db]
-    
-    submissoes = [s.to_dict() for s in Submission.query.all()]
-    candidaturas = [c.to_dict() for c in Application.query.all()]
-    usuarios = [{"id": u.id, "username": u.username, "role": u.role, "email": u.email, "ativo": u.ativo, "status_aprovacao": getattr(u, 'status_aprovacao', 'APROVADO')} for u in User.query.all()]
-    aprovacoes_pendentes_count = User.query.filter(User.status_aprovacao == 'PENDENTE').count()
-
     return jsonify({
         "status": "success",
         "data": {
-            "projetos": projetos,
-            "submissoes": submissoes,
-            "candidaturas": candidaturas,
-            "usuarios": usuarios,
-            "aprovacoes_pendentes_count": aprovacoes_pendentes_count
+            "totais": {
+                "projetos": Project.query.count(),
+                "submissoes": Submission.query.count(),
+                "candidaturas": Application.query.count(),
+                "usuarios": User.query.count(),
+            },
+            "submissoes_pendentes": Submission.query.filter_by(status='EM ANÁLISE').count(),
+            "candidaturas_pendentes": Application.query.filter_by(status='PENDENTE').count(),
+            "aprovacoes_pendentes_count": User.query.filter(User.status_aprovacao == 'PENDENTE').count()
         }
     })
+
+
+def _paginar(query, to_dict):
+    """Paginação padrão das listas administrativas: ?page= e ?per_page= (máx. 100)."""
+    page = max(request.args.get('page', 1, type=int) or 1, 1)
+    per_page = min(max(request.args.get('per_page', 20, type=int) or 20, 1), 100)
+    pag = query.paginate(page=page, per_page=per_page, error_out=False)
+    return jsonify({
+        "status": "success",
+        "items": [to_dict(x) for x in pag.items],
+        "total": pag.total,
+        "page": pag.page,
+        "pages": max(pag.pages, 1),
+        "per_page": per_page,
+    })
+
+
+@app.route('/api/admin/lista/<tipo>', methods=['GET'])
+def api_admin_lista(tipo):
+    """Listas paginadas e filtradas no servidor para os painéis de admin e coordenador."""
+    role = session.get('role')
+    if role not in ('admin', 'coordenador'):
+        return jsonify({"status": "error", "message": "Acesso restrito."}), 403
+    if role == 'coordenador' and tipo not in ('projetos', 'submissoes'):
+        return jsonify({"status": "error", "message": "Acesso restrito."}), 403
+
+    q = (request.args.get('q') or '').strip()
+    filtro = (request.args.get('status') or '').strip()
+    termo = f"%{q}%"
+
+    if tipo == 'projetos':
+        query = Project.query.order_by(Project.id.desc())
+        if q:
+            cond = db.or_(Project.titulo.ilike(termo), Project.categoria.ilike(termo))
+            if q.isdigit():
+                cond = db.or_(cond, Project.id == int(q))
+            query = query.filter(cond)
+        if filtro and filtro.upper() != 'TODOS':
+            query = query.filter(db.func.upper(Project.status) == filtro.upper())
+        if request.args.get('sem_orientador') == '1':
+            query = query.filter(Project.professor_id.is_(None))
+        return _paginar(query, lambda x: x.to_dict())
+
+    if tipo == 'submissoes':
+        query = Submission.query.order_by(Submission.id.desc())
+        if q:
+            cond = db.or_(Submission.nome_projeto.ilike(termo), Submission.proponente.ilike(termo), Submission.email.ilike(termo))
+            if q.isdigit():
+                cond = db.or_(cond, Submission.id == int(q))
+            query = query.filter(cond)
+        if filtro and filtro.upper() != 'TODOS':
+            query = query.filter(db.func.upper(Submission.status) == filtro.upper())
+        return _paginar(query, lambda x: x.to_dict())
+
+    if tipo == 'candidaturas':
+        query = Application.query.join(Project, Application.projeto_id == Project.id).order_by(Application.id.desc())
+        if q:
+            query = query.filter(db.or_(Application.username.ilike(termo), Application.motivo.ilike(termo), Project.titulo.ilike(termo)))
+        if filtro and filtro.upper() != 'TODOS':
+            query = query.filter(db.func.upper(Application.status) == filtro.upper())
+        return _paginar(query, lambda x: x.to_dict())
+
+    if tipo == 'usuarios':
+        query = User.query.order_by(User.id.desc())
+        if q:
+            cond = db.or_(User.username.ilike(termo), User.email.ilike(termo))
+            if q.isdigit():
+                cond = db.or_(cond, User.id == int(q))
+            query = query.filter(cond)
+        if filtro and filtro.upper() != 'TODOS':
+            query = query.filter(db.func.lower(User.role) == filtro.lower())
+        return _paginar(query, lambda u: {"id": u.id, "username": u.username, "role": u.role, "email": u.email,
+                                          "ativo": u.ativo, "status_aprovacao": getattr(u, 'status_aprovacao', 'APROVADO')})
+
+    return jsonify({"status": "error", "message": "Lista inexistente."}), 404
+
 
 @app.route('/api/admin/stats')
 def api_admin_stats():
     if session.get('role') != 'admin':
-        return jsonify({"error": "Unauthorized"}), 401
-        
-    projects = Project.query.all()
-    status_counts = {}
-    category_counts = {}
-    
-    for p in projects:
-        status_counts[p.status] = status_counts.get(p.status, 0) + 1
-        category_counts[p.categoria] = category_counts.get(p.categoria, 0) + 1
-        
+        return jsonify({"status": "error", "message": "Acesso restrito."}), 403
+
+    por_status = db.session.query(Project.status, db.func.count(Project.id)).group_by(Project.status).all()
+    por_categoria = db.session.query(Project.categoria, db.func.count(Project.id)).group_by(Project.categoria).all()
     return jsonify({
-        "status": status_counts,
-        "categoria": category_counts
+        "status": {k: v for k, v in por_status},
+        "categoria": {k: v for k, v in por_categoria}
     })
 
 # =========================
@@ -58,10 +124,10 @@ def api_admin_stats():
 @app.route('/api/notificacoes', methods=['GET'])
 def api_notificacoes():
     if not session.get('logged_in'):
-        return jsonify({"error": "Unauthorized"}), 401
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
     
     username = session['user']
-    notifs = Notification.query.filter_by(username=username, lida=False).order_by(Notification.data_criacao.desc()).all()
+    notifs = Notification.query.filter_by(user_id=g.uid, lida=False).order_by(Notification.data_criacao.desc()).all()
     
     BRT = timedelta(hours=-3)  # Horário de Brasília = UTC-3
     output = []
@@ -85,25 +151,25 @@ def api_notificacoes():
 @app.route('/api/notificacoes/ler/<int:notif_id>', methods=['POST'])
 def api_ler_notificacao(notif_id):
     if not session.get('logged_in'):
-        return jsonify({"error": "Unauthorized"}), 401
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
     
     # Bug 2: HTTP 444 → 404  |  Bug 3: query.get() depreciado → db.session.get()
     n = db.session.get(Notification, notif_id)
-    if n and n.username == session['user']:
+    if n and n.user_id == g.uid:
         n.lida = True
         db.session.commit()
         return jsonify({"status": "success"})
         
-    return jsonify({"error": "Notification not found"}), 404
+    return jsonify({"status": "error", "message": "Notification not found"}), 404
 
 @app.route('/api/notificacoes/ler-todas', methods=['POST'])
 def api_ler_todas_notificacoes():
     if not session.get('logged_in'):
-        return jsonify({"error": "Unauthorized"}), 401
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
         
     username = session['user']
     # Bug 4: chave deve ser string, não atributo do modelo
-    Notification.query.filter_by(username=username, lida=False).update({"lida": True})
+    Notification.query.filter_by(user_id=g.uid, lida=False).update({"lida": True})
     db.session.commit()
     return jsonify({"status": "success"})
 
@@ -175,16 +241,16 @@ def api_admin_usuario(user_id):
         if u.username == session.get('user'):
             return jsonify({"status": "error", "message": "Não pode excluir a si mesmo."}), 400
         vinculos = []
-        if Project.query.filter_by(owner_username=u.username).count():
+        if Project.query.filter_by(owner_id=u.id).count():
             vinculos.append("é dono de projetos")
         if Project.query.filter_by(professor_id=u.id).count():
             vinculos.append("é orientador de projetos")
-        if Application.query.filter_by(username=u.username, status='APROVADA').count():
+        if Application.query.filter_by(user_id=u.id, status='APROVADA').count():
             vinculos.append("integra equipes de projetos")
         if vinculos:
             return jsonify({"status": "error", "message": "Não é possível excluir: o usuário " + ", ".join(vinculos) + ". Reatribua ou desative a conta."}), 409
-        Notification.query.filter_by(username=u.username).delete()
-        Application.query.filter_by(username=u.username).delete()
+        Notification.query.filter_by(user_id=u.id).delete()
+        Application.query.filter_by(user_id=u.id).delete()
         PasswordReset.query.filter_by(username=u.username).delete()
         AccountVerification.query.filter_by(username=u.username).delete()
         db.session.delete(u)
@@ -275,6 +341,7 @@ def acao_submissao(sub_id, acao):
             detalhes=json.dumps([subm.descricao]),
             links="{}",
             owner_username=subm.username,
+            owner_id=subm.user_id,
             tags=subm.tags or ""
         )
         db.session.add(novo_proj)
@@ -359,6 +426,7 @@ def novo_projeto():
             imagem=imagem_path,
             links=json.dumps(links_dict),
             owner_username=session['user'],
+            owner_id=g.uid,
             tags=data.get('tags', '')
         )
         db.session.add(novo)
@@ -380,12 +448,10 @@ def editar_projeto(projeto_id):
         return jsonify({"status": "error", "message": "Projeto não encontrado."}), 404
 
     usuario_atual = User.query.filter_by(username=session['user']).first()
-    is_owner = (projeto_db.owner_username == session['user'])
+    is_owner = bool(g.uid and projeto_db.owner_id == g.uid)
     is_admin = (session.get('role') == 'admin')
     is_orientador = bool(
-        session.get('role') == 'professor' and usuario_atual and (
-            projeto_db.professor_id == usuario_atual.id or projeto_db.professor == usuario_atual.username
-        )
+        session.get('role') == 'professor' and usuario_atual and projeto_db.professor_id == usuario_atual.id
     )
 
     if not (is_owner or is_admin or is_orientador):
@@ -490,7 +556,7 @@ def exportar_csv(tipo):
 
     if tipo == 'candidaturas':
         linha('ID', 'Projeto', 'Usuário', 'Motivo', 'Experiência', 'Status')
-        for c in Application.query.all():
+        for c in Application.query.options(db.joinedload(Application.projeto)).all():
             linha(c.id, c.projeto.titulo if c.projeto else "", c.username, c.motivo, c.experiencia, c.status)
         filename = 'candidaturas.csv'
 
@@ -509,17 +575,21 @@ def exportar_csv(tipo):
     elif tipo == 'projetos':
         linha('ID', 'Título', 'Status', 'Orientador', 'Categoria', 'Proponente',
               'Total Integrantes', 'Total Tarefas', 'Tarefas Concluídas')
+        # Contagens agregadas (3 consultas no total, em vez de 3 por projeto)
+        integrantes = dict(db.session.query(Application.projeto_id, db.func.count(Application.id))
+                           .filter(Application.status == 'APROVADA').group_by(Application.projeto_id).all())
+        tarefas = dict(db.session.query(Task.projeto_id, db.func.count(Task.id)).group_by(Task.projeto_id).all())
+        concluidas = dict(db.session.query(Task.projeto_id, db.func.count(Task.id))
+                          .filter(Task.status == 'done').group_by(Task.projeto_id).all())
         for p in Project.query.all():
             linha(p.id, p.titulo, p.status, p.professor, p.categoria, p.owner_username or '',
-                  Application.query.filter_by(projeto_id=p.id, status='APROVADA').count(),
-                  Task.query.filter_by(projeto_id=p.id).count(),
-                  Task.query.filter_by(projeto_id=p.id, status='done').count())
+                  integrantes.get(p.id, 0), tarefas.get(p.id, 0), concluidas.get(p.id, 0))
         filename = 'projetos.csv'
 
     elif tipo == 'satisfacao':
         linha('ID Avaliação', 'ID Projeto', 'Título do Projeto', 'Usuário', 'Nota Geral',
               'Nota Organização', 'Nota Orientação', 'Nota Aprendizado', 'Comentário', 'Data')
-        for r in Rating.query.all():
+        for r in Rating.query.options(db.joinedload(Rating.projeto)).all():
             linha(r.id, r.projeto_id, r.projeto.titulo if r.projeto else 'Desconhecido', r.username, r.nota,
                   r.nota_organizacao or 5, r.nota_orientacao or 5, r.nota_aprendizado or 5, r.comentario or '',
                   r.data_criacao.strftime('%d/%m/%Y %H:%M') if r.data_criacao else '')
@@ -578,18 +648,15 @@ def admin_logs():
 def coordenador_dashboard():
     if session.get('role') not in ['admin', 'coordenador']:
         return jsonify({"status": "error", "message": "Acesso restrito."}), 403
-        
-    submissoes = Submission.query.all()
-    projetos = Project.query.all()
-    professores = User.query.filter_by(role='professor').all()
-    aprovacoes_pendentes_count = User.query.filter(User.status_aprovacao == 'PENDENTE').count()
-    
+
+    professores = User.query.filter_by(role='professor').order_by(User.username).all()
     return jsonify({
         "status": "success",
-        "submissoes": [s.to_dict() for s in submissoes],
-        "projetos": [p.to_dict() for p in projetos],
+        "totais": {"projetos": Project.query.count(), "submissoes": Submission.query.count()},
+        "projetos_sem_orientador": Project.query.filter(Project.professor_id.is_(None)).count(),
+        "submissoes_pendentes": Submission.query.filter_by(status='EM ANÁLISE').count(),
         "professores": [{"id": pr.id, "username": pr.username} for pr in professores],
-        "aprovacoes_pendentes_count": aprovacoes_pendentes_count
+        "aprovacoes_pendentes_count": User.query.filter(User.status_aprovacao == 'PENDENTE').count()
     })
 
 # =========================
@@ -722,7 +789,7 @@ def coordenador_atribuir_professor(proj_id):
 @app.route('/api/admin/satisfacao')
 def api_admin_satisfacao():
     if session.get('role') not in ['admin', 'coordenador']:
-        return jsonify({"error": "Unauthorized"}), 401
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
         
     ratings = Rating.query.all()
     if not ratings:

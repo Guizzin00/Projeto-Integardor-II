@@ -144,7 +144,7 @@ export function RecuperarSenha() {
       {/* Nota de Apoio Institucional */}
       <div className="mt-8 text-center text-xs text-text-secondary">
         <p className="m-0">Centro Universitário de Brasília · UniCEUB</p>
-        <p className="m-0 text-[11px] text-text-secondary/70 mt-0.5">O link enviado possui prazo de expiração de 1 hora para segurança institucional</p>
+        <p className="m-0 text-[11px] text-text-secondary mt-0.5">O link enviado possui prazo de expiração de 1 hora para segurança institucional</p>
       </div>
     </div>
   );

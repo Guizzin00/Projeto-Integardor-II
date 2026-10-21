@@ -224,7 +224,7 @@ export function Login() {
       {/* Nota de Apoio Institucional */}
       <div className="mt-8 text-center text-xs text-text-secondary">
         <p className="m-0">Centro Universitário de Brasília · UniCEUB</p>
-        <p className="m-0 text-[11px] text-text-secondary/70 mt-0.5">Ambiente acadêmico restrito a discentes, docentes e avaliadores</p>
+        <p className="m-0 text-[11px] text-text-secondary mt-0.5">Ambiente acadêmico restrito a discentes, docentes e avaliadores</p>
       </div>
     </div>
   );

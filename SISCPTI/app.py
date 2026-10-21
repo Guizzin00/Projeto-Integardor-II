@@ -54,7 +54,21 @@ def run_db_migrations(force=False):
                         'ALTER TABLE "submission" ADD COLUMN IF NOT EXISTS projeto_id INTEGER',
                         "UPDATE \"project\" SET status = 'EM EXECUÇÃO' WHERE status = 'EM DESENVOLVIMENTO'",
                         "UPDATE \"project\" SET status = 'CONCLUÍDO' WHERE status = 'EXECUTADO'",
-                        'CREATE UNIQUE INDEX IF NOT EXISTS uq_application_projeto_username ON "application" (projeto_id, username)'
+                        'CREATE UNIQUE INDEX IF NOT EXISTS uq_application_projeto_username ON "application" (projeto_id, username)',
+                        'ALTER TABLE "application" ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES "user"(id) ON DELETE SET NULL',
+                        'UPDATE "application" SET user_id = (SELECT u.id FROM "user" u WHERE u.username = "application".username) WHERE user_id IS NULL AND username IS NOT NULL',
+                        'ALTER TABLE "message" ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES "user"(id) ON DELETE SET NULL',
+                        'UPDATE "message" SET user_id = (SELECT u.id FROM "user" u WHERE u.username = "message".username) WHERE user_id IS NULL AND username IS NOT NULL',
+                        'ALTER TABLE "notification" ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES "user"(id) ON DELETE SET NULL',
+                        'UPDATE "notification" SET user_id = (SELECT u.id FROM "user" u WHERE u.username = "notification".username) WHERE user_id IS NULL AND username IS NOT NULL',
+                        'ALTER TABLE "rating" ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES "user"(id) ON DELETE SET NULL',
+                        'UPDATE "rating" SET user_id = (SELECT u.id FROM "user" u WHERE u.username = "rating".username) WHERE user_id IS NULL AND username IS NOT NULL',
+                        'ALTER TABLE "submission" ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES "user"(id) ON DELETE SET NULL',
+                        'UPDATE "submission" SET user_id = (SELECT u.id FROM "user" u WHERE u.username = "submission".username) WHERE user_id IS NULL AND username IS NOT NULL',
+                        'ALTER TABLE "task" ADD COLUMN IF NOT EXISTS assigned_user_id INTEGER REFERENCES "user"(id) ON DELETE SET NULL',
+                        'UPDATE "task" SET assigned_user_id = (SELECT u.id FROM "user" u WHERE u.username = "task".assigned_username) WHERE assigned_user_id IS NULL AND assigned_username IS NOT NULL',
+                        'ALTER TABLE "project" ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES "user"(id) ON DELETE SET NULL',
+                        'UPDATE "project" SET owner_id = (SELECT u.id FROM "user" u WHERE u.username = "project".owner_username) WHERE owner_id IS NULL AND owner_username IS NOT NULL'
                     ]
                     for stmt in pg_statements:
                         try:
@@ -118,6 +132,42 @@ def run_db_migrations(force=False):
                         conn.execute(text('ALTER TABLE "task" ADD COLUMN created_at DATETIME'))
                     if 'completed_at' not in task_cols:
                         conn.execute(text('ALTER TABLE "task" ADD COLUMN completed_at DATETIME'))
+                    # Vínculos por id (#52): cria as colunas e preenche a partir do nome de usuário
+                    _cols = [c['name'] for c in inspector.get_columns('application')]
+                    if 'user_id' not in _cols:
+                        conn.execute(text('ALTER TABLE "application" ADD COLUMN user_id INTEGER REFERENCES "user"(id) ON DELETE SET NULL'))
+                    conn.execute(text('UPDATE "application" SET user_id = (SELECT u.id FROM "user" u WHERE u.username = "application".username) WHERE user_id IS NULL AND username IS NOT NULL'))
+                    conn.commit()
+                    _cols = [c['name'] for c in inspector.get_columns('message')]
+                    if 'user_id' not in _cols:
+                        conn.execute(text('ALTER TABLE "message" ADD COLUMN user_id INTEGER REFERENCES "user"(id) ON DELETE SET NULL'))
+                    conn.execute(text('UPDATE "message" SET user_id = (SELECT u.id FROM "user" u WHERE u.username = "message".username) WHERE user_id IS NULL AND username IS NOT NULL'))
+                    conn.commit()
+                    _cols = [c['name'] for c in inspector.get_columns('notification')]
+                    if 'user_id' not in _cols:
+                        conn.execute(text('ALTER TABLE "notification" ADD COLUMN user_id INTEGER REFERENCES "user"(id) ON DELETE SET NULL'))
+                    conn.execute(text('UPDATE "notification" SET user_id = (SELECT u.id FROM "user" u WHERE u.username = "notification".username) WHERE user_id IS NULL AND username IS NOT NULL'))
+                    conn.commit()
+                    _cols = [c['name'] for c in inspector.get_columns('rating')]
+                    if 'user_id' not in _cols:
+                        conn.execute(text('ALTER TABLE "rating" ADD COLUMN user_id INTEGER REFERENCES "user"(id) ON DELETE SET NULL'))
+                    conn.execute(text('UPDATE "rating" SET user_id = (SELECT u.id FROM "user" u WHERE u.username = "rating".username) WHERE user_id IS NULL AND username IS NOT NULL'))
+                    conn.commit()
+                    _cols = [c['name'] for c in inspector.get_columns('submission')]
+                    if 'user_id' not in _cols:
+                        conn.execute(text('ALTER TABLE "submission" ADD COLUMN user_id INTEGER REFERENCES "user"(id) ON DELETE SET NULL'))
+                    conn.execute(text('UPDATE "submission" SET user_id = (SELECT u.id FROM "user" u WHERE u.username = "submission".username) WHERE user_id IS NULL AND username IS NOT NULL'))
+                    conn.commit()
+                    _cols = [c['name'] for c in inspector.get_columns('task')]
+                    if 'assigned_user_id' not in _cols:
+                        conn.execute(text('ALTER TABLE "task" ADD COLUMN assigned_user_id INTEGER REFERENCES "user"(id) ON DELETE SET NULL'))
+                    conn.execute(text('UPDATE "task" SET assigned_user_id = (SELECT u.id FROM "user" u WHERE u.username = "task".assigned_username) WHERE assigned_user_id IS NULL AND assigned_username IS NOT NULL'))
+                    conn.commit()
+                    _cols = [c['name'] for c in inspector.get_columns('project')]
+                    if 'owner_id' not in _cols:
+                        conn.execute(text('ALTER TABLE "project" ADD COLUMN owner_id INTEGER REFERENCES "user"(id) ON DELETE SET NULL'))
+                    conn.execute(text('UPDATE "project" SET owner_id = (SELECT u.id FROM "user" u WHERE u.username = "project".owner_username) WHERE owner_id IS NULL AND owner_username IS NOT NULL'))
+                    conn.commit()
                     try:
                         conn.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS uq_application_projeto_username ON "application" (projeto_id, username)'))
                     except Exception as idx_err:
