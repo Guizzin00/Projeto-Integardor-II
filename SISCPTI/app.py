@@ -54,7 +54,6 @@ def run_db_migrations(force=False):
                         'ALTER TABLE "submission" ADD COLUMN IF NOT EXISTS projeto_id INTEGER',
                         "UPDATE \"project\" SET status = 'EM EXECUÇÃO' WHERE status = 'EM DESENVOLVIMENTO'",
                         "UPDATE \"project\" SET status = 'CONCLUÍDO' WHERE status = 'EXECUTADO'",
-                        'CREATE UNIQUE INDEX IF NOT EXISTS uq_application_projeto_username ON "application" (projeto_id, username)',
                         'ALTER TABLE "application" ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES "user"(id) ON DELETE SET NULL',
                         'UPDATE "application" SET user_id = (SELECT u.id FROM "user" u WHERE u.username = "application".username) WHERE user_id IS NULL AND username IS NOT NULL',
                         'ALTER TABLE "message" ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES "user"(id) ON DELETE SET NULL',
@@ -70,11 +69,14 @@ def run_db_migrations(force=False):
                         'ALTER TABLE "project" ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES "user"(id) ON DELETE SET NULL',
                         'UPDATE "project" SET owner_id = (SELECT u.id FROM "user" u WHERE u.username = "project".owner_username) WHERE owner_id IS NULL AND owner_username IS NOT NULL'
                     ]
+                    pg_statements.append('CREATE UNIQUE INDEX IF NOT EXISTS uq_application_projeto_username ON "application" (projeto_id, username)')
                     for stmt in pg_statements:
                         try:
                             conn.execute(text(stmt))
                             conn.commit()
                         except Exception as stmt_err:
+                            # No PostgreSQL um erro deixa a transação 'abortada': sem rollback, todos os comandos seguintes falham
+                            conn.rollback()
                             print(f"[DB MIGRATION PG NOTICE] '{stmt}': {stmt_err}")
                 else:
                     inspector = sa_inspect(db.engine)
