@@ -59,7 +59,7 @@ def seed():
     p1 = Project(
         id=1,
         titulo="Portal de Vagas de Estágio CEUB",
-        status="EM DESENVOLVIMENTO",
+        status="EM EXECUÇÃO",
         professor="Ana Silva",
         professor_id=prof_ana.id,
         categoria="Web",
@@ -73,7 +73,7 @@ def seed():
     p2 = Project(
         id=2,
         titulo="Aplicativo de Caronas Compartilhadas Acadêmicas",
-        status="EM DESENVOLVIMENTO",
+        status="EM EXECUÇÃO",
         professor="Carlos Souza",
         professor_id=prof_carlos.id,
         categoria="Mobile",

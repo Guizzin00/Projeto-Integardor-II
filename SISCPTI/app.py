@@ -48,7 +48,13 @@ def run_db_migrations(force=False):
                         'ALTER TABLE "task" ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP',
                         "UPDATE \"user\" SET status_aprovacao = 'APROVADO' WHERE status_aprovacao IS NULL",
                         "UPDATE \"user\" SET data_cadastro = CURRENT_TIMESTAMP WHERE data_cadastro IS NULL",
-                        "UPDATE \"user\" SET email = LOWER(username) || '@ceub.br' WHERE email IS NULL OR TRIM(email) = ''"
+                        "UPDATE \"user\" SET email = LOWER(username) || '@ceub.br' WHERE email IS NULL OR TRIM(email) = ''",
+                        'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS email_verificado BOOLEAN DEFAULT TRUE',
+                        'ALTER TABLE "project" ADD COLUMN IF NOT EXISTS concluido_em TIMESTAMP',
+                        'ALTER TABLE "submission" ADD COLUMN IF NOT EXISTS projeto_id INTEGER',
+                        "UPDATE \"project\" SET status = 'EM EXECUÇÃO' WHERE status = 'EM DESENVOLVIMENTO'",
+                        "UPDATE \"project\" SET status = 'CONCLUÍDO' WHERE status = 'EXECUTADO'",
+                        'CREATE UNIQUE INDEX IF NOT EXISTS uq_application_projeto_username ON "application" (projeto_id, username)'
                     ]
                     for stmt in pg_statements:
                         try:
@@ -74,6 +80,9 @@ def run_db_migrations(force=False):
                     if 'data_cadastro' not in user_cols:
                         conn.execute(text('ALTER TABLE "user" ADD COLUMN data_cadastro DATETIME DEFAULT CURRENT_TIMESTAMP'))
 
+                    if 'email_verificado' not in user_cols:
+                        conn.execute(text('ALTER TABLE "user" ADD COLUMN email_verificado BOOLEAN DEFAULT 1'))
+
                     conn.execute(text("UPDATE \"user\" SET email = LOWER(username) || '@ceub.br' WHERE email IS NULL OR TRIM(email) = ''"))
 
                     proj_cols = [c['name'] for c in inspector.get_columns('project')]
@@ -81,10 +90,16 @@ def run_db_migrations(force=False):
                         conn.execute(text('ALTER TABLE "project" ADD COLUMN professor_id INTEGER'))
                     if 'tags' not in proj_cols:
                         conn.execute(text('ALTER TABLE "project" ADD COLUMN tags VARCHAR(300)'))
+                    if 'concluido_em' not in proj_cols:
+                        conn.execute(text('ALTER TABLE "project" ADD COLUMN concluido_em DATETIME'))
+                    conn.execute(text("UPDATE \"project\" SET status = 'EM EXECUÇÃO' WHERE status = 'EM DESENVOLVIMENTO'"))
+                    conn.execute(text("UPDATE \"project\" SET status = 'CONCLUÍDO' WHERE status = 'EXECUTADO'"))
 
                     sub_cols = [c['name'] for c in inspector.get_columns('submission')]
                     if 'tags' not in sub_cols:
                         conn.execute(text('ALTER TABLE "submission" ADD COLUMN tags VARCHAR(300)'))
+                    if 'projeto_id' not in sub_cols:
+                        conn.execute(text('ALTER TABLE "submission" ADD COLUMN projeto_id INTEGER'))
 
                     rating_cols = [c['name'] for c in inspector.get_columns('rating')]
                     if 'nota_organizacao' not in rating_cols:
@@ -103,6 +118,10 @@ def run_db_migrations(force=False):
                         conn.execute(text('ALTER TABLE "task" ADD COLUMN created_at DATETIME'))
                     if 'completed_at' not in task_cols:
                         conn.execute(text('ALTER TABLE "task" ADD COLUMN completed_at DATETIME'))
+                    try:
+                        conn.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS uq_application_projeto_username ON "application" (projeto_id, username)'))
+                    except Exception as idx_err:
+                        print(f"[DB MIGRATION NOTICE] índice único de candidatura: {idx_err}")
                     conn.commit()
 
             print("[DB MIGRATION] Migração do banco concluída com sucesso.")

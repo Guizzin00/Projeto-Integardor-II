@@ -6,7 +6,7 @@ from io import BytesIO
 
 from app_instance import app
 from models import db, Project, Application, Submission, Message, Notification, Rating, Task, User
-from utils import log_atividade, upload_file_to_supabase
+from utils import log_atividade, upload_file_to_supabase, STATUS_ABERTOS_CANDIDATURA
 
 # =========================
 # Catálogo e Detalhes
@@ -76,12 +76,27 @@ def api_candidatar(projeto_id):
     if not projeto_db:
         return jsonify({"status": "error", "message": "Projeto não encontrado."}), 404
 
-    data = request.get_json()
+    role = session.get('role')
+    if role not in ('aluno', 'lider', 'user'):
+        return jsonify({"status": "error", "message": "Apenas alunos podem se candidatar a projetos."}), 403
+
+    if projeto_db.status not in STATUS_ABERTOS_CANDIDATURA:
+        return jsonify({"status": "error", "message": "Este projeto não está recebendo candidaturas."}), 400
+
+    data = request.get_json(silent=True) or {}
+    motivo = str(data.get('motivo') or '').strip()
+    experiencia = str(data.get('experiencia') or '').strip()
+    if not motivo or not experiencia:
+        return jsonify({"status": "error", "message": "Informe sua motivação e sua experiência."}), 400
+
+    if Application.query.filter_by(projeto_id=projeto_id, username=session['user']).first():
+        return jsonify({"status": "error", "message": "Você já se candidatou a este projeto."}), 409
+
     nova_cand = Application(
         projeto_id=projeto_id,
         username=session['user'],
-        motivo=data.get('motivo'),
-        experiencia=data.get('experiencia')
+        motivo=motivo,
+        experiencia=experiencia
     )
     db.session.add(nova_cand)
     
@@ -93,7 +108,11 @@ def api_candidatar(projeto_id):
         )
         db.session.add(notif)
         
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": "Você já se candidatou a este projeto."}), 409
     return jsonify({"status": "success", "message": "Candidatura enviada com sucesso!"})
 
 # =========================
@@ -129,7 +148,7 @@ def api_perfil():
             interesses_list = [i.strip().lower() for i in user_obj.interesses.split(',') if i.strip()]
             if interesses_list:
                 candidatados_ids = [c['projeto_id'] for c in minhas_candidaturas]
-                all_projs = Project.query.filter(Project.status != 'CONCLUÍDO').all()
+                all_projs = Project.query.filter(Project.status.in_(STATUS_ABERTOS_CANDIDATURA)).all()
                 
                 project_scores = []
                 for p in all_projs:
@@ -169,7 +188,8 @@ def dono_acao_candidatura(cand_id, acao):
     if not cand:
         return jsonify({"status": "error", "message": "Candidatura não encontrada."}), 404
         
-    if cand.projeto.owner_username != session['user'] and session.get('role') not in ['admin', 'coordenador']:
+    ac = acesso_projeto(cand.projeto)
+    if not (ac['is_owner'] or ac['is_admin'] or ac['is_coord']):
         return jsonify({"status": "error", "message": "Acesso negado."}), 403
         
     if acao == 'aprovar':
@@ -279,23 +299,10 @@ def workspace(projeto_id):
     if not projeto_db:
         return jsonify({"status": "error", "message": "Projeto não encontrado."}), 404
         
-    username = session['user']
-    user_obj = User.query.filter_by(username=username).first()
-    
-    is_orientador = (projeto_db.professor_id == user_obj.id if user_obj and projeto_db.professor_id else False)
-    is_owner = (projeto_db.owner_username == username) or is_orientador
-    
-    role = session.get('role')
-    is_admin = (role == 'admin')
-    is_coord = (role == 'coordenador')
-    is_cliente_owner = (role in ['cliente', 'empresa'] and projeto_db.owner_username == username)
-    
-    equipe_cands = Application.query.filter_by(projeto_id=projeto_id, status='APROVADA').all()
-    membros = [c.username for c in equipe_cands]
-    
-    if not is_owner and not is_admin and not is_coord and not is_cliente_owner and username not in membros:
+    if not acesso_projeto(projeto_db)['pode_ver']:
         return jsonify({"status": "error", "message": "Acesso negado. Você não é membro aprovado deste projeto."}), 403
-        
+
+    membros = [c.username for c in Application.query.filter_by(projeto_id=projeto_id, status='APROVADA').all()]
     mensagens = Message.query.filter_by(projeto_id=projeto_id).order_by(Message.data_envio.asc()).all()
     return jsonify({
         "status": "success",
@@ -320,16 +327,9 @@ def workspace_mensagens_json(projeto_id):
     if not projeto_db:
         return jsonify({"error": "Project not found"}), 404
         
-    username = session['user']
-    is_owner = (projeto_db.owner_username == username)
-    is_admin = (session.get('role') == 'admin')
-    
-    equipe_cands = Application.query.filter_by(projeto_id=projeto_id, status='APROVADA').all()
-    membros = [c.username for c in equipe_cands]
-    
-    if not is_owner and not is_admin and username not in membros:
+    if not acesso_projeto(projeto_db)['pode_ver']:
         return jsonify({"error": "Forbidden"}), 403
-        
+
     mensagens = Message.query.filter_by(projeto_id=projeto_id).order_by(Message.data_envio.asc()).all()
     output = []
     for msg in mensagens:
@@ -355,21 +355,10 @@ def enviar_mensagem_ajax(projeto_id):
         return jsonify({"status": "error", "message": "Projeto não encontrado"}), 404
         
     username = session['user']
-    user_obj = User.query.filter_by(username=username).first()
-    
-    is_orientador = (projeto_db.professor_id == user_obj.id if user_obj and projeto_db.professor_id else False)
-    is_owner = (projeto_db.owner_username == username) or is_orientador
-    role = session.get('role')
-    is_admin = (role == 'admin')
-    is_coord = (role == 'coordenador')
-    is_cliente_owner = (role in ['cliente', 'empresa'] and projeto_db.owner_username == username)
-    
-    equipe_cands = Application.query.filter_by(projeto_id=projeto_id, status='APROVADA').all()
-    membros = [c.username for c in equipe_cands]
-    
-    if not is_owner and not is_admin and not is_coord and not is_cliente_owner and username not in membros:
+    if not acesso_projeto(projeto_db)['pode_ver']:
         return jsonify({"status": "error", "message": "Acesso negado"}), 403
-        
+
+    membros = [c.username for c in Application.query.filter_by(projeto_id=projeto_id, status='APROVADA').all()]
     data = request.get_json(silent=True) or request.form
     texto = data.get('texto')
     arquivo_path = None
@@ -437,23 +426,29 @@ def avaliar_projeto(projeto_id):
     if not proj:
         return jsonify({'status': 'error', 'message': 'Projeto não encontrado'}), 404
 
-    data = request.get_json(silent=True) or request.form
-    try:
-        nota = int(data.get('nota', 0))
-    except (ValueError, TypeError):
-        nota = 0
-        
-    try: nota_org = int(data.get('nota_organizacao', 5))
-    except: nota_org = 5
-    try: nota_ori = int(data.get('nota_orientacao', 5))
-    except: nota_ori = 5
-    try: nota_apr = int(data.get('nota_aprendizado', 5))
-    except: nota_apr = 5
-    
-    comentario = str(data.get('comentario', '')).strip()
+    ac = acesso_projeto(proj)
+    if not (ac['is_member'] or ac['is_owner']):
+        return jsonify({'status': 'error', 'message': 'Apenas integrantes do projeto podem avaliá-lo.'}), 403
 
-    if nota < 1 or nota > 5:
-        return jsonify({'status': 'error', 'message': 'Nota inválida. Escolha entre 1 e 5 estrelas.'}), 400
+    data = request.get_json(silent=True) or request.form
+
+    def ler_nota(chave, padrao):
+        try:
+            valor = int(data.get(chave, padrao))
+        except (ValueError, TypeError):
+            return None
+        return valor if 1 <= valor <= 5 else None
+
+    nota = ler_nota('nota', 0)
+    nota_org = ler_nota('nota_organizacao', 5)
+    nota_ori = ler_nota('nota_orientacao', 5)
+    nota_apr = ler_nota('nota_aprendizado', 5)
+    comentario = str(data.get('comentario', '') or '').strip()
+
+    if None in (nota, nota_org, nota_ori, nota_apr):
+        return jsonify({'status': 'error', 'message': 'Nota inválida. Escolha valores entre 1 e 5.'}), 400
+    if len(comentario) > 1000:
+        return jsonify({'status': 'error', 'message': 'O comentário deve ter no máximo 1000 caracteres.'}), 400
 
     ja_avaliou = Rating.query.filter_by(projeto_id=projeto_id, username=session['user']).first()
     if ja_avaliou:
@@ -611,6 +606,7 @@ def excluir_submissao(sub_id):
 # Geração de Certificados PDF (ReportLab)
 # ==========================================
 def gerar_pdf_certificado(projeto, username):
+    from xml.sax.saxutils import escape
     from reportlab.lib.pagesizes import letter, landscape
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -666,11 +662,11 @@ def gerar_pdf_certificado(projeto, username):
     story.append(Paragraph("CERTIFICADO DE CONCLUSÃO", title_style))
     story.append(Spacer(1, 20))
     
-    texto_certificado = f"Certificamos que o(a) aluno(a) <b>{username}</b> participou e concluiu com êxito as atividades do projeto de extensão <b>{projeto.titulo}</b> na categoria <b>{projeto.categoria}</b>, sob a orientação do professor orientador <b>{projeto.professor}</b>."
+    texto_certificado = f"Certificamos que o(a) aluno(a) <b>{escape(username)}</b> participou e concluiu com êxito as atividades do projeto de extensão <b>{escape(projeto.titulo or '')}</b> na categoria <b>{escape(projeto.categoria or '')}</b>, sob a orientação do professor orientador <b>{escape(projeto.professor or '')}</b>."
     story.append(Paragraph(texto_certificado, body_style))
     story.append(Spacer(1, 10))
     
-    data_conclusao = datetime.now().strftime('%d de %B de %Y')
+    data_conclusao = (getattr(projeto, 'concluido_em', None) or datetime.utcnow()).strftime('%d de %B de %Y')
     meses = {
         'January': 'Janeiro', 'February': 'Fevereiro', 'March': 'Março', 'April': 'Abril',
         'May': 'Maio', 'June': 'Junho', 'July': 'Julho', 'August': 'Agosto',
@@ -692,8 +688,8 @@ def gerar_pdf_certificado(projeto, username):
     
     sig_table_data = [
         [
-            Paragraph("_____________________________<br>Coordenação de TI<br>SisCPTI - UniCEUB", sig_style),
-            Paragraph(f"_____________________________<br>Professor Orientador<br>{projeto.professor}", sig_style)
+            Paragraph("_____________________________<br/>Coordenação de TI<br/>SisCPTI - UniCEUB", sig_style),
+            Paragraph(f"_____________________________<br/>Professor Orientador<br/>{escape(projeto.professor or '')}", sig_style)
         ]
     ]
     sig_table = Table(sig_table_data, colWidths=[300, 300])
@@ -718,30 +714,24 @@ def gerar_pdf_certificado(projeto, username):
     buffer.seek(0)
     return buffer.getvalue()
 
+@app.route('/api/projeto/<int:projeto_id>/certificado')
 @app.route('/projeto/<int:projeto_id>/certificado')
 def download_certificado(projeto_id):
     if not session.get('logged_in'):
-        flash("Você precisa estar logado.", "error")
-        return redirect(url_for('login'))
-        
+        return jsonify({"status": "error", "message": "Você precisa estar logado."}), 401
+
     projeto = Project.query.get(projeto_id)
     if not projeto:
-        abort(404)
-        
+        return jsonify({"status": "error", "message": "Projeto não encontrado."}), 404
+
     username = session['user']
-    if projeto.status != 'CONCLUÍDO' and session.get('role') != 'admin':
-        flash("O certificado só fica disponível para projetos CONCLUÍDOS.", "error")
-        return redirect(url_for('workspace', projeto_id=projeto_id))
-        
-    equipe_cands = Application.query.filter_by(projeto_id=projeto_id, status='APROVADA').all()
-    membros = [c.username for c in equipe_cands]
-    is_owner = (projeto.owner_username == username)
-    is_admin = (session.get('role') == 'admin')
-    
-    if not is_owner and not is_admin and username not in membros:
-        flash("Você não tem permissão para acessar este certificado.", "error")
-        return redirect(url_for('perfil'))
-        
+    ac = acesso_projeto(projeto)
+    if not (ac['is_member'] or ac['is_admin']):
+        return jsonify({"status": "error", "message": "Você não tem permissão para acessar este certificado."}), 403
+
+    if projeto.status != 'CONCLUÍDO':
+        return jsonify({"status": "error", "message": "O certificado só fica disponível para projetos CONCLUÍDOS."}), 400
+
     pdf_data = gerar_pdf_certificado(projeto, username)
     return send_file(
         BytesIO(pdf_data),
@@ -877,18 +867,9 @@ def api_mover_task(projeto_id, task_id):
     if role in ['cliente', 'coordenador']:
         return jsonify({"error": "Clientes e Coordenadores possuem apenas acesso de leitura ao Kanban."}), 403
         
-    equipe_cands = Application.query.filter_by(projeto_id=projeto_id, status='APROVADA').all()
-    membros = [c.username for c in equipe_cands]
-    
-    user_obj = User.query.filter_by(username=username).first()
-    is_orientador = (projeto.professor_id == user_obj.id if user_obj and projeto.professor_id else False)
-    is_owner = (projeto.owner_username == username) or is_orientador
-    is_admin = (role == 'admin')
-    is_member = (username in membros)
-    
-    if not is_owner and not is_admin and not is_member:
+    if not acesso_projeto(projeto)['pode_editar']:
         return jsonify({"error": "Acesso negado."}), 403
-        
+
     data = request.get_json(silent=True) or request.form
     novo_status = data.get('status')
     if novo_status not in ['todo', 'doing', 'done']:
@@ -989,23 +970,11 @@ def api_projeto_metrics(projeto_id):
         
     projeto_db = Project.query.get(projeto_id)
     if not projeto_db:
-        return jsonify({"error": "Project not found"}), 444
+        return jsonify({"error": "Project not found"}), 404
         
-    username = session['user']
-    user_obj = User.query.filter_by(username=username).first()
-    is_orientador = (projeto_db.professor_id == user_obj.id if user_obj and projeto_db.professor_id else False)
-    is_owner = (projeto_db.owner_username == username) or is_orientador
-    role = session.get('role')
-    is_admin = (role == 'admin')
-    is_coord = (role == 'coordenador')
-    is_cliente_owner = (role in ['cliente', 'empresa'] and projeto_db.owner_username == username)
-    
-    equipe_cands = Application.query.filter_by(projeto_id=projeto_id, status='APROVADA').all()
-    membros = [c.username for c in equipe_cands]
-    
-    if not is_owner and not is_admin and not is_coord and not is_cliente_owner and username not in membros:
+    if not acesso_projeto(projeto_db)['pode_ver']:
         return jsonify({"error": "Forbidden"}), 403
-        
+
     tasks = Task.query.filter_by(projeto_id=projeto_id).all()
     tasks_data = []
     for t in tasks:

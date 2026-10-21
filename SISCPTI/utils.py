@@ -1,4 +1,6 @@
 import os
+import time
+import threading
 import smtplib
 import uuid
 import requests
@@ -753,8 +755,107 @@ def email_template_conta_recusada(username: str, role: str, motivo: str = None) 
 """
 
 
+# Papéis oficiais do sistema (fonte única)
+PAPEIS_VALIDOS = ['aluno', 'lider', 'professor', 'empresa', 'cliente', 'coordenador', 'admin']
+PAPEIS_AUTOCADASTRO = ['aluno', 'professor', 'empresa', 'cliente']
+
+
+def validar_senha(senha):
+    """Política de senha. Devolve mensagem de erro ou None se a senha é aceitável."""
+    senha = senha or ''
+    if len(senha) < 8:
+        return "A senha deve ter pelo menos 8 caracteres."
+    if not re.search(r'[A-Za-z]', senha) or not re.search(r'\d', senha):
+        return "A senha deve conter letras e números."
+    return None
+
+
+def proteger_celula_csv(valor):
+    """Evita injeção de fórmulas no Excel/Sheets: prefixa valores perigosos com apóstrofo."""
+    if isinstance(valor, str) and valor and valor[0] in ('=', '+', '-', '@', '\t', '\r'):
+        return "'" + valor
+    return valor
+
+
+# Limitação de taxa em memória (por instância do servidor)
+_tentativas = {}
+_tentativas_lock = threading.Lock()
+
+
+def ip_do_cliente():
+    from flask import request
+    xff = request.headers.get('X-Forwarded-For', '')
+    return (xff.split(',')[0].strip() if xff else '') or request.remote_addr or 'desconhecido'
+
+
+def limite_excedido(escopo, identificador, maximo, janela_segundos):
+    """True se já houve `maximo` registros de (escopo, identificador) dentro da janela."""
+    agora = time.time()
+    chave = (escopo, identificador)
+    with _tentativas_lock:
+        recentes = [t for t in _tentativas.get(chave, []) if agora - t < janela_segundos]
+        _tentativas[chave] = recentes
+        return len(recentes) >= maximo
+
+
+def registrar_tentativa(escopo, identificador):
+    with _tentativas_lock:
+        _tentativas.setdefault((escopo, identificador), []).append(time.time())
+
+
+def limpar_tentativas(escopo, identificador):
+    with _tentativas_lock:
+        _tentativas.pop((escopo, identificador), None)
+
+
+# Status oficiais de projeto (fonte única)
+STATUS_PROJETO = ['DISPONÍVEL', 'EM EXECUÇÃO', 'CONCLUÍDO', 'INDISPONÍVEL']
+STATUS_ABERTOS_CANDIDATURA = ['DISPONÍVEL', 'EM EXECUÇÃO']
+STATUS_PROJETO_ALIAS = {'EM DESENVOLVIMENTO': 'EM EXECUÇÃO', 'EXECUTADO': 'CONCLUÍDO'}
+
+
+def normalizar_status_projeto(valor):
+    """Converte nomes antigos para os status oficiais; devolve None se inválido."""
+    valor = (valor or '').strip().upper()
+    valor = STATUS_PROJETO_ALIAS.get(valor, valor)
+    return valor if valor in STATUS_PROJETO else None
+
+
+class UploadInvalido(Exception):
+    """Arquivo rejeitado (tipo, tamanho ou armazenamento indisponível)."""
+
+
+EXTENSOES_PERMITIDAS = {
+    'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'gif': 'image/gif', 'webp': 'image/webp',
+    'pdf': 'application/pdf', 'txt': 'text/plain', 'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xls': 'application/vnd.ms-excel',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'ppt': 'application/vnd.ms-powerpoint',
+    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'zip': 'application/zip', 'csv': 'text/csv',
+}
+TAMANHO_MAXIMO_UPLOAD = 10 * 1024 * 1024  # 10 MB
+
+
+def validar_upload(file):
+    """Valida extensão e tamanho; devolve (nome_seguro, extensão). Lança UploadInvalido se recusado."""
+    from werkzeug.utils import secure_filename
+    filename = secure_filename(file.filename or '')
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+    if ext not in EXTENSOES_PERMITIDAS:
+        raise UploadInvalido("Tipo de arquivo não permitido. Envie imagem, PDF ou documento do Office.")
+    file.seek(0, os.SEEK_END)
+    tamanho = file.tell()
+    file.seek(0)
+    if tamanho > TAMANHO_MAXIMO_UPLOAD:
+        raise UploadInvalido("Arquivo muito grande. O limite é de 10 MB.")
+    return filename, ext
+
+
 def upload_file_to_supabase(file):
-    # Carrega do ambiente ou usa padrão do usuário se disponível
+    filename, ext = validar_upload(file)
+    # Carrega do ambiente
     supabase_url = os.environ.get('SUPABASE_URL', '').strip()
     supabase_key = os.environ.get('SUPABASE_KEY', '').strip()
     supabase_bucket = os.environ.get('SUPABASE_BUCKET', 'uploads').strip()
@@ -790,7 +891,7 @@ def upload_file_to_supabase(file):
         headers = {
             "apikey": supabase_key,
             "Authorization": f"Bearer {supabase_key}",
-            "Content-Type": file.content_type or "application/octet-stream"
+            "Content-Type": EXTENSOES_PERMITIDAS[ext]
         }
         
         file.seek(0)
@@ -813,26 +914,29 @@ def upload_file_to_supabase(file):
         return save_file_locally(file)
 
 def save_file_locally(file):
-    from werkzeug.utils import secure_filename
-    import tempfile
-    
-    filename = secure_filename(file.filename)
-    unique_filename = str(uuid.uuid4())[:8] + "_" + filename
-    
+    """Salva no mesmo diretório que o servidor usa para servir (UPLOAD_FOLDER)."""
+    from flask import current_app
+    filename, ext = validar_upload(file)
+
+    # Em produção (Vercel) o disco é efêmero: exige armazenamento persistente.
     if os.environ.get('VERCEL') == '1':
-        upload_folder = os.path.join(tempfile.gettempdir(), 'uploads')
-    else:
-        upload_folder = os.path.join('SISCPTI', 'static', 'img', 'uploads')
-        
-    if not os.path.exists(upload_folder):
-        os.makedirs(upload_folder)
-        
-    save_path = os.path.join(upload_folder, unique_filename)
-    file.save(save_path)
-    
+        raise UploadInvalido("Armazenamento de arquivos não configurado (defina SUPABASE_URL e SUPABASE_KEY).")
+
+    unique_filename = str(uuid.uuid4())[:8] + "_" + filename
+    upload_folder = current_app.config['UPLOAD_FOLDER']
+    os.makedirs(upload_folder, exist_ok=True)
+    file.save(os.path.join(upload_folder, unique_filename))
     return "img/uploads/" + unique_filename
 
 def enviar_email(destinatario, assunto, corpo, texto_puro=None):
+    """Envia o e-mail sem bloquear a resposta (thread). Na Vercel (serverless) envia na hora, com timeout."""
+    if os.environ.get('VERCEL') == '1' or os.environ.get('MAIL_SYNC') == '1':
+        return _enviar_email_smtp(destinatario, assunto, corpo, texto_puro)
+    threading.Thread(target=_enviar_email_smtp, args=(destinatario, assunto, corpo, texto_puro), daemon=True).start()
+    return True
+
+
+def _enviar_email_smtp(destinatario, assunto, corpo, texto_puro=None):
     mail_server = os.environ.get('MAIL_SERVER', '').strip()
     mail_user = os.environ.get('MAIL_USER', '').strip()
     mail_pass = os.environ.get('MAIL_PASS', '').strip()
@@ -873,17 +977,17 @@ def enviar_email(destinatario, assunto, corpo, texto_puro=None):
         msg.attach(part_html)
         
         if mail_port == 465:
-            with smtplib.SMTP_SSL(mail_server, 465) as srv:
+            with smtplib.SMTP_SSL(mail_server, 465, timeout=10) as srv:
                 srv.login(mail_user, mail_pass)
                 srv.sendmail(mail_user, [destinatario], msg.as_string())
         else:
-            with smtplib.SMTP(mail_server, mail_port) as srv:
+            with smtplib.SMTP(mail_server, mail_port, timeout=10) as srv:
                 srv.starttls()
                 srv.login(mail_user, mail_pass)
                 srv.sendmail(mail_user, [destinatario], msg.as_string())
         return True
     except Exception as e:
-        print(f"Erro ao enviar email: {e}")
+        print(f"[EMAIL] Falha ao enviar para {destinatario}: {e}")
         return False
 
 def log_atividade(username, acao, detalhes=None):

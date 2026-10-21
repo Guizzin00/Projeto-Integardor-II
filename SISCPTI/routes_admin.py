@@ -4,8 +4,8 @@ from datetime import datetime, timedelta
 import json, os, uuid, io, csv
 
 from app_instance import app
-from models import db, Project, Submission, Application, User, Notification, ActivityLog, get_random_default_cover, Message, Rating
-from utils import log_atividade, upload_file_to_supabase, enviar_email, email_template_conta_aprovada, email_template_conta_recusada, get_frontend_url
+from models import db, Project, Submission, Application, User, Notification, ActivityLog, get_random_default_cover, Message, Rating, Task, PasswordReset, AccountVerification
+from utils import PAPEIS_VALIDOS, STATUS_PROJETO, normalizar_status_projeto, proteger_celula_csv, validar_senha, log_atividade, upload_file_to_supabase, enviar_email, email_template_conta_aprovada, email_template_conta_recusada, get_frontend_url
 
 # =========================
 # Área administrativa API
@@ -120,22 +120,29 @@ def api_admin_novo_usuario():
         return jsonify({"status": "error", "message": "Acesso restrito."}), 403
     
     data = request.get_json(silent=True) or request.form
-    username = data.get('username')
+    username = str(data.get('username') or '').strip()
     password = data.get('password')
-    role = data.get('role', 'user')
-    
+    role = str(data.get('role') or 'aluno').strip().lower()
+
     if not username or not password:
         return jsonify({"status": "error", "message": "Username e senha são obrigatórios."}), 400
-        
-    if '@' in username:
-        return jsonify({"status": "error", "message": "O usuário/matrícula não pode conter '@'."}), 400
+
+    if '@' in username or len(username) > 50:
+        return jsonify({"status": "error", "message": "O usuário/matrícula não pode conter '@' nem passar de 50 caracteres."}), 400
+
+    if role not in PAPEIS_VALIDOS:
+        return jsonify({"status": "error", "message": "Papel inválido."}), 400
+
+    erro_senha = validar_senha(password)
+    if erro_senha:
+        return jsonify({"status": "error", "message": erro_senha}), 400
 
     if User.query.filter_by(username=username).first():
         return jsonify({"status": "error", "message": "Usuário já existe."}), 400
         
     from werkzeug.security import generate_password_hash
     hashed_pw = generate_password_hash(password)
-    novo_u = User(username=username, password=hashed_pw, role=role, ativo=True)
+    novo_u = User(username=username, email=(data.get('email') or f"{username.lower()}@ceub.br"), password=hashed_pw, role=role, ativo=True)
     db.session.add(novo_u)
     db.session.commit()
     return jsonify({"status": "success", "message": "Usuário criado com sucesso.", "user": {"id": novo_u.id, "username": novo_u.username, "role": novo_u.role}})
@@ -167,27 +174,65 @@ def api_admin_usuario(user_id):
     if request.method == 'DELETE':
         if u.username == session.get('user'):
             return jsonify({"status": "error", "message": "Não pode excluir a si mesmo."}), 400
+        vinculos = []
+        if Project.query.filter_by(owner_username=u.username).count():
+            vinculos.append("é dono de projetos")
+        if Project.query.filter_by(professor_id=u.id).count():
+            vinculos.append("é orientador de projetos")
+        if Application.query.filter_by(username=u.username, status='APROVADA').count():
+            vinculos.append("integra equipes de projetos")
+        if vinculos:
+            return jsonify({"status": "error", "message": "Não é possível excluir: o usuário " + ", ".join(vinculos) + ". Reatribua ou desative a conta."}), 409
+        Notification.query.filter_by(username=u.username).delete()
+        Application.query.filter_by(username=u.username).delete()
+        PasswordReset.query.filter_by(username=u.username).delete()
+        AccountVerification.query.filter_by(username=u.username).delete()
         db.session.delete(u)
         db.session.commit()
         return jsonify({"status": "success", "message": "Usuário excluído com sucesso."})
-        
+
     if request.method in ['PUT', 'POST']:
         data = request.get_json(silent=True) or request.form
-        new_username = data.get('username')
-        if new_username and new_username != u.username and User.query.filter_by(username=new_username).first():
-            return jsonify({"status": "error", "message": "Nome de usuário já existe."}), 400
-            
-        if new_username: u.username = new_username
+        new_username = str(data.get('username') or '').strip()
+        if new_username and new_username != u.username:
+            if '@' in new_username or len(new_username) > 50:
+                return jsonify({"status": "error", "message": "O usuário/matrícula não pode conter '@' nem passar de 50 caracteres."}), 400
+            if User.query.filter_by(username=new_username).first():
+                return jsonify({"status": "error", "message": "Nome de usuário já existe."}), 400
+
         plain_pw = data.get('password')
-        if plain_pw and len(plain_pw) >= 4:
+        if plain_pw:
+            erro_senha = validar_senha(plain_pw)
+            if erro_senha:
+                return jsonify({"status": "error", "message": erro_senha}), 400
+
+        novo_papel = None
+        if 'role' in data and u.username != session.get('user'):
+            novo_papel = str(data.get('role') or '').strip().lower()
+            if novo_papel not in PAPEIS_VALIDOS:
+                return jsonify({"status": "error", "message": "Papel inválido."}), 400
+
+        if new_username and new_username != u.username:
+            renomear_usuario(u.username, new_username)
+            u.username = new_username
+        if plain_pw:
             from werkzeug.security import generate_password_hash
             u.password = generate_password_hash(plain_pw)
-            
-        if u.username != session.get('user') and 'role' in data:
-            u.role = data.get('role', u.role)
-        
+        if novo_papel:
+            u.role = novo_papel
+
         db.session.commit()
         return jsonify({"status": "success", "message": "Usuário atualizado com sucesso.", "user": {"id": u.id, "username": u.username, "role": u.role}})
+
+
+def renomear_usuario(antigo, novo):
+    """Propaga a mudança de username para todas as tabelas que guardam o nome como texto."""
+    from models import Task as _Task
+    for modelo, campo in [(Application, 'username'), (Project, 'owner_username'), (Project, 'professor'),
+                          (Message, 'username'), (Notification, 'username'), (Rating, 'username'),
+                          (Submission, 'username'), (ActivityLog, 'username'), (_Task, 'assigned_username'),
+                          (PasswordReset, 'username'), (AccountVerification, 'username')]:
+        modelo.query.filter(getattr(modelo, campo) == antigo).update({campo: novo}, synchronize_session=False)
 
 # =========================
 # Aprovação de Submissões
@@ -204,18 +249,21 @@ def acao_submissao(sub_id, acao):
         
     data = request.get_json(silent=True) or request.form
     if acao == 'aprovar':
+        if subm.status == 'APROVADA':
+            return jsonify({"status": "error", "message": "Esta proposta já foi aprovada."}), 409
         subm.status = 'APROVADA'
-        
+
         prof_id = request.args.get('professor_id') or data.get('professor_id')
-        prof_name = subm.proponente
+        prof_name = ''
         prof_user = None
         if prof_id:
             try:
                 prof_user = User.query.get(int(prof_id))
                 if prof_user:
                     prof_name = prof_user.username
-            except: pass
-                
+            except (ValueError, TypeError):
+                pass
+
         novo_proj = Project(
             titulo=subm.nome_projeto,
             status="EM EXECUÇÃO",
@@ -230,7 +278,9 @@ def acao_submissao(sub_id, acao):
             tags=subm.tags or ""
         )
         db.session.add(novo_proj)
-        
+        db.session.flush()
+        subm.projeto_id = novo_proj.id
+
         if subm.username:
             notif = Notification(
                 username=subm.username,
@@ -238,7 +288,7 @@ def acao_submissao(sub_id, acao):
                 link="/perfil"
             )
             db.session.add(notif)
-        
+
     elif acao == 'rejeitar':
         subm.status = 'REJEITADA'
         if subm.username:
@@ -248,23 +298,26 @@ def acao_submissao(sub_id, acao):
                 link="/perfil"
             )
             db.session.add(notif)
-        
+
     elif acao == 'reavaliar':
         if subm.status == 'APROVADA':
-            proj = Project.query.filter_by(titulo=subm.nome_projeto, owner_username=subm.username).first()
+            proj = db.session.get(Project, subm.projeto_id) if subm.projeto_id else \
+                Project.query.filter_by(titulo=subm.nome_projeto, owner_username=subm.username).first()
             if proj:
-                for msg in list(proj.mensagens): db.session.delete(msg)
-                for app_row in list(proj.candidaturas): db.session.delete(app_row)
-                for rating in list(proj.avaliacoes): db.session.delete(rating)
+                tem_dados = (Application.query.filter_by(projeto_id=proj.id).count()
+                             or Message.query.filter_by(projeto_id=proj.id).count()
+                             or Rating.query.filter_by(projeto_id=proj.id).count()
+                             or Task.query.filter_by(projeto_id=proj.id).count())
+                if tem_dados:
+                    return jsonify({"status": "error", "message": "Não é possível reavaliar: o projeto criado já possui equipe, tarefas, mensagens ou avaliações."}), 409
                 db.session.delete(proj)
+            subm.projeto_id = None
         subm.status = 'EM ANÁLISE'
-        
+    else:
+        return jsonify({"status": "error", "message": "Ação inválida."}), 400
+
     db.session.commit()
     return jsonify({"status": "success", "new_status": subm.status, "message": f"Submissão marcada como {subm.status}."})
-
-@app.route('/admin/candidatura/<int:cand_id>/<acao>')
-def acao_candidatura(cand_id, acao):
-    return redirect(url_for('dono_acao_candidatura', cand_id=cand_id, acao=acao, ajax=1))
 
 # =========================
 # Criação/Edição de Projetos (Admin API)
@@ -299,8 +352,8 @@ def novo_projeto():
         novo = Project(
             titulo=data.get('titulo'),
             categoria=data.get('categoria'),
-            status=data.get('status', 'DISPONÍVEL'),
-            professor=data.get('professor'),
+            status=normalizar_status_projeto(data.get('status') or 'DISPONÍVEL') or 'DISPONÍVEL',
+            professor=data.get('professor') or '',
             descricao_curta=data.get('descricao_curta'),
             detalhes=json.dumps(detalhes_linhas),
             imagem=imagem_path,
@@ -342,7 +395,15 @@ def editar_projeto(projeto_id):
         data = request.get_json(silent=True) or request.form
         if 'titulo' in data: projeto_db.titulo = data.get('titulo')
         if 'categoria' in data: projeto_db.categoria = data.get('categoria')
-        if 'status' in data: projeto_db.status = data.get('status')
+        if 'status' in data:
+            novo_status = normalizar_status_projeto(data.get('status'))
+            if not novo_status:
+                return jsonify({"status": "error", "message": "Status inválido. Use: " + ", ".join(STATUS_PROJETO) + "."}), 400
+            if novo_status == 'CONCLUÍDO' and projeto_db.status != 'CONCLUÍDO':
+                projeto_db.concluido_em = datetime.utcnow()
+            elif novo_status != 'CONCLUÍDO':
+                projeto_db.concluido_em = None
+            projeto_db.status = novo_status
         if 'professor' in data and is_admin: projeto_db.professor = data.get('professor')
         if 'descricao_curta' in data: projeto_db.descricao_curta = data.get('descricao_curta')
         if 'tags' in data:
@@ -399,64 +460,81 @@ def excluir_projeto(projeto_id):
     for msg in list(projeto_db.mensagens): db.session.delete(msg)
     for app_row in list(projeto_db.candidaturas): db.session.delete(app_row)
     for rating in list(projeto_db.avaliacoes): db.session.delete(rating)
+    Task.query.filter_by(projeto_id=projeto_db.id).delete()
+    Submission.query.filter_by(projeto_id=projeto_db.id).update({'projeto_id': None})
     db.session.delete(projeto_db)
     db.session.commit()
 
     return jsonify({"status": "success", "message": "Projeto excluído com sucesso!"})
 
 # =========================
-# Exportar CSV (Admin)
+# Exportar CSV (única rota)
 # =========================
+EXPORT_TIPOS_COORDENADOR = {'projetos', 'satisfacao'}
+
+
 @app.route('/api/admin/exportar/<tipo>')
-@app.route('/admin/exportar/<tipo>')
 def exportar_csv(tipo):
-    if not session.get('logged_in') or session.get('role') != 'admin':
-        abort(403)
+    role = session.get('role')
+    if not session.get('logged_in') or role not in ('admin', 'coordenador'):
+        return jsonify({"status": "error", "message": "Acesso restrito."}), 403
+    if role == 'coordenador' and tipo not in EXPORT_TIPOS_COORDENADOR:
+        return jsonify({"status": "error", "message": "Coordenadores só podem exportar projetos e satisfação."}), 403
 
     output = io.StringIO()
-    writer = csv.writer(output)
+    output.write('\ufeff')
+    writer = csv.writer(output, delimiter=';')
 
-    if tipo in ['candidaturas']:
-        writer.writerow(['ID', 'Projeto', 'Usuário', 'Motivo', 'Experiência', 'Status'])
+    def linha(*valores):
+        writer.writerow([proteger_celula_csv(v) for v in valores])
+
+    if tipo == 'candidaturas':
+        linha('ID', 'Projeto', 'Usuário', 'Motivo', 'Experiência', 'Status')
         for c in Application.query.all():
-            writer.writerow([c.id, c.projeto.titulo if c.projeto else "", c.username, c.motivo, c.experiencia, c.status])
+            linha(c.id, c.projeto.titulo if c.projeto else "", c.username, c.motivo, c.experiencia, c.status)
         filename = 'candidaturas.csv'
 
-    elif tipo in ['propostas', 'submissoes']:
-        writer.writerow(['ID', 'Projeto', 'Categoria', 'Proponente', 'E-mail', 'Status'])
-        for s in Submission.query.all():
-            writer.writerow([s.id, s.nome_projeto, s.categoria, s.proponente, s.email, s.status])
+    elif tipo in ('propostas', 'submissoes'):
+        linha('ID', 'Projeto', 'Categoria', 'Proponente', 'E-mail', 'Status')
+        for s_ in Submission.query.all():
+            linha(s_.id, s_.nome_projeto, s_.categoria, s_.proponente, s_.email, s_.status)
         filename = 'propostas.csv'
 
-    elif tipo in ['usuarios']:
-        writer.writerow(['ID', 'Username', 'Papel', 'E-mail', 'Bio'])
+    elif tipo == 'usuarios':
+        linha('ID', 'Username', 'Papel', 'E-mail', 'Bio')
         for u in User.query.all():
-            writer.writerow([u.id, u.username, u.role, u.email or '', u.bio or ''])
+            linha(u.id, u.username, u.role, u.email or '', u.bio or '')
         filename = 'usuarios.csv'
 
-    elif tipo in ['projetos']:
-        writer.writerow(['ID', 'Título', 'Categoria', 'Status', 'Professor', 'Dono'])
+    elif tipo == 'projetos':
+        linha('ID', 'Título', 'Status', 'Orientador', 'Categoria', 'Proponente',
+              'Total Integrantes', 'Total Tarefas', 'Tarefas Concluídas')
         for p in Project.query.all():
-            writer.writerow([p.id, p.titulo, p.categoria, p.status, p.professor, p.owner_username or ''])
+            linha(p.id, p.titulo, p.status, p.professor, p.categoria, p.owner_username or '',
+                  Application.query.filter_by(projeto_id=p.id, status='APROVADA').count(),
+                  Task.query.filter_by(projeto_id=p.id).count(),
+                  Task.query.filter_by(projeto_id=p.id, status='done').count())
         filename = 'projetos.csv'
 
-    elif tipo in ['satisfacao']:
-        writer.writerow(['ID', 'Projeto ID', 'Usuário', 'Nota Geral', 'Organização', 'Orientação', 'Aprendizado', 'Comentário'])
+    elif tipo == 'satisfacao':
+        linha('ID Avaliação', 'ID Projeto', 'Título do Projeto', 'Usuário', 'Nota Geral',
+              'Nota Organização', 'Nota Orientação', 'Nota Aprendizado', 'Comentário', 'Data')
         for r in Rating.query.all():
-            writer.writerow([r.id, r.projeto_id, r.username, r.nota, r.nota_organizacao or 5, r.nota_orientacao or 5, r.nota_aprendizado or 5, r.comentario or ''])
+            linha(r.id, r.projeto_id, r.projeto.titulo if r.projeto else 'Desconhecido', r.username, r.nota,
+                  r.nota_organizacao or 5, r.nota_orientacao or 5, r.nota_aprendizado or 5, r.comentario or '',
+                  r.data_criacao.strftime('%d/%m/%Y %H:%M') if r.data_criacao else '')
         filename = 'satisfacao.csv'
 
-    elif tipo in ['logs']:
-        writer.writerow(['ID', 'Usuário', 'Ação', 'Detalhes', 'Data'])
+    elif tipo == 'logs':
+        linha('ID Log', 'Usuário', 'Ação', 'Detalhes', 'Data')
         for l in ActivityLog.query.order_by(ActivityLog.data.desc()).all():
-            writer.writerow([l.id, l.username, l.acao, l.detalhes or '', l.data.strftime("%d/%m/%Y %H:%M") if l.data else ''])
+            linha(l.id, l.username, l.acao, l.detalhes or '', l.data.strftime('%d/%m/%Y %H:%M') if l.data else '')
         filename = 'logs.csv'
 
     else:
-        abort(404)
+        return jsonify({"status": "error", "message": "Tipo de exportação inválido."}), 404
 
     log_atividade(session['user'], f'Exportou CSV: {tipo}')
-    output.seek(0)
     return Response(
         output.getvalue(),
         mimetype='text/csv',
@@ -557,7 +635,7 @@ def api_admin_aprovar_usuario(user_id):
         return jsonify({"status": "error", "message": "Usuário não encontrado."}), 404
 
     usuario.status_aprovacao = 'APROVADO'
-    usuario.ativo = True
+    usuario.ativo = bool(usuario.email_verificado)  # só libera o acesso com e-mail confirmado
     db.session.commit()
 
     log_atividade(session.get('user', 'sistema'), f'Aprovou cadastro institucional de {usuario.role}: @{usuario.username}')
@@ -688,109 +766,3 @@ def admin_relatorio_pdf():
         mimetype='application/pdf',
         headers={'Content-Disposition': 'attachment; filename=relatorio_geral_siscpti.pdf'}
     )
-
-@app.route('/admin/exportar/projetos')
-def admin_exportar_projetos():
-    role = session.get('role')
-    if role not in ['admin', 'coordenador']:
-        flash("Acesso restrito.", "error")
-        return redirect(url_for('login'))
-        
-    from models import Task
-    output = io.StringIO()
-    output.write('\ufeff')
-    writer = csv.writer(output, delimiter=';')
-    
-    writer.writerow([
-        'ID', 'Título', 'Status', 'Orientador', 'Categoria', 
-        'Proponente', 'Total Integrantes', 'Total Tarefas', 'Tarefas Concluídas'
-    ])
-    
-    projetos = Project.query.all()
-    for p in projetos:
-        integrantes_count = Application.query.filter_by(projeto_id=p.id, status='APROVADA').count()
-        total_tasks = Task.query.filter_by(projeto_id=p.id).count()
-        done_tasks = Task.query.filter_by(projeto_id=p.id, status='done').count()
-        
-        writer.writerow([
-            p.id,
-            p.titulo,
-            p.status,
-            p.professor,
-            p.categoria,
-            p.owner_username or '',
-            integrantes_count,
-            total_tasks,
-            done_tasks
-        ])
-        
-    response = Response(output.getvalue(), mimetype='text/csv')
-    response.headers['Content-Disposition'] = 'attachment; filename=relatorio_projetos.csv'
-    return response
-
-@app.route('/admin/exportar/satisfacao')
-def admin_exportar_satisfacao():
-    role = session.get('role')
-    if role not in ['admin', 'coordenador']:
-        flash("Acesso restrito.", "error")
-        return redirect(url_for('login'))
-        
-    output = io.StringIO()
-    output.write('\ufeff')
-    writer = csv.writer(output, delimiter=';')
-    
-    writer.writerow([
-        'ID Avaliação', 'ID Projeto', 'Título do Projeto', 'Usuário', 
-        'Nota Geral', 'Nota Organização', 'Nota Orientação', 'Nota Aprendizado', 
-        'Comentário', 'Data'
-    ])
-    
-    ratings = Rating.query.all()
-    for r in ratings:
-        proj_titulo = r.projeto.titulo if r.projeto else 'Desconhecido'
-        writer.writerow([
-            r.id,
-            r.projeto_id,
-            proj_titulo,
-            r.username,
-            r.nota,
-            r.nota_organizacao or 5,
-            r.nota_orientacao or 5,
-            r.nota_aprendizado or 5,
-            r.comentario or '',
-            r.data_criacao.strftime('%d/%m/%Y %H:%M') if r.data_criacao else ''
-        ])
-        
-    response = Response(output.getvalue(), mimetype='text/csv')
-    response.headers['Content-Disposition'] = 'attachment; filename=relatorio_satisfacao.csv'
-    return response
-
-@app.route('/admin/exportar/logs')
-def admin_exportar_logs():
-    role = session.get('role')
-    if role not in ['admin', 'coordenador']:
-        flash("Acesso restrito.", "error")
-        return redirect(url_for('login'))
-        
-    output = io.StringIO()
-    output.write('\ufeff')
-    writer = csv.writer(output, delimiter=';')
-    
-    writer.writerow([
-        'ID Log', 'Usuário', 'Ação', 'Detalhes', 'Data'
-    ])
-    
-    logs = ActivityLog.query.order_by(ActivityLog.data.desc()).all()
-    for l in logs:
-        writer.writerow([
-            l.id,
-            l.username,
-            l.acao,
-            l.detalhes or '',
-            l.data.strftime('%d/%m/%Y %H:%M') if l.data else ''
-        ])
-        
-    response = Response(output.getvalue(), mimetype='text/csv')
-    response.headers['Content-Disposition'] = 'attachment; filename=relatorio_logs.csv'
-    return response
-

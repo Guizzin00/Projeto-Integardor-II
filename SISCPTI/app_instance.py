@@ -79,6 +79,7 @@ else:
     UPLOAD_FOLDER = os.path.join(base_dir, 'static', 'img', 'uploads')
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 12 * 1024 * 1024  # um pouco acima do limite por arquivo (10 MB)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Configurações do Supabase
