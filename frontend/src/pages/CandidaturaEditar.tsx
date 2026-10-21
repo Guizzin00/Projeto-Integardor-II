@@ -60,9 +60,9 @@ export function CandidaturaEditar() {
 
   return (
     <div className="max-w-[800px] mx-auto my-8 bg-bg-surface p-10 rounded-xl shadow-light transition-all flex flex-col gap-5">
-      <h2 className="text-purple-primary m-0 mb-1.5 border-l-[5px] border-purple-primary pl-2.5 font-title text-2xl font-bold">
+      <h1 className="text-purple-primary m-0 mb-1.5 border-l-[5px] border-purple-primary pl-2.5 font-title text-2xl font-bold">
         Editar Candidatura ao Projeto
-      </h2>
+      </h1>
       <p className="m-0 text-text-primary text-[0.95rem]">
         Você está editando sua candidatura para o projeto: <strong>{projeto.titulo}</strong>
       </p>

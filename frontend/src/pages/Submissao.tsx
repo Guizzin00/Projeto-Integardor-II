@@ -50,9 +50,9 @@ export function Submissao() {
 
   return (
     <div className="w-[90%] max-w-[1200px] mx-auto my-8">
-      <h2 className="text-purple-primary font-title text-3xl font-bold m-0 mb-1.5 transition-colors">
+      <h1 className="text-purple-primary font-title text-3xl font-bold m-0 mb-1.5 transition-colors">
         Submissão de Novo Projeto
-      </h2>
+      </h1>
       <p className="m-0 mb-6 text-text-primary">
         Preencha o formulário abaixo para propor um novo projeto acadêmico ou institucional de TI.
       </p>

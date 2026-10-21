@@ -75,7 +75,7 @@ export function Projetos() {
       <div className="projects-layout" style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
         
         <div className="tags-sidebar" style={{ flex: '0 0 240px', minWidth: '200px' }}>
-          <h3 style={{ fontSize: '1.1rem', marginTop: '0', marginBottom: '1rem', fontFamily: 'var(--font-title)' }}>Filtro por Tags</h3>
+          <h2 style={{ fontSize: '1.1rem', marginTop: '0', marginBottom: '1rem', fontFamily: 'var(--font-title)' }}>Filtro por Tags</h2>
           
           {selectedTag && (
             <div style={{ marginBottom: '1rem' }}>
@@ -166,7 +166,7 @@ export function Projetos() {
             ) : (
               <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '4rem 2rem' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📂</div>
-                <h3 style={{ fontFamily: 'var(--font-title)', margin: '0 0 0.5rem' }}>Nenhum projeto nesta página</h3>
+                <h2 style={{ fontFamily: 'var(--font-title)', margin: '0 0 0.5rem' }}>Nenhum projeto nesta página</h2>
                 <p style={{ color: 'var(--text-secondary)' }}>Tente voltar ou limpar os filtros de tags.</p>
               </div>
             )}

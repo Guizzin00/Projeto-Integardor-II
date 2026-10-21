@@ -69,7 +69,7 @@ export function Sobre() {
             <div className="timeline-step">
               <div className="step-badge">Passo 1</div>
               <div className="step-content">
-                <h4>💡 Submissão de Proposta</h4>
+                <h3>💡 Submissão de Proposta</h3>
                 <p>Empresas externas ou professores cadastram suas ideias, especificando requisitos, quantidade de alunos e tecnologias desejadas.</p>
               </div>
             </div>
@@ -77,7 +77,7 @@ export function Sobre() {
             <div className="timeline-step">
               <div className="step-badge">Passo 2</div>
               <div className="step-content">
-                <h4>📝 Candidaturas Acadêmicas</h4>
+                <h3>📝 Candidaturas Acadêmicas</h3>
                 <p>Alunos interessados exploram o catálogo, analisam as propostas e se candidatam diretamente para as vagas disponíveis.</p>
               </div>
             </div>
@@ -85,7 +85,7 @@ export function Sobre() {
             <div className="timeline-step">
               <div className="step-badge">Passo 3</div>
               <div className="step-content">
-                <h4>⚖️ Avaliação e Orientação</h4>
+                <h3>⚖️ Avaliação e Orientação</h3>
                 <p>Coordenadores e professores orientadores revisam as propostas, selecionam as melhores equipes e autorizam o início.</p>
               </div>
             </div>
@@ -93,7 +93,7 @@ export function Sobre() {
             <div className="timeline-step">
               <div className="step-badge">Passo 4</div>
               <div className="step-content">
-                <h4>🚀 Desenvolvimento no Workspace</h4>
+                <h3>🚀 Desenvolvimento no Workspace</h3>
                 <p>Com a equipe formada, o Workspace do projeto é liberado para troca de mensagens, envio de links e progresso das tarefas.</p>
               </div>
             </div>
@@ -389,7 +389,7 @@ export function Sobre() {
           align-items: center;
           gap: 0.5rem;
           padding: 0.7rem 1.6rem;
-          background: var(--purple-primary);
+          background: var(--purple-bg);
           color: var(--text-on-purple) !important;
           border-radius: 6px;
           font-weight: 700;
@@ -399,7 +399,7 @@ export function Sobre() {
         }
         
         .btn-primary-sobre:hover {
-          background: var(--purple-hover);
+          background: var(--purple-bg-hover);
         }
 
         .btn-primary-sobre:active {
@@ -422,7 +422,7 @@ export function Sobre() {
         }
         
         .btn-secondary-sobre:hover {
-          background: var(--purple-primary);
+          background: var(--purple-bg);
           color: #fff !important;
         }
         

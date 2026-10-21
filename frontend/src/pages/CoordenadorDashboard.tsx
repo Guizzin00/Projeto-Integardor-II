@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { AprovacoesContasTab } from '../components/AprovacoesContasTab';
 import { SubmissaoDetalhesModal, SubmissaoDetalhes } from '../components/SubmissaoDetalhesModal';
 import { useUI } from '../components/UIProvider';
+import { useListaPaginada } from '../hooks/useListaPaginada';
+import { Paginacao } from '../components/Paginacao';
 
 export function CoordenadorDashboard() {
   const { avisar } = useUI();
@@ -12,8 +14,9 @@ export function CoordenadorDashboard() {
   const [activeTab, setActiveTab] = useState<'tab-projetos' | 'tab-submissoes' | 'tab-aprovacoes'>('tab-projetos');
   const [pendentesCount, setPendentesCount] = useState<number>(0);
 
-  const [projetos, setProjetos] = useState<any[]>([]);
-  const [submissoes, setSubmissoes] = useState<any[]>([]);
+  const [totais, setTotais] = useState({ projetos: 0, submissoes: 0 });
+  const [semOrientador, setSemOrientador] = useState(0);
+  const [pendentesSubm, setPendentesSubm] = useState(0);
   const [professores, setProfessores] = useState<any[]>([]);
   const [satisfacao, setSatisfacao] = useState<{
     nota: number;
@@ -43,6 +46,23 @@ export function CoordenadorDashboard() {
   const [submissaoAberta, setSubmissaoAberta] = useState<SubmissaoDetalhes | null>(null);
   const [filterSubmStatus, setFilterSubmStatus] = useState('TODOS');
 
+  // Listas paginadas e filtradas no servidor
+  const projLista = useListaPaginada<any>('projetos', { q: searchProj, sem_orientador: onlyWithoutOrientador });
+  const submLista = useListaPaginada<any>('submissoes', { q: searchSubm, status: filterSubmStatus });
+  const projetosFiltrados = projLista.items;
+  const submissoesFiltradas = submLista.items;
+
+  // Mantém a seleção de orientadores em sincronia com a página exibida
+  useEffect(() => {
+    setSelectedProfessores(prev => {
+      const mapa = { ...prev };
+      projLista.items.forEach((p: any) => {
+        if (p.professor_id && mapa[p.id] === undefined) mapa[p.id] = String(p.professor_id);
+      });
+      return mapa;
+    });
+  }, [projLista.items]);
+
   const carregarDados = async () => {
     try {
       setLoading(true);
@@ -52,18 +72,14 @@ export function CoordenadorDashboard() {
       ]);
 
       if (coordRes.data.status === 'success') {
-        setProjetos(coordRes.data.projetos || []);
-        setSubmissoes(coordRes.data.submissoes || []);
+        if (coordRes.data.totais) setTotais(coordRes.data.totais);
+        setSemOrientador(coordRes.data.projetos_sem_orientador || 0);
+        setPendentesSubm(coordRes.data.submissoes_pendentes || 0);
         setProfessores(coordRes.data.professores || []);
         if (coordRes.data.aprovacoes_pendentes_count !== undefined) {
           setPendentesCount(coordRes.data.aprovacoes_pendentes_count);
         }
 
-        const profMap: Record<number, string> = {};
-        (coordRes.data.projetos || []).forEach((p: any) => {
-          if (p.professor_id) profMap[p.id] = String(p.professor_id);
-        });
-        setSelectedProfessores(profMap);
       }
 
       if (satRes.data) {
@@ -74,6 +90,15 @@ export function CoordenadorDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const carregarContagens = async () => {
+    try {
+      const res = await api.get('/coordenador');
+      if (res.data.totais) setTotais(res.data.totais);
+      setSemOrientador(res.data.projetos_sem_orientador || 0);
+      setPendentesSubm(res.data.submissoes_pendentes || 0);
+    } catch { /* mantém os números atuais */ }
   };
 
   useEffect(() => {
@@ -93,8 +118,8 @@ export function CoordenadorDashboard() {
       if (res.data.status === 'success') {
         setSuccessMessage('Professor orientador atribuído com sucesso!');
         setTimeout(() => setSuccessMessage(''), 4000);
-        const coordRes = await api.get('/coordenador');
-        if (coordRes.data.projetos) setProjetos(coordRes.data.projetos);
+        await projLista.reload();
+        carregarContagens();
       } else {
         avisar(res.data.message || 'Erro ao atribuir orientador');
       }
@@ -113,7 +138,9 @@ export function CoordenadorDashboard() {
       if (res.data.status === 'success') {
         setSuccessMessage(`Proposta de projeto ${acao === 'aprovar' ? 'aprovada' : 'rejeitada'} com sucesso!`);
         setTimeout(() => setSuccessMessage(''), 4000);
-        carregarDados();
+        projLista.reload();
+        submLista.reload();
+        carregarContagens();
       }
     } catch (err: any) {
       avisar(err.response?.data?.message || `Erro ao ${acao} submissão.`);
@@ -127,37 +154,6 @@ export function CoordenadorDashboard() {
     const baseURL = (api.defaults.baseURL || '').replace(/\/api$/, '');
     window.open(`${baseURL}${endpoint}`, '_blank');
   };
-
-  // Métricas calculadas
-  const projetosSemOrientador = useMemo(() => {
-    return projetos.filter(p => !p.professor && !p.professor_id && !p.orientador);
-  }, [projetos]);
-
-  const submissoesPendentes = useMemo(() => {
-    return submissoes.filter(s => s.status === 'EM ANÁLISE' || s.status === 'PENDENTE');
-  }, [submissoes]);
-
-  // Filtro de Projetos
-  const projetosFiltrados = useMemo(() => {
-    return projetos.filter(p => {
-      const matchBusca = (p.titulo || '').toLowerCase().includes(searchProj.toLowerCase()) ||
-                         (p.categoria || '').toLowerCase().includes(searchProj.toLowerCase()) ||
-                         (p.professor || (p.orientador ? p.orientador.username : '') || '').toLowerCase().includes(searchProj.toLowerCase());
-      const matchSemOrientador = onlyWithoutOrientador ? (!p.professor && !p.professor_id && !p.orientador) : true;
-      return matchBusca && matchSemOrientador;
-    });
-  }, [projetos, searchProj, onlyWithoutOrientador]);
-
-  // Filtro de Submissões
-  const submissoesFiltradas = useMemo(() => {
-    return submissoes.filter(s => {
-      const matchBusca = (s.nome_projeto || '').toLowerCase().includes(searchSubm.toLowerCase()) ||
-                         (s.proponente || '').toLowerCase().includes(searchSubm.toLowerCase()) ||
-                         (s.categoria || '').toLowerCase().includes(searchSubm.toLowerCase());
-      const matchStatus = filterSubmStatus === 'TODOS' || s.status === filterSubmStatus;
-      return matchBusca && matchStatus;
-    });
-  }, [submissoes, searchSubm, filterSubmStatus]);
 
   if (loading) {
     return (
@@ -264,7 +260,7 @@ export function CoordenadorDashboard() {
         
         {/* KPI 1: Alerta Projetos sem Orientador */}
         <div className={`border rounded-md p-5 shadow-sm flex flex-col justify-between ${
-          projetosSemOrientador.length > 0 
+          semOrientador > 0 
             ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800/60' 
             : 'bg-bg-surface border-border-color'
         }`}>
@@ -273,22 +269,22 @@ export function CoordenadorDashboard() {
               <span className="text-[11px] font-bold uppercase tracking-wider text-text-secondary">
                 Sem Orientador
               </span>
-              {projetosSemOrientador.length > 0 && (
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-white">
+              {semOrientador > 0 && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-700 text-white">
                   Atenção
                 </span>
               )}
             </div>
             <div className="mt-1">
               <span className="text-3xl font-extrabold text-amber-600 dark:text-amber-400 tracking-tight">
-                {projetosSemOrientador.length}
+                {semOrientador}
               </span>
               <span className="text-xs text-text-secondary block mt-0.5">
-                {projetosSemOrientador.length === 1 ? 'projeto aguarda docente' : 'projetos aguardam docente'}
+                {semOrientador === 1 ? 'projeto aguarda docente' : 'projetos aguardam docente'}
               </span>
             </div>
           </div>
-          {projetosSemOrientador.length > 0 && (
+          {semOrientador > 0 && (
             <button 
               type="button"
               onClick={() => { setActiveTab('tab-projetos'); setOnlyWithoutOrientador(true); }}
@@ -307,10 +303,10 @@ export function CoordenadorDashboard() {
             </span>
             <div className="mt-1">
               <span className="text-3xl font-extrabold text-purple-primary tracking-tight">
-                {submissoesPendentes.length}
+                {pendentesSubm}
               </span>
               <span className="text-xs text-text-secondary block mt-0.5">
-                de {submissoes.length} submissões totais
+                de {totais.submissoes} submissões totais
               </span>
             </div>
           </div>
@@ -339,7 +335,7 @@ export function CoordenadorDashboard() {
             </div>
           </div>
           <span className="mt-3 text-xs text-text-secondary">
-            {projetos.length} projetos em acompanhamento
+            {totais.projetos} projetos em acompanhamento
           </span>
         </div>
 
@@ -445,7 +441,7 @@ export function CoordenadorDashboard() {
             <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
               activeTab === 'tab-projetos' ? 'bg-white/20 text-white' : 'bg-border-color text-text-secondary'
             }`}>
-              {projetos.length}
+              {totais.projetos}
             </span>
           </button>
 
@@ -462,7 +458,7 @@ export function CoordenadorDashboard() {
             <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
               activeTab === 'tab-submissoes' ? 'bg-white/20 text-white' : 'bg-border-color text-text-secondary'
             }`}>
-              {submissoes.length}
+              {totais.submissoes}
             </span>
           </button>
 
@@ -478,7 +474,7 @@ export function CoordenadorDashboard() {
             <span>Aprovações de Contas (Professor / Empresa)</span>
             <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
               pendentesCount > 0 
-                ? 'bg-amber-500 text-white animate-pulse'
+                ? 'bg-amber-700 text-white animate-pulse'
                 : activeTab === 'tab-aprovacoes' ? 'bg-white/20 text-white' : 'bg-border-color text-text-secondary'
             }`}>
               {pendentesCount}
@@ -512,7 +508,7 @@ export function CoordenadorDashboard() {
                   onClick={() => setOnlyWithoutOrientador(!onlyWithoutOrientador)}
                   className={`px-3 py-2 rounded-md text-xs font-semibold cursor-pointer border transition-colors ${
                     onlyWithoutOrientador 
-                      ? 'bg-amber-500 text-white border-amber-600 shadow-sm' 
+                      ? 'bg-amber-700 text-white border-amber-600 shadow-sm' 
                       : 'bg-bg-primary text-text-secondary border-border-color hover:border-purple-primary'
                   }`}
                 >
@@ -581,7 +577,7 @@ export function CoordenadorDashboard() {
 
                           <td className="py-3.5 px-4 text-right align-middle">
                             <div className="inline-flex items-center gap-2">
-                              <select 
+                              <select aria-label="Professor orientador do projeto" 
                                 value={selectedProfessores[p.id] || ''}
                                 onChange={(e) => setSelectedProfessores({ ...selectedProfessores, [p.id]: e.target.value })}
                                 className="px-2.5 py-1.5 bg-bg-primary border border-border-color rounded-md text-xs text-text-primary focus:outline-none focus:border-purple-primary transition-colors max-w-[180px]"
@@ -611,7 +607,7 @@ export function CoordenadorDashboard() {
                 </tbody>
               </table>
             </div>
-
+            <Paginacao lista={projLista} rotulo="projetos" />
           </div>
         )}
 
@@ -636,7 +632,7 @@ export function CoordenadorDashboard() {
 
               <div className="flex items-center gap-2 shrink-0">
                 <label htmlFor="filterStatusSubm" className="text-xs font-semibold text-text-secondary">Parecer:</label>
-                <select 
+                <select aria-label="Filtrar propostas por situação" 
                   id="filterStatusSubm"
                   value={filterSubmStatus}
                   onChange={(e) => setFilterSubmStatus(e.target.value)}
@@ -712,7 +708,7 @@ export function CoordenadorDashboard() {
                           <label htmlFor={`prof-subm-${subm.id}`} className="text-xs font-semibold text-text-secondary">
                             Vincular Orientador Inicial:
                           </label>
-                          <select 
+                          <select aria-label="Professor orientador da proposta" 
                             id={`prof-subm-${subm.id}`}
                             value={selectedSubmProf[subm.id] || ''}
                             onChange={(e) => setSelectedSubmProf({ ...selectedSubmProf, [subm.id]: e.target.value })}
@@ -750,6 +746,7 @@ export function CoordenadorDashboard() {
                   </div>
                 ))
               )}
+              <Paginacao lista={submLista} rotulo="propostas" />
             </div>
 
           </div>

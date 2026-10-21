@@ -139,7 +139,7 @@ export function ErrorPage({ code: propCode, title: propTitle, message: propMessa
           </div>
         </div>
 
-        <div className="text-[11px] text-text-secondary/70 hidden sm:block">
+        <div className="text-[11px] text-text-secondary hidden sm:block">
           Centro Universitário de Brasília · UniCEUB
         </div>
       </header>
@@ -238,7 +238,7 @@ export function ErrorPage({ code: propCode, title: propTitle, message: propMessa
       </main>
 
       {/* Faixa Inferior Fixa */}
-      <footer className="w-full max-w-7xl mx-auto pt-3 border-t border-border-color text-[11px] sm:text-xs text-text-secondary/70 flex flex-col sm:flex-row items-center justify-between gap-1 shrink-0">
+      <footer className="w-full max-w-7xl mx-auto pt-3 border-t border-border-color text-[11px] sm:text-xs text-text-secondary flex flex-col sm:flex-row items-center justify-between gap-1 shrink-0">
         <p className="m-0">SisCPTI · Sistema de Gestão do Caderno de Projetos de Tecnologia da Informação</p>
         <p className="m-0">Suporte Institucional: nucleoti@ceub.edu.br</p>
       </footer>

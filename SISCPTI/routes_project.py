@@ -1,4 +1,4 @@
-from flask import request, redirect, url_for, flash, session, abort, jsonify, send_file
+from flask import request, redirect, url_for, flash, session, abort, jsonify, send_file, g
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import os, uuid, json
@@ -88,11 +88,12 @@ def api_candidatar(projeto_id):
     if not motivo or not experiencia:
         return jsonify({"status": "error", "message": "Informe sua motivação e sua experiência."}), 400
 
-    if Application.query.filter_by(projeto_id=projeto_id, username=session['user']).first():
+    if Application.query.filter_by(projeto_id=projeto_id, user_id=g.uid).first():
         return jsonify({"status": "error", "message": "Você já se candidatou a este projeto."}), 409
 
     nova_cand = Application(
         projeto_id=projeto_id,
+        user_id=g.uid,
         username=session['user'],
         motivo=motivo,
         experiencia=experiencia
@@ -126,14 +127,14 @@ def api_perfil():
     user_obj = User.query.filter_by(username=username).first()
     user_role = session.get('role') or (user_obj.role if user_obj else 'aluno')
 
-    minhas_candidaturas = [{"id": c.id, "projeto_id": c.projeto_id, "projeto": c.projeto.titulo if c.projeto else "", "status": c.status} for c in Application.query.filter_by(username=username).all()]
-    meus_projetos = [p.to_dict() for p in Project.query.filter_by(owner_username=username).all()]
-    minhas_submissoes = [s.to_dict() for s in Submission.query.filter_by(username=username).all()]
+    minhas_candidaturas = [{"id": c.id, "projeto_id": c.projeto_id, "projeto": c.projeto.titulo if c.projeto else "", "status": c.status} for c in Application.query.filter_by(user_id=g.uid).all()]
+    meus_projetos = [p.to_dict() for p in Project.query.filter_by(owner_id=g.uid).all()]
+    minhas_submissoes = [s.to_dict() for s in Submission.query.filter_by(user_id=g.uid).all()]
     
     projetos_orientados = []
     if user_obj and (user_role == 'professor' or user_obj.role == 'professor'):
         orient_objs = Project.query.filter(
-            (Project.professor_id == user_obj.id) | (Project.professor == username) | (Project.professor == user_obj.username)
+            (Project.professor_id == user_obj.id)
         ).all()
         projetos_orientados = [p.to_dict() for p in orient_objs]
         existing_ids = {p['id'] for p in meus_projetos}
@@ -222,7 +223,7 @@ def api_obter_candidatura(cand_id):
     cand = Application.query.get(cand_id)
     if not cand:
         return jsonify({"status": "error", "message": "Candidatura não encontrada."}), 404
-    if cand.username != session['user'] and session.get('role') != 'admin' and cand.projeto.owner_username != session['user']:
+    if cand.user_id != g.uid and session.get('role') != 'admin' and cand.projeto.owner_id != g.uid:
         return jsonify({"status": "error", "message": "Acesso negado."}), 403
     return jsonify({
         "status": "success",
@@ -247,7 +248,7 @@ def editar_candidatura(cand_id):
         return jsonify({"status": "error", "message": "Candidatura não encontrada."}), 404
         
     # Apenas o dono ou admin pode editar
-    if cand.username != session['user'] and session.get('role') != 'admin':
+    if cand.user_id != g.uid and session.get('role') != 'admin':
         return jsonify({"status": "error", "message": "Acesso negado."}), 403
         
     # Apenas se estiver pendente
@@ -274,7 +275,7 @@ def cancelar_candidatura(cand_id):
         return jsonify({"status": "error", "message": "Candidatura não encontrada."}), 404
         
     # Apenas o dono ou admin pode cancelar
-    if cand.username != session['user'] and session.get('role') != 'admin':
+    if cand.user_id != g.uid and session.get('role') != 'admin':
         return jsonify({"status": "error", "message": "Acesso negado."}), 403
         
     # Apenas se estiver pendente
@@ -320,14 +321,14 @@ def workspace(projeto_id):
 @app.route('/projeto/<int:projeto_id>/workspace/mensagens')
 def workspace_mensagens_json(projeto_id):
     if not session.get('logged_in'):
-        return jsonify({"error": "Unauthorized"}), 401
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
         
     projeto_db = Project.query.get(projeto_id)
     if not projeto_db:
-        return jsonify({"error": "Project not found"}), 404
+        return jsonify({"status": "error", "message": "Project not found"}), 404
         
     if not acesso_projeto(projeto_db)['pode_ver']:
-        return jsonify({"error": "Forbidden"}), 403
+        return jsonify({"status": "error", "message": "Forbidden"}), 403
 
     mensagens = Message.query.filter_by(projeto_id=projeto_id).order_by(Message.data_envio.asc()).all()
     output = []
@@ -369,6 +370,7 @@ def enviar_mensagem_ajax(projeto_id):
     if texto or arquivo_path:
         nova_msg = Message(
             projeto_id=projeto_id,
+            user_id=g.uid,
             username=username,
             texto=texto,
             arquivo=arquivo_path
@@ -449,7 +451,7 @@ def avaliar_projeto(projeto_id):
     if len(comentario) > 1000:
         return jsonify({'status': 'error', 'message': 'O comentário deve ter no máximo 1000 caracteres.'}), 400
 
-    ja_avaliou = Rating.query.filter_by(projeto_id=projeto_id, username=session['user']).first()
+    ja_avaliou = Rating.query.filter_by(projeto_id=projeto_id, user_id=g.uid).first()
     if ja_avaliou:
         ja_avaliou.nota = nota
         ja_avaliou.nota_organizacao = nota_org
@@ -461,6 +463,7 @@ def avaliar_projeto(projeto_id):
     else:
         rating = Rating(
             projeto_id=projeto_id, 
+            user_id=g.uid,
             username=session['user'], 
             nota=nota, 
             nota_organizacao=nota_org,
@@ -518,6 +521,7 @@ def submissao():
             email=data.get("email"),
             status=data.get("status") or "EM ANÁLISE",
             username=session['user'],
+            user_id=g.uid,
             imagem=imagem_path
         )
         db.session.add(nova_submissao)
@@ -539,7 +543,7 @@ def obter_submissao(sub_id):
     subm = Submission.query.get(sub_id)
     if not subm:
         return jsonify({"status": "error", "message": "Proposta não encontrada."}), 404
-    if subm.username != session['user'] and session.get('role') not in ['admin', 'coordenador', 'professor']:
+    if subm.user_id != g.uid and session.get('role') not in ['admin', 'coordenador', 'professor']:
         return jsonify({"status": "error", "message": "Acesso negado."}), 403
     return jsonify({"status": "success", "submissao": subm.to_dict()})
 
@@ -554,7 +558,7 @@ def editar_submissao(sub_id):
         return jsonify({"status": "error", "message": "Proposta não encontrada."}), 404
         
     # Apenas o dono ou admin pode editar
-    if subm.username != session['user'] and session.get('role') != 'admin':
+    if subm.user_id != g.uid and session.get('role') != 'admin':
         return jsonify({"status": "error", "message": "Acesso negado."}), 403
         
     # Apenas se estiver em análise
@@ -590,7 +594,7 @@ def excluir_submissao(sub_id):
         return jsonify({"status": "error", "message": "Proposta não encontrada."}), 404
         
     # Apenas o dono ou admin pode excluir
-    if subm.username != session['user'] and session.get('role') != 'admin':
+    if subm.user_id != g.uid and session.get('role') != 'admin':
         return jsonify({"status": "error", "message": "Acesso negado."}), 403
         
     # Apenas se estiver em análise
@@ -742,17 +746,22 @@ def download_certificado(projeto_id):
 # ==========================================
 # Controle de acesso por projeto (fonte única)
 # ==========================================
+def _id_do_usuario(username):
+    if not username:
+        return None
+    u = User.query.filter_by(username=username).first()
+    return u.id if u else None
+
+
 def acesso_projeto(projeto):
-    """Papéis do usuário logado NESTE projeto; o papel global sozinho não concede acesso."""
-    username = session.get('user')
+    """Papéis do usuário logado NESTE projeto (por id); o papel global sozinho não concede acesso."""
+    uid = g.get('uid')
     role = session.get('role')
-    user_obj = User.query.filter_by(username=username).first()
-    is_orientador = bool(user_obj and projeto.professor_id and projeto.professor_id == user_obj.id)
-    is_owner = (projeto.owner_username == username) or is_orientador
+    is_orientador = bool(uid and projeto.professor_id and projeto.professor_id == uid)
+    is_owner = bool(uid and projeto.owner_id == uid) or is_orientador
     is_admin = (role == 'admin')
     is_coord = (role == 'coordenador')
-    membros = [c.username for c in Application.query.filter_by(projeto_id=projeto.id, status='APROVADA').all()]
-    is_member = username in membros
+    is_member = bool(uid) and Application.query.filter_by(projeto_id=projeto.id, user_id=uid, status='APROVADA').first() is not None
     return {
         'is_owner': is_owner,
         'is_admin': is_admin,
@@ -769,14 +778,14 @@ def acesso_projeto(projeto):
 @app.route('/api/projeto/<int:projeto_id>/tasks')
 def api_list_tasks(projeto_id):
     if not session.get('logged_in'):
-        return jsonify({"error": "Unauthorized"}), 401
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
         
     projeto = Project.query.get(projeto_id)
     if not projeto:
-        return jsonify({"error": "Project not found"}), 404
+        return jsonify({"status": "error", "message": "Project not found"}), 404
         
     if not acesso_projeto(projeto)['pode_ver']:
-        return jsonify({"error": "Forbidden"}), 403
+        return jsonify({"status": "error", "message": "Forbidden"}), 403
         
     tasks = Task.query.filter_by(projeto_id=projeto_id).all()
     tasks_list = []
@@ -795,14 +804,14 @@ def api_list_tasks(projeto_id):
 @app.route('/api/projeto/<int:projeto_id>/tasks/criar', methods=['POST'])
 def api_criar_task(projeto_id):
     if not session.get('logged_in'):
-        return jsonify({"error": "Unauthorized"}), 401
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
         
     projeto = Project.query.get(projeto_id)
     if not projeto:
-        return jsonify({"error": "Project not found"}), 404
+        return jsonify({"status": "error", "message": "Project not found"}), 404
         
     if not acesso_projeto(projeto)['pode_editar']:
-        return jsonify({"error": "Apenas integrantes da equipe, administradores ou orientadores podem criar tarefas."}), 403
+        return jsonify({"status": "error", "message": "Apenas integrantes da equipe, administradores ou orientadores podem criar tarefas."}), 403
         
     data = request.get_json(silent=True) or request.form
     titulo = data.get('titulo')
@@ -814,7 +823,7 @@ def api_criar_task(projeto_id):
         checklist_str = json.dumps(checklist_str)
     
     if not titulo:
-        return jsonify({"error": "Título é obrigatório"}), 400
+        return jsonify({"status": "error", "message": "Título é obrigatório"}), 400
         
     deadline = None
     if deadline_str:
@@ -829,6 +838,7 @@ def api_criar_task(projeto_id):
         descricao=descricao,
         status='todo',
         assigned_username=assigned_username if assigned_username else None,
+        assigned_user_id=_id_do_usuario(assigned_username),
         deadline=deadline,
         checklist=checklist_str
     )
@@ -850,29 +860,29 @@ def api_criar_task(projeto_id):
 @app.route('/api/projeto/<int:projeto_id>/tasks/<int:task_id>/mover', methods=['POST'])
 def api_mover_task(projeto_id, task_id):
     if not session.get('logged_in'):
-        return jsonify({"error": "Unauthorized"}), 401
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
         
     projeto = Project.query.get(projeto_id)
     if not projeto:
-        return jsonify({"error": "Project not found"}), 404
+        return jsonify({"status": "error", "message": "Project not found"}), 404
         
     task = Task.query.filter_by(id=task_id, projeto_id=projeto_id).first()
     if not task:
-        return jsonify({"error": "Task not found"}), 404
+        return jsonify({"status": "error", "message": "Task not found"}), 404
         
     username = session['user']
     role = session.get('role')
     
     if role in ['cliente', 'coordenador']:
-        return jsonify({"error": "Clientes e Coordenadores possuem apenas acesso de leitura ao Kanban."}), 403
+        return jsonify({"status": "error", "message": "Clientes e Coordenadores possuem apenas acesso de leitura ao Kanban."}), 403
         
     if not acesso_projeto(projeto)['pode_editar']:
-        return jsonify({"error": "Acesso negado."}), 403
+        return jsonify({"status": "error", "message": "Acesso negado."}), 403
 
     data = request.get_json(silent=True) or request.form
     novo_status = data.get('status')
     if novo_status not in ['todo', 'doing', 'done']:
-        return jsonify({"error": "Status inválido"}), 400
+        return jsonify({"status": "error", "message": "Status inválido"}), 400
         
     task.status = novo_status
     if novo_status == 'done':
@@ -886,18 +896,18 @@ def api_mover_task(projeto_id, task_id):
 @app.route('/api/projeto/<int:projeto_id>/tasks/<int:task_id>/editar', methods=['POST', 'PUT'])
 def api_editar_task(projeto_id, task_id):
     if not session.get('logged_in'):
-        return jsonify({"error": "Unauthorized"}), 401
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
         
     projeto = Project.query.get(projeto_id)
     if not projeto:
-        return jsonify({"error": "Project not found"}), 404
+        return jsonify({"status": "error", "message": "Project not found"}), 404
         
     task = Task.query.filter_by(id=task_id, projeto_id=projeto_id).first()
     if not task:
-        return jsonify({"error": "Task not found"}), 404
+        return jsonify({"status": "error", "message": "Task not found"}), 404
         
     if not acesso_projeto(projeto)['pode_editar']:
-        return jsonify({"error": "Apenas integrantes do projeto, administradores ou orientadores podem editar tarefas."}), 403
+        return jsonify({"status": "error", "message": "Apenas integrantes do projeto, administradores ou orientadores podem editar tarefas."}), 403
         
     data = request.get_json(silent=True) or request.form
     titulo = data.get('titulo')
@@ -914,6 +924,7 @@ def api_editar_task(projeto_id, task_id):
         task.descricao = descricao
     if 'assigned_username' in data:
         task.assigned_username = assigned_username if assigned_username else None
+        task.assigned_user_id = _id_do_usuario(assigned_username)
     
     if deadline_str:
         try:
@@ -944,19 +955,19 @@ def api_editar_task(projeto_id, task_id):
 @app.route('/api/projeto/<int:projeto_id>/tasks/<int:task_id>', methods=['DELETE'])
 def api_excluir_task(projeto_id, task_id):
     if not session.get('logged_in'):
-        return jsonify({"error": "Unauthorized"}), 401
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
         
     projeto = Project.query.get(projeto_id)
     if not projeto:
-        return jsonify({"error": "Project not found"}), 404
+        return jsonify({"status": "error", "message": "Project not found"}), 404
         
     task = Task.query.filter_by(id=task_id, projeto_id=projeto_id).first()
     if not task:
-        return jsonify({"error": "Task not found"}), 404
+        return jsonify({"status": "error", "message": "Task not found"}), 404
         
     ac = acesso_projeto(projeto)
     if not (ac['is_owner'] or ac['is_admin'] or ac['is_lider']):
-        return jsonify({"error": "Apenas Líderes da equipe, Administradores ou Orientadores podem excluir tarefas."}), 403
+        return jsonify({"status": "error", "message": "Apenas Líderes da equipe, Administradores ou Orientadores podem excluir tarefas."}), 403
         
     db.session.delete(task)
     db.session.commit()
@@ -965,14 +976,14 @@ def api_excluir_task(projeto_id, task_id):
 @app.route('/api/projeto/<int:projeto_id>/metrics')
 def api_projeto_metrics(projeto_id):
     if not session.get('logged_in'):
-        return jsonify({"error": "Unauthorized"}), 401
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
         
     projeto_db = Project.query.get(projeto_id)
     if not projeto_db:
-        return jsonify({"error": "Project not found"}), 404
+        return jsonify({"status": "error", "message": "Project not found"}), 404
         
     if not acesso_projeto(projeto_db)['pode_ver']:
-        return jsonify({"error": "Forbidden"}), 403
+        return jsonify({"status": "error", "message": "Forbidden"}), 403
 
     tasks = Task.query.filter_by(projeto_id=projeto_id).all()
     tasks_data = []

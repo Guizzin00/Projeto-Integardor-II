@@ -43,6 +43,7 @@ def get_random_default_cover():
     return random.choice(['default_capa_1.jpg', 'default_capa_2.jpg', 'default_capa_3.jpg'])
 
 class Project(db.Model):
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True, index=True)
     id = db.Column(db.Integer, primary_key=True)
     titulo = db.Column(db.String(200), nullable=False)
     status = db.Column(db.String(50), nullable=False)
@@ -91,7 +92,7 @@ class Project(db.Model):
             "id": self.id,
             "titulo": self.titulo,
             "status": self.status,
-            "professor": self.professor,
+            "professor": (orientador_info["username"] if orientador_info else (self.professor or "")),
             "categoria": self.categoria,
             "descricao_curta": self.descricao_curta,
             "imagem": self.imagem,
@@ -105,6 +106,7 @@ class Project(db.Model):
         }
 
 class Submission(db.Model):
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True, index=True)
     id = db.Column(db.Integer, primary_key=True)
     nome_projeto = db.Column(db.String(200), nullable=False)
     categoria = db.Column(db.String(100), nullable=False)
@@ -133,6 +135,7 @@ class Submission(db.Model):
         }
 
 class Application(db.Model):
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True, index=True)
     __table_args__ = (db.UniqueConstraint('projeto_id', 'username', name='uq_application_projeto_username'),)
     id = db.Column(db.Integer, primary_key=True)
     projeto_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
@@ -155,6 +158,7 @@ class Application(db.Model):
         }
 
 class Message(db.Model):
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True, index=True)
     id = db.Column(db.Integer, primary_key=True)
     projeto_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     username = db.Column(db.String(50), nullable=False)
@@ -165,6 +169,7 @@ class Message(db.Model):
     projeto = db.relationship('Project', backref=db.backref('mensagens', lazy=True))
 
 class Notification(db.Model):
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True, index=True)
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), nullable=False)
     mensagem = db.Column(db.Text, nullable=False)
@@ -173,6 +178,7 @@ class Notification(db.Model):
     link = db.Column(db.String(200), nullable=True)
 
 class Rating(db.Model):
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True, index=True)
     id = db.Column(db.Integer, primary_key=True)
     projeto_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     username = db.Column(db.String(50), nullable=False)
@@ -204,6 +210,7 @@ class AccountVerification(db.Model):
     expira_em = db.Column(db.DateTime, nullable=False)
 
 class Task(db.Model):
+    assigned_user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True, index=True)
     id = db.Column(db.Integer, primary_key=True)
     projeto_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     titulo = db.Column(db.String(150), nullable=False)
@@ -236,3 +243,30 @@ class Task(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None
         }
+
+
+# =========================
+# Vínculos por id: preenche o id do usuário sempre que só o nome for informado
+# =========================
+from sqlalchemy import event, select
+
+_VINCULOS = {
+    'Application': [('username', 'user_id')],
+    'Message': [('username', 'user_id')],
+    'Notification': [('username', 'user_id')],
+    'Rating': [('username', 'user_id')],
+    'Submission': [('username', 'user_id')],
+    'Task': [('assigned_username', 'assigned_user_id')],
+    'Project': [('owner_username', 'owner_id')],
+}
+
+
+def _preencher_ids(mapper, connection, target):
+    for campo_nome, campo_id in _VINCULOS[type(target).__name__]:
+        nome = getattr(target, campo_nome, None)
+        if nome and getattr(target, campo_id, None) is None:
+            setattr(target, campo_id, connection.execute(select(User.id).where(User.username == nome)).scalar())
+
+
+for _modelo in (Application, Message, Notification, Rating, Submission, Task, Project):
+    event.listen(_modelo, 'before_insert', _preencher_ids)

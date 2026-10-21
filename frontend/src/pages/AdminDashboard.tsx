@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { AprovacoesContasTab } from '../components/AprovacoesContasTab';
 import { SubmissaoDetalhesModal, SubmissaoDetalhes } from '../components/SubmissaoDetalhesModal';
 import { useUI } from '../components/UIProvider';
+import { useListaPaginada } from '../hooks/useListaPaginada';
+import { Paginacao } from '../components/Paginacao';
 
 export function AdminDashboard() {
   const { avisar, confirmar } = useUI();
@@ -13,10 +15,9 @@ export function AdminDashboard() {
 
   const [activeTab, setActiveTab] = useState<'tab-projetos' | 'tab-submissoes' | 'tab-candidaturas' | 'tab-usuarios' | 'tab-aprovacoes'>('tab-projetos');
   const [pendentesCount, setPendentesCount] = useState<number>(0);
-  const [projetos, setProjetos] = useState<any[]>([]);
-  const [submissoes, setSubmissoes] = useState<any[]>([]);
-  const [candidaturas, setCandidaturas] = useState<any[]>([]);
-  const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [totais, setTotais] = useState({ projetos: 0, submissoes: 0, candidaturas: 0, usuarios: 0 });
+  const [submissoesPendentes, setSubmissoesPendentes] = useState(0);
+  const [candidaturasPendentes, setCandidaturasPendentes] = useState(0);
   const [stats, setStats] = useState<{ status: Record<string, number>; categoria: Record<string, number> }>({ status: {}, categoria: {} });
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -34,6 +35,16 @@ export function AdminDashboard() {
 
   const [searchUser, setSearchUser] = useState('');
   const [roleUser, setRoleUser] = useState('TODOS');
+
+  // Listas paginadas e filtradas no servidor
+  const projLista = useListaPaginada<any>('projetos', { q: searchProj, status: statusProj });
+  const submLista = useListaPaginada<any>('submissoes', { q: searchSubm, status: statusSubm });
+  const candLista = useListaPaginada<any>('candidaturas', { q: searchCand, status: statusCand });
+  const userLista = useListaPaginada<any>('usuarios', { q: searchUser, status: roleUser });
+  const projetos = projLista.items;
+  const submissoes = submLista.items, setSubmissoes = submLista.setItems;
+  const candidaturas = candLista.items, setCandidaturas = candLista.setItems;
+  const usuarios = userLista.items;
 
   // Menu de exportação
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
@@ -58,10 +69,9 @@ export function AdminDashboard() {
       ]);
 
       if (dashRes.data.status === 'success' && dashRes.data.data) {
-        setProjetos(dashRes.data.data.projetos || []);
-        setSubmissoes(dashRes.data.data.submissoes || []);
-        setCandidaturas(dashRes.data.data.candidaturas || []);
-        setUsuarios(dashRes.data.data.usuarios || []);
+        if (dashRes.data.data.totais) setTotais(dashRes.data.data.totais);
+        setSubmissoesPendentes(dashRes.data.data.submissoes_pendentes || 0);
+        setCandidaturasPendentes(dashRes.data.data.candidaturas_pendentes || 0);
         if (dashRes.data.data.aprovacoes_pendentes_count !== undefined) {
           setPendentesCount(dashRes.data.data.aprovacoes_pendentes_count);
         }
@@ -76,6 +86,16 @@ export function AdminDashboard() {
     }
   };
 
+  const carregarContagens = async () => {
+    try {
+      const res = await api.get('/admin/dashboard');
+      const d = res.data.data;
+      if (d?.totais) setTotais(d.totais);
+      setSubmissoesPendentes(d?.submissoes_pendentes || 0);
+      setCandidaturasPendentes(d?.candidaturas_pendentes || 0);
+    } catch { /* mantém os números atuais */ }
+  };
+
   useEffect(() => {
     carregarDados();
   }, []);
@@ -86,7 +106,8 @@ export function AdminDashboard() {
     try {
       setActionLoading(`proj-${id}`);
       await api.post(`/admin/projeto/${id}/excluir`);
-      setProjetos(prev => prev.filter(p => p.id !== id));
+      await projLista.reload();
+      carregarContagens();
     } catch (err: any) {
       avisar(err.response?.data?.message || 'Erro ao excluir projeto.');
     } finally {
@@ -102,11 +123,9 @@ export function AdminDashboard() {
       if (res.data.status === 'success') {
         setSubmissoes(prev => prev.map(s => s.id === id ? { ...s, status: res.data.new_status } : s));
         if (acao === 'aprovar') {
-          const dashRes = await api.get('/admin/dashboard');
-          if (dashRes.data.data?.projetos) {
-            setProjetos(dashRes.data.data.projetos);
-          }
+          projLista.reload();
         }
+        carregarContagens();
       }
     } catch (err: any) {
       avisar(err.response?.data?.message || `Erro ao ${acao} submissão.`);
@@ -122,6 +141,7 @@ export function AdminDashboard() {
       const res = await api.post(`/admin/candidatura/${id}/${acao}`);
       if (res.data.status === 'success') {
         setCandidaturas(prev => prev.map(c => c.id === id ? { ...c, status: res.data.new_status } : c));
+        carregarContagens();
       }
     } catch (err: any) {
       avisar(err.response?.data?.message || `Erro ao ${acao} candidatura.`);
@@ -136,7 +156,8 @@ export function AdminDashboard() {
     try {
       setActionLoading(`user-${id}`);
       await api.delete(`/admin/usuario/${id}`);
-      setUsuarios(prev => prev.filter(u => u.id !== id));
+      await userLista.reload();
+      carregarContagens();
     } catch (err: any) {
       avisar(err.response?.data?.message || 'Erro ao excluir usuário.');
     } finally {
@@ -150,56 +171,11 @@ export function AdminDashboard() {
     setExportMenuOpen(false);
   };
 
-  // Dados filtrados
-  const projetosFiltrados = useMemo(() => {
-    return projetos.filter(p => {
-      const matchQuery = !searchProj.trim() || 
-        p.titulo?.toLowerCase().includes(searchProj.toLowerCase()) ||
-        p.categoria?.toLowerCase().includes(searchProj.toLowerCase()) ||
-        String(p.id).includes(searchProj);
-      const matchStatus = statusProj === 'TODOS' || p.status?.toUpperCase() === statusProj.toUpperCase();
-      return matchQuery && matchStatus;
-    });
-  }, [projetos, searchProj, statusProj]);
-
-  const submissoesFiltradas = useMemo(() => {
-    return submissoes.filter(s => {
-      const matchQuery = !searchSubm.trim() ||
-        s.nome_projeto?.toLowerCase().includes(searchSubm.toLowerCase()) ||
-        s.proponente?.toLowerCase().includes(searchSubm.toLowerCase()) ||
-        s.email?.toLowerCase().includes(searchSubm.toLowerCase()) ||
-        String(s.id).includes(searchSubm);
-      const matchStatus = statusSubm === 'TODOS' || s.status?.toUpperCase() === statusSubm.toUpperCase();
-      return matchQuery && matchStatus;
-    });
-  }, [submissoes, searchSubm, statusSubm]);
-
-  const candidaturasFiltradas = useMemo(() => {
-    return candidaturas.filter(c => {
-      const projNome = c.projeto?.titulo || c.projeto || '';
-      const matchQuery = !searchCand.trim() ||
-        projNome.toLowerCase().includes(searchCand.toLowerCase()) ||
-        c.username?.toLowerCase().includes(searchCand.toLowerCase()) ||
-        c.motivo?.toLowerCase().includes(searchCand.toLowerCase());
-      const matchStatus = statusCand === 'TODOS' || c.status?.toUpperCase() === statusCand.toUpperCase();
-      return matchQuery && matchStatus;
-    });
-  }, [candidaturas, searchCand, statusCand]);
-
-  const usuariosFiltrados = useMemo(() => {
-    return usuarios.filter(u => {
-      const matchQuery = !searchUser.trim() ||
-        u.username?.toLowerCase().includes(searchUser.toLowerCase()) ||
-        u.email?.toLowerCase().includes(searchUser.toLowerCase()) ||
-        String(u.id).includes(searchUser);
-      const matchRole = roleUser === 'TODOS' || u.role?.toLowerCase() === roleUser.toLowerCase();
-      return matchQuery && matchRole;
-    });
-  }, [usuarios, searchUser, roleUser]);
-
-  // Contagens para badges
-  const submissoesPendentes = useMemo(() => submissoes.filter(s => s.status === 'EM ANÁLISE').length, [submissoes]);
-  const candidaturasPendentes = useMemo(() => candidaturas.filter(c => c.status === 'PENDENTE').length, [candidaturas]);
+  // Os filtros são aplicados no servidor; cada lista já chega filtrada e paginada
+  const projetosFiltrados = projetos;
+  const submissoesFiltradas = submissoes;
+  const candidaturasFiltradas = candidaturas;
+  const usuariosFiltrados = usuarios;
 
   const categoryEntries = Object.entries(stats.categoria || {});
   const statusEntries = Object.entries(stats.status || {});
@@ -342,7 +318,7 @@ export function AdminDashboard() {
             </div>
           </div>
           <div className="text-3xl font-bold font-title text-text-primary tracking-tight">
-            {projetos.length}
+            {totais.projetos}
           </div>
           <p className="text-xs text-text-secondary mt-1">Registrados na base institucional</p>
         </div>
@@ -376,7 +352,7 @@ export function AdminDashboard() {
             </div>
           </div>
           <div className="text-3xl font-bold font-title text-text-primary tracking-tight">
-            {candidaturas.length}
+            {totais.candidaturas}
           </div>
           <p className="text-xs text-text-secondary mt-1">{candidaturasPendentes} ainda em análise</p>
         </div>
@@ -392,7 +368,7 @@ export function AdminDashboard() {
             </div>
           </div>
           <div className="text-3xl font-bold font-title text-text-primary tracking-tight">
-            {usuarios.length}
+            {totais.usuarios}
           </div>
           <p className="text-xs text-text-secondary mt-1">Discentes, orientadores e gestores</p>
         </div>
@@ -403,12 +379,12 @@ export function AdminDashboard() {
         {/* Categorias */}
         <div className="bg-bg-surface border border-border-color p-6 rounded-2xl shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-title text-sm font-bold text-text-primary flex items-center gap-2">
+            <h2 className="font-title text-sm font-bold text-text-primary flex items-center gap-2">
               <svg className="w-4 h-4 text-purple-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
               </svg>
               <span>Projetos por Categoria Acadêmica</span>
-            </h3>
+            </h2>
             <span className="text-xs text-text-secondary">{categoryEntries.length} áreas ativas</span>
           </div>
 
@@ -417,7 +393,7 @@ export function AdminDashboard() {
               <p className="text-xs text-text-secondary italic py-4 text-center">Nenhum dado de categoria disponível.</p>
             ) : (
               categoryEntries.map(([cat, count]) => {
-                const total = projetos.length || 1;
+                const total = totais.projetos || 1;
                 const pct = Math.round((count / total) * 100);
                 return (
                   <div key={cat} className="space-y-1.5">
@@ -441,12 +417,12 @@ export function AdminDashboard() {
         {/* Status */}
         <div className="bg-bg-surface border border-border-color p-6 rounded-2xl shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-title text-sm font-bold text-text-primary flex items-center gap-2">
+            <h2 className="font-title text-sm font-bold text-text-primary flex items-center gap-2">
               <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
               <span>Situação Operacional dos Projetos</span>
-            </h3>
+            </h2>
             <span className="text-xs text-text-secondary">{statusEntries.length} status registrados</span>
           </div>
 
@@ -455,7 +431,7 @@ export function AdminDashboard() {
               <p className="text-xs text-text-secondary italic py-4 text-center">Nenhum dado de status disponível.</p>
             ) : (
               statusEntries.map(([status, count]) => {
-                const total = projetos.length || 1;
+                const total = totais.projetos || 1;
                 const pct = Math.round((count / total) * 100);
                 return (
                   <div key={status} className="space-y-1.5">
@@ -491,7 +467,7 @@ export function AdminDashboard() {
           <span className={`px-2 py-0.5 rounded-full text-[0.7rem] ${
             activeTab === 'tab-projetos' ? 'bg-white/20 text-white' : 'bg-bg-primary text-text-secondary'
           }`}>
-            {projetos.length}
+            {totais.projetos}
           </span>
         </button>
 
@@ -507,7 +483,7 @@ export function AdminDashboard() {
           <span className={`px-2 py-0.5 rounded-full text-[0.7rem] ${
             activeTab === 'tab-submissoes' ? 'bg-white/20 text-white' : submissoesPendentes > 0 ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold' : 'bg-bg-primary text-text-secondary'
           }`}>
-            {submissoes.length}
+            {totais.submissoes}
           </span>
         </button>
 
@@ -523,7 +499,7 @@ export function AdminDashboard() {
           <span className={`px-2 py-0.5 rounded-full text-[0.7rem] ${
             activeTab === 'tab-candidaturas' ? 'bg-white/20 text-white' : 'bg-bg-primary text-text-secondary'
           }`}>
-            {candidaturas.length}
+            {totais.candidaturas}
           </span>
         </button>
 
@@ -539,7 +515,7 @@ export function AdminDashboard() {
           <span className={`px-2 py-0.5 rounded-full text-[0.7rem] ${
             activeTab === 'tab-usuarios' ? 'bg-white/20 text-white' : 'bg-bg-primary text-text-secondary'
           }`}>
-            {usuarios.length}
+            {totais.usuarios}
           </span>
         </button>
 
@@ -554,7 +530,7 @@ export function AdminDashboard() {
           <span>Aprovações de Contas</span>
           <span className={`px-2 py-0.5 rounded-full text-[0.7rem] font-bold ${
             pendentesCount > 0 
-              ? 'bg-amber-500 text-white animate-pulse' 
+              ? 'bg-amber-700 text-white animate-pulse' 
               : activeTab === 'tab-aprovacoes' ? 'bg-white/20 text-white' : 'bg-bg-primary text-text-secondary'
           }`}>
             {pendentesCount}
@@ -582,7 +558,7 @@ export function AdminDashboard() {
                 />
               </div>
 
-              <select
+              <select aria-label="Filtrar projetos por situação"
                 value={statusProj}
                 onChange={(e) => setStatusProj(e.target.value)}
                 className="bg-bg-primary border border-border-color rounded-xl px-3 py-2 text-xs text-text-primary outline-none focus:border-purple-primary transition-colors"
@@ -682,9 +658,7 @@ export function AdminDashboard() {
                 </tbody>
               </table>
             </div>
-            <div className="p-3 bg-bg-primary border-t border-border-color text-right text-xs text-text-secondary">
-              Exibindo {projetosFiltrados.length} de {projetos.length} projetos
-            </div>
+            <Paginacao lista={projLista} rotulo="projetos" />
           </div>
         </div>
       )}
@@ -707,7 +681,7 @@ export function AdminDashboard() {
                 />
               </div>
 
-              <select
+              <select aria-label="Filtrar propostas por situação"
                 value={statusSubm}
                 onChange={(e) => setStatusSubm(e.target.value)}
                 className="bg-bg-primary border border-border-color rounded-xl px-3 py-2 text-xs text-text-primary outline-none focus:border-purple-primary transition-colors"
@@ -806,9 +780,7 @@ export function AdminDashboard() {
                 </tbody>
               </table>
             </div>
-            <div className="p-3 bg-bg-primary border-t border-border-color text-right text-xs text-text-secondary">
-              Exibindo {submissoesFiltradas.length} de {submissoes.length} propostas
-            </div>
+            <Paginacao lista={submLista} rotulo="propostas" />
           </div>
         </div>
       )}
@@ -831,7 +803,7 @@ export function AdminDashboard() {
                 />
               </div>
 
-              <select
+              <select aria-label="Filtrar candidaturas por situação"
                 value={statusCand}
                 onChange={(e) => setStatusCand(e.target.value)}
                 className="bg-bg-primary border border-border-color rounded-xl px-3 py-2 text-xs text-text-primary outline-none focus:border-purple-primary transition-colors"
@@ -926,9 +898,7 @@ export function AdminDashboard() {
                 </tbody>
               </table>
             </div>
-            <div className="p-3 bg-bg-primary border-t border-border-color text-right text-xs text-text-secondary">
-              Exibindo {candidaturasFiltradas.length} de {candidaturas.length} candidaturas
-            </div>
+            <Paginacao lista={candLista} rotulo="candidaturas" />
           </div>
         </div>
       )}
@@ -951,7 +921,7 @@ export function AdminDashboard() {
                 />
               </div>
 
-              <select
+              <select aria-label="Filtrar usuários por papel"
                 value={roleUser}
                 onChange={(e) => setRoleUser(e.target.value)}
                 className="bg-bg-primary border border-border-color rounded-xl px-3 py-2 text-xs text-text-primary outline-none focus:border-purple-primary transition-colors"
@@ -1060,9 +1030,7 @@ export function AdminDashboard() {
                 </tbody>
               </table>
             </div>
-            <div className="p-3 bg-bg-primary border-t border-border-color text-right text-xs text-text-secondary">
-              Exibindo {usuariosFiltrados.length} de {usuarios.length} usuários
-            </div>
+            <Paginacao lista={userLista} rotulo="usuários" />
           </div>
         </div>
       )}
