@@ -1,5 +1,6 @@
-from flask import Flask
+from flask import Flask, request, jsonify
 import os
+import secrets
 import tempfile
 from models import db
 
@@ -10,13 +11,48 @@ app = Flask(
     static_folder=os.path.join(base_dir, 'static')
 )
 
+IS_PRODUCTION = os.environ.get('VERCEL') == '1' or os.environ.get('FLASK_ENV') == 'production'
+
+# Chave de sessão: obrigatória em produção; em desenvolvimento usa uma chave aleatória por execução.
+_secret_key = os.environ.get('SECRET_KEY', '').strip()
+if not _secret_key:
+    if IS_PRODUCTION:
+        raise RuntimeError("A variável de ambiente SECRET_KEY é obrigatória em produção.")
+    _secret_key = secrets.token_hex(32)
+    print("[AVISO] SECRET_KEY não definida: usando chave temporária (as sessões não sobrevivem a reinícios).")
+app.secret_key = _secret_key
+
+# Cookie de sessão
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = IS_PRODUCTION
+
+# Origens autorizadas a chamar a API com credenciais (CORS_ORIGINS separadas por vírgula; APP_URL também vale).
+ALLOWED_ORIGINS = {o.strip().rstrip('/') for o in os.environ.get('CORS_ORIGINS', '').split(',') if o.strip()}
+if os.environ.get('APP_URL', '').strip():
+    ALLOWED_ORIGINS.add(os.environ['APP_URL'].strip().rstrip('/'))
+if not IS_PRODUCTION:
+    ALLOWED_ORIGINS.update({'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000', 'http://localhost:5000', 'http://127.0.0.1:5000'})
+
 try:
     from flask_cors import CORS
-    CORS(app, supports_credentials=True)
+    CORS(app, supports_credentials=True, origins=sorted(ALLOWED_ORIGINS))
 except ImportError:
     pass
 
-app.secret_key = os.environ.get('SECRET_KEY', 'sisCPTI_secret_key')
+
+@app.before_request
+def bloquear_origem_cruzada():
+    """Proteção CSRF: requisições que alteram dados só passam se a origem for a própria aplicação ou autorizada."""
+    if request.method in ('GET', 'HEAD', 'OPTIONS'):
+        return None
+    origem = (request.headers.get('Origin') or '').rstrip('/')
+    if not origem:
+        return None  # clientes não-navegador (sem Origin) não enviam cookies de terceiros
+    if origem in ALLOWED_ORIGINS or origem == request.host_url.rstrip('/'):
+        return None
+    return jsonify({"status": "error", "error": "Origem não autorizada."}), 403
+
 
 db_url = os.environ.get('DATABASE_URL', 'sqlite:///siscpti.db')
 if db_url.startswith("postgres://"):

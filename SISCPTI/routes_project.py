@@ -1,7 +1,7 @@
 from flask import request, redirect, url_for, flash, session, abort, jsonify, send_file
 from werkzeug.utils import secure_filename
 from datetime import datetime
-import os, uuid
+import os, uuid, json
 from io import BytesIO
 
 from app_instance import app
@@ -157,10 +157,10 @@ def api_perfil():
         }
     })
 
-@app.route('/api/perfil/candidatura/<int:cand_id>/<acao>', methods=['GET', 'POST'])
-@app.route('/perfil/candidatura/<int:cand_id>/<acao>', methods=['GET', 'POST'])
-@app.route('/api/admin/candidatura/<int:cand_id>/<acao>', methods=['GET', 'POST'])
-@app.route('/api/candidatura/<int:cand_id>/<acao>', methods=['GET', 'POST'])
+@app.route('/api/perfil/candidatura/<int:cand_id>/<acao>', methods=['POST'])
+@app.route('/perfil/candidatura/<int:cand_id>/<acao>', methods=['POST'])
+@app.route('/api/admin/candidatura/<int:cand_id>/<acao>', methods=['POST'])
+@app.route('/api/candidatura/<int:cand_id>/<acao>', methods=['POST'])
 def dono_acao_candidatura(cand_id, acao):
     if not session.get('logged_in'):
         return jsonify({"status": "error", "message": "Não autenticado."}), 401
@@ -244,8 +244,8 @@ def editar_candidatura(cand_id):
         
     return jsonify({"status": "success", "candidatura": {"id": cand.id, "motivo": cand.motivo, "experiencia": cand.experiencia, "status": cand.status}})
 
-@app.route('/api/perfil/candidatura/<int:cand_id>/cancelar', methods=['POST', 'DELETE', 'GET'])
-@app.route('/perfil/candidatura/<int:cand_id>/cancelar', methods=['POST', 'DELETE', 'GET'])
+@app.route('/api/perfil/candidatura/<int:cand_id>/cancelar', methods=['POST', 'DELETE'])
+@app.route('/perfil/candidatura/<int:cand_id>/cancelar', methods=['POST', 'DELETE'])
 def cancelar_candidatura(cand_id):
     if not session.get('logged_in'):
         return jsonify({"status": "error", "message": "Você precisa estar logado."}), 401
@@ -585,8 +585,8 @@ def editar_submissao(sub_id):
         
     return jsonify({"status": "success", "submissao": subm.to_dict()})
 
-@app.route('/api/submissao/<int:sub_id>/excluir', methods=['POST', 'DELETE', 'GET'])
-@app.route('/submissao/excluir/<int:sub_id>', methods=['POST', 'DELETE', 'GET'])
+@app.route('/api/submissao/<int:sub_id>/excluir', methods=['POST', 'DELETE'])
+@app.route('/submissao/excluir/<int:sub_id>', methods=['POST', 'DELETE'])
 def excluir_submissao(sub_id):
     if not session.get('logged_in'):
         return jsonify({"status": "error", "message": "Você precisa estar logado."}), 401
@@ -751,6 +751,30 @@ def download_certificado(projeto_id):
     )
 
 # ==========================================
+# Controle de acesso por projeto (fonte única)
+# ==========================================
+def acesso_projeto(projeto):
+    """Papéis do usuário logado NESTE projeto; o papel global sozinho não concede acesso."""
+    username = session.get('user')
+    role = session.get('role')
+    user_obj = User.query.filter_by(username=username).first()
+    is_orientador = bool(user_obj and projeto.professor_id and projeto.professor_id == user_obj.id)
+    is_owner = (projeto.owner_username == username) or is_orientador
+    is_admin = (role == 'admin')
+    is_coord = (role == 'coordenador')
+    membros = [c.username for c in Application.query.filter_by(projeto_id=projeto.id, status='APROVADA').all()]
+    is_member = username in membros
+    return {
+        'is_owner': is_owner,
+        'is_admin': is_admin,
+        'is_coord': is_coord,
+        'is_member': is_member,
+        'is_lider': is_member and role == 'lider',
+        'pode_ver': is_owner or is_admin or is_coord or is_member,
+        'pode_editar': is_owner or is_admin or is_member,
+    }
+
+# ==========================================
 # APIs do Quadro Kanban
 # ==========================================
 @app.route('/api/projeto/<int:projeto_id>/tasks')
@@ -762,24 +786,12 @@ def api_list_tasks(projeto_id):
     if not projeto:
         return jsonify({"error": "Project not found"}), 404
         
-    username = session['user']
-    user_obj = User.query.filter_by(username=username).first()
-    
-    is_orientador = (projeto.professor_id == user_obj.id if user_obj and projeto.professor_id else False)
-    is_owner = (projeto.owner_username == username) or is_orientador
-    is_admin = (session.get('role') == 'admin')
-    is_coord = (session.get('role') == 'coordenador')
-    
-    equipe_cands = Application.query.filter_by(projeto_id=projeto_id, status='APROVADA').all()
-    membros = [c.username for c in equipe_cands]
-    
-    if not is_owner and not is_admin and not is_coord and username not in membros and session.get('role') != 'cliente':
+    if not acesso_projeto(projeto)['pode_ver']:
         return jsonify({"error": "Forbidden"}), 403
         
     tasks = Task.query.filter_by(projeto_id=projeto_id).all()
     tasks_list = []
     for t in tasks:
-        import json
         tasks_list.append({
             "id": t.id,
             "titulo": t.titulo,
@@ -800,21 +812,8 @@ def api_criar_task(projeto_id):
     if not projeto:
         return jsonify({"error": "Project not found"}), 404
         
-    username = session['user']
-    user_obj = User.query.filter_by(username=username).first()
-    role = session.get('role')
-    
-    is_orientador = (projeto.professor_id == user_obj.id if user_obj and projeto.professor_id else False)
-    is_owner = (projeto.owner_username == username) or is_orientador
-    is_admin = (role == 'admin')
-    
-    equipe_cands = Application.query.filter_by(projeto_id=projeto_id, status='APROVADA').all()
-    membros = [c.username for c in equipe_cands]
-    is_member = (username in membros)
-    is_lider = (role == 'lider') or (username in membros and role == 'lider')
-    
-    if not is_owner and not is_admin and not is_lider and not is_member:
-        return jsonify({"error": "Apenas integrantes da equipe, líderes, administradores ou orientadores podem criar tarefas."}), 403
+    if not acesso_projeto(projeto)['pode_editar']:
+        return jsonify({"error": "Apenas integrantes da equipe, administradores ou orientadores podem criar tarefas."}), 403
         
     data = request.get_json(silent=True) or request.form
     titulo = data.get('titulo')
@@ -846,8 +845,6 @@ def api_criar_task(projeto_id):
     )
     db.session.add(task)
     db.session.commit()
-    
-    import json
     return jsonify({
         "status": "success",
         "task": {
@@ -919,22 +916,8 @@ def api_editar_task(projeto_id, task_id):
     if not task:
         return jsonify({"error": "Task not found"}), 404
         
-    username = session['user']
-    role = session.get('role')
-    
-    user_obj = User.query.filter_by(username=username).first()
-    is_orientador = (projeto.professor_id == user_obj.id if user_obj and projeto.professor_id else False)
-    is_owner = (projeto.owner_username == username) or is_orientador
-    is_admin = (role == 'admin')
-    
-    equipe_cands = Application.query.filter_by(projeto_id=projeto_id, status='APROVADA').all()
-    membros = [c.username for c in equipe_cands]
-    is_member = (username in membros)
-    is_assigned = (task.assigned_username == username)
-    is_lider = (role == 'lider') or (is_member and role == 'lider')
-    
-    if not is_owner and not is_admin and not is_lider and not is_member and not is_assigned:
-        return jsonify({"error": "Apenas integrantes do projeto, líderes, administradores ou orientadores podem editar tarefas."}), 403
+    if not acesso_projeto(projeto)['pode_editar']:
+        return jsonify({"error": "Apenas integrantes do projeto, administradores ou orientadores podem editar tarefas."}), 403
         
     data = request.get_json(silent=True) or request.form
     titulo = data.get('titulo')
@@ -964,7 +947,6 @@ def api_editar_task(projeto_id, task_id):
         task.checklist = checklist_str
         
     db.session.commit()
-    import json
     return jsonify({
         "status": "success",
         "task": {
@@ -992,21 +974,9 @@ def api_excluir_task(projeto_id, task_id):
     if not task:
         return jsonify({"error": "Task not found"}), 404
         
-    username = session['user']
-    role = session.get('role')
-    
-    user_obj = User.query.filter_by(username=username).first()
-    is_orientador = (projeto.professor_id == user_obj.id if user_obj and projeto.professor_id else False)
-    is_owner = (projeto.owner_username == username) or is_orientador
-    is_admin = (role == 'admin')
-    
-    equipe_cands = Application.query.filter_by(projeto_id=projeto_id, status='APROVADA').all()
-    membros = [c.username for c in equipe_cands]
-    
-    is_lider = (role == 'lider') or (username in membros and role == 'lider')
-    
-    if not is_owner and not is_admin and not is_lider:
-        return jsonify({"error": "Apenas Líderes, Administradores ou Orientadores podem excluir tarefas."}), 403
+    ac = acesso_projeto(projeto)
+    if not (ac['is_owner'] or ac['is_admin'] or ac['is_lider']):
+        return jsonify({"error": "Apenas Líderes da equipe, Administradores ou Orientadores podem excluir tarefas."}), 403
         
     db.session.delete(task)
     db.session.commit()

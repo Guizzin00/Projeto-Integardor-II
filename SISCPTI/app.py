@@ -47,7 +47,8 @@ def run_db_migrations(force=False):
                         'ALTER TABLE "task" ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                         'ALTER TABLE "task" ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP',
                         "UPDATE \"user\" SET status_aprovacao = 'APROVADO' WHERE status_aprovacao IS NULL",
-                        "UPDATE \"user\" SET data_cadastro = CURRENT_TIMESTAMP WHERE data_cadastro IS NULL"
+                        "UPDATE \"user\" SET data_cadastro = CURRENT_TIMESTAMP WHERE data_cadastro IS NULL",
+                        "UPDATE \"user\" SET email = LOWER(username) || '@ceub.br' WHERE email IS NULL OR TRIM(email) = ''"
                     ]
                     for stmt in pg_statements:
                         try:
@@ -72,6 +73,8 @@ def run_db_migrations(force=False):
                         conn.execute(text("ALTER TABLE \"user\" ADD COLUMN status_aprovacao VARCHAR(20) DEFAULT 'APROVADO'"))
                     if 'data_cadastro' not in user_cols:
                         conn.execute(text('ALTER TABLE "user" ADD COLUMN data_cadastro DATETIME DEFAULT CURRENT_TIMESTAMP'))
+
+                    conn.execute(text("UPDATE \"user\" SET email = LOWER(username) || '@ceub.br' WHERE email IS NULL OR TRIM(email) = ''"))
 
                     proj_cols = [c['name'] for c in inspector.get_columns('project')]
                     if 'professor_id' not in proj_cols:
@@ -119,7 +122,8 @@ if os.environ.get('VERCEL') != '1':
                     users = json.load(f)
                     for u in users:
                         hashed_pw = generate_password_hash(u['password'])
-                        user = User(username=u['username'], password=hashed_pw, role=u.get('role', 'user'))
+                        default_email = u.get('email') or f"{u['username'].lower()}@ceub.br"
+                        user = User(username=u['username'], email=default_email, password=hashed_pw, role=u.get('role', 'user'))
                         db.session.add(user)
                 db.session.commit()
             else:
@@ -129,6 +133,9 @@ if os.environ.get('VERCEL') != '1':
                 for u in all_users:
                     if not u.password.startswith('scrypt:') and not u.password.startswith('pbkdf2:'):
                         u.password = generate_password_hash(u.password)
+                        migrated = True
+                    if not u.email or not u.email.strip():
+                        u.email = f"{u.username.lower()}@ceub.br"
                         migrated = True
                 if migrated:
                     db.session.commit()
