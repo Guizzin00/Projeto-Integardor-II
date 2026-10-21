@@ -1,4 +1,4 @@
-from flask import jsonify, send_from_directory, abort
+from flask import jsonify, send_from_directory, abort, session
 import os
 from app_instance import app, base_dir
 
@@ -14,17 +14,6 @@ def serve_react_assets(path):
     if os.path.exists(full_path):
         return send_from_directory(assets_dir, path)
     
-    # Fallback inteligente se o navegador estiver com index.html em cache requisitando hash anterior
-    if os.path.exists(assets_dir):
-        if path.endswith('.js'):
-            js_files = [f for f in os.listdir(assets_dir) if f.startswith('index-') and f.endswith('.js')]
-            if js_files:
-                return send_from_directory(assets_dir, js_files[0])
-        elif path.endswith('.css'):
-            css_files = [f for f in os.listdir(assets_dir) if f.startswith('index-') and f.endswith('.css')]
-            if css_files:
-                return send_from_directory(assets_dir, css_files[0])
-
     abort(404)
 
 # =========================
@@ -39,33 +28,25 @@ def favicon():
 
 @app.route('/api/health')
 def health():
-    db_status = "unknown"
-    db_error = None
-    engine_name = None
     try:
-        from app import run_db_migrations
-        run_db_migrations()
         from sqlalchemy import text
         from app_instance import db
         db.session.execute(text('SELECT 1'))
-        db_status = "connected"
-        engine_name = db.engine.name
-    except Exception as e:
+        ok = True
+    except Exception:
         import traceback
         traceback.print_exc()
-        db_status = "error"
-        db_error = str(e)
+        ok = False
 
     return jsonify({
-        "status": "online" if db_status == "connected" else "degraded",
-        "message": "SisCPTI API operational",
-        "db": db_status,
-        "engine": engine_name,
-        "db_error": db_error
-    })
+        "status": "online" if ok else "degraded",
+        "message": "SisCPTI API operational"
+    }), (200 if ok else 503)
 
-@app.route('/api/migrate-db', methods=['GET', 'POST'])
+@app.route('/api/migrate-db', methods=['POST'])
 def api_migrate_db():
+    if session.get('role') != 'admin':
+        return jsonify({"status": "error", "message": "Acesso restrito a administradores."}), 403
     try:
         from app import run_db_migrations
         run_db_migrations(force=True)
@@ -73,13 +54,10 @@ def api_migrate_db():
             "status": "success",
             "message": "Migrações do banco de dados executadas com sucesso!"
         })
-    except Exception as e:
+    except Exception:
         import traceback
         traceback.print_exc()
-        return jsonify({
-            "status": "error",
-            "message": f"Erro ao executar migrações: {str(e)}"
-        }), 500
+        return jsonify({"status": "error", "message": "Erro ao executar migrações. Consulte os logs do servidor."}), 500
 
 
 # =========================
@@ -123,10 +101,15 @@ def internal_server_error(e):
     import traceback
     traceback.print_exc()
     original_err = getattr(e, 'original_exception', e)
-    error_msg = str(original_err) if original_err else "Erro interno do servidor"
-    print(f"[ERROR 500 HANDLER]: {error_msg}")
-    return jsonify({
-        "status": "error",
-        "message": "Erro interno do servidor",
-        "detail": error_msg
-    }), 500
+    print(f"[ERROR 500 HANDLER]: {original_err}")
+    return jsonify({"status": "error", "message": "Erro interno do servidor"}), 500
+
+from utils import UploadInvalido
+
+@app.errorhandler(UploadInvalido)
+def upload_invalido(e):
+    return jsonify({"status": "error", "message": str(e)}), 400
+
+@app.errorhandler(413)
+def arquivo_grande(e):
+    return jsonify({"status": "error", "message": "Arquivo muito grande. O limite é de 10 MB."}), 413

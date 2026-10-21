@@ -19,6 +19,7 @@ class User(db.Model):
     ativo = db.Column(db.Boolean, nullable=False, default=True)
     status_aprovacao = db.Column(db.String(20), nullable=False, default='APROVADO')  # 'PENDENTE', 'APROVADO', 'REJEITADO'
     data_cadastro = db.Column(db.DateTime, default=datetime.utcnow)
+    email_verificado = db.Column(db.Boolean, nullable=False, default=True)
 
     def to_dict(self):
         status_aprov = getattr(self, 'status_aprovacao', 'APROVADO') or 'APROVADO'
@@ -54,6 +55,7 @@ class Project(db.Model):
     owner_username = db.Column(db.String(50), nullable=True) 
     professor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     tags = db.Column(db.String(300), nullable=True, default='')
+    concluido_em = db.Column(db.DateTime, nullable=True)
     orientador = db.relationship('User', foreign_keys=[professor_id], backref=db.backref('projetos_orientados', lazy=True)) 
 
     def to_dict(self):
@@ -113,6 +115,7 @@ class Submission(db.Model):
     username = db.Column(db.String(50), nullable=True)
     imagem = db.Column(db.String(200), nullable=True)
     tags = db.Column(db.String(300), nullable=True, default='')
+    projeto_id = db.Column(db.Integer, nullable=True)  # projeto criado a partir desta proposta
 
     def to_dict(self):
         return {
@@ -125,10 +128,12 @@ class Submission(db.Model):
             "status": self.status,
             "username": self.username,
             "imagem": self.imagem,
-            "tags": self.tags or ""
+            "tags": self.tags or "",
+            "projeto_id": self.projeto_id
         }
 
 class Application(db.Model):
+    __table_args__ = (db.UniqueConstraint('projeto_id', 'username', name='uq_application_projeto_username'),)
     id = db.Column(db.Integer, primary_key=True)
     projeto_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     username = db.Column(db.String(50), nullable=False)
