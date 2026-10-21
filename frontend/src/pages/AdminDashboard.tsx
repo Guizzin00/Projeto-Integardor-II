@@ -4,8 +4,10 @@ import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { AprovacoesContasTab } from '../components/AprovacoesContasTab';
 import { SubmissaoDetalhesModal, SubmissaoDetalhes } from '../components/SubmissaoDetalhesModal';
+import { useUI } from '../components/UIProvider';
 
 export function AdminDashboard() {
+  const { avisar, confirmar } = useUI();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -80,13 +82,13 @@ export function AdminDashboard() {
 
   // Excluir projeto
   const handleExcluirProjeto = async (id: number) => {
-    if (!window.confirm('Atenção: Deseja realmente excluir este projeto e todo o seu histórico permanentemente?')) return;
+    if (!await confirmar('Atenção: Deseja realmente excluir este projeto e todo o seu histórico permanentemente?')) return;
     try {
       setActionLoading(`proj-${id}`);
       await api.post(`/admin/projeto/${id}/excluir`);
       setProjetos(prev => prev.filter(p => p.id !== id));
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Erro ao excluir projeto.');
+      avisar(err.response?.data?.message || 'Erro ao excluir projeto.');
     } finally {
       setActionLoading(null);
     }
@@ -107,7 +109,7 @@ export function AdminDashboard() {
         }
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || `Erro ao ${acao} submissão.`);
+      avisar(err.response?.data?.message || `Erro ao ${acao} submissão.`);
     } finally {
       setActionLoading(null);
     }
@@ -122,7 +124,7 @@ export function AdminDashboard() {
         setCandidaturas(prev => prev.map(c => c.id === id ? { ...c, status: res.data.new_status } : c));
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || `Erro ao ${acao} candidatura.`);
+      avisar(err.response?.data?.message || `Erro ao ${acao} candidatura.`);
     } finally {
       setActionLoading(null);
     }
@@ -130,13 +132,13 @@ export function AdminDashboard() {
 
   // Excluir usuário
   const handleExcluirUsuario = async (id: number) => {
-    if (!window.confirm('Tem certeza de que deseja remover esta conta de usuário do sistema?')) return;
+    if (!await confirmar('Tem certeza de que deseja remover esta conta de usuário do sistema?')) return;
     try {
       setActionLoading(`user-${id}`);
       await api.delete(`/admin/usuario/${id}`);
       setUsuarios(prev => prev.filter(u => u.id !== id));
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Erro ao excluir usuário.');
+      avisar(err.response?.data?.message || 'Erro ao excluir usuário.');
     } finally {
       setActionLoading(null);
     }

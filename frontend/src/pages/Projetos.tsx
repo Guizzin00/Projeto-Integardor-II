@@ -146,7 +146,7 @@ export function Projetos() {
                     <div className="card-body">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem' }}>
                         <h2 style={{ fontSize: '1rem', margin: '0', fontFamily: 'var(--font-title)', lineHeight: '1.3' }}>{p.titulo}</h2>
-                        <span className={`badge ${p.status.includes('EXECUTADO') ? 'status-green' : p.status.includes('EXECUÇÃO') ? 'status-orange' : p.status.includes('INDISPONÍVEL') ? 'status-red' : 'status-gray'}`}
+                        <span className={`badge ${p.status.includes('CONCLUÍDO') ? 'status-green' : p.status.includes('EXECUÇÃO') ? 'status-orange' : p.status.includes('INDISPONÍVEL') ? 'status-red' : 'status-gray'}`}
                               style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>{p.status}</span>
                       </div>
                       <p style={{ margin: '0 0 0.4rem', fontSize: '0.82rem', color: 'var(--purple-primary)', fontWeight: 600 }}>

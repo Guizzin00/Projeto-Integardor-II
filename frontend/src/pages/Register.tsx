@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../services/api';
 import { useNavigate, Link } from 'react-router-dom';
+import { validarSenha, DICA_SENHA } from '../utils/senha';
 
 export function Register() {
   const [username, setUsername] = useState('');
@@ -26,8 +27,9 @@ export function Register() {
       return;
     }
 
-    if (password.length < 4) {
-      setError('A senha deve conter no mínimo 4 caracteres.');
+    const erroSenha = validarSenha(password);
+    if (erroSenha) {
+      setError(erroSenha);
       return;
     }
 
@@ -233,10 +235,11 @@ export function Register() {
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 required
-                minLength={4}
+                minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Mínimo de 4 caracteres"
+                placeholder="Mínimo 8, com letras e números"
+                title={DICA_SENHA}
                 className="w-full pl-9 pr-10 py-2 text-sm bg-bg-surface text-text-primary border border-border-color rounded-md placeholder:text-text-secondary/60 focus:outline-none focus:border-purple-primary focus:ring-1 focus:ring-purple-primary transition-colors"
               />
               <button
@@ -277,7 +280,7 @@ export function Register() {
                 id="confirm"
                 type={showPassword ? 'text' : 'password'}
                 required
-                minLength={4}
+                minLength={8}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 placeholder="Repita a senha definida"

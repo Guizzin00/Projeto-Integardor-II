@@ -97,7 +97,7 @@ export function ProjetoDetalhes() {
   else if (projeto.imagem?.includes('default_capa_3')) coverGradClass = 'bg-gradient-to-br from-purple-500/18 to-pink-500/18 bg-bg-surface';
 
   let statusClass = 'text-[#6c757d]';
-  if (projeto.status?.includes('EXECUTADO')) statusClass = 'text-[#28a745]';
+  if (projeto.status?.includes('CONCLUÍDO')) statusClass = 'text-[#28a745]';
   else if (projeto.status?.includes('EXECUÇÃO')) statusClass = 'text-[#ff9800]';
   else if (projeto.status?.includes('INDISPONÍVEL')) statusClass = 'text-[#dc3545]';
 

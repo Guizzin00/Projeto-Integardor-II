@@ -9,6 +9,8 @@ os.environ['MAIL_SYNC'] = '1'
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import tempfile
+
 import pytest
 from werkzeug.security import generate_password_hash
 
@@ -17,6 +19,7 @@ from app import app as flask_app
 from models import db, User, Project, Application
 
 SENHA = 'Senha1234'
+flask_app.config['UPLOAD_FOLDER'] = tempfile.mkdtemp(prefix='siscpti_uploads_')
 
 
 @pytest.fixture()

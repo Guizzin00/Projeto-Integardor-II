@@ -20,11 +20,13 @@ export function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const isLoggedOut = location.state?.loggedOut;
+  const sessaoExpirada = location.state?.expirada;
+  const origem: string | undefined = location.state?.from;
 
   // Se o usuário já estiver logado (e não acabou de clicar em sair), redireciona diretamente para seu painel
   useEffect(() => {
     if (user && !isLoggedOut) {
-      navigate(getDashboardRoute(user.role), { replace: true });
+      navigate(origem && origem.startsWith('/') && origem !== '/login' ? origem : getDashboardRoute(user.role), { replace: true });
     }
   }, [user, navigate, isLoggedOut]);
 
@@ -38,7 +40,7 @@ export function Login() {
       if (response.data.status === 'success') {
         const loggedUser = response.data.user;
         login(loggedUser);
-        navigate(getDashboardRoute(loggedUser.role));
+        navigate(origem && origem.startsWith('/') && origem !== '/login' ? origem : getDashboardRoute(loggedUser.role), { replace: true });
       } else {
         setError(response.data.message || 'Credenciais inválidas. Verifique matrícula/e-mail e senha.');
       }
@@ -70,6 +72,12 @@ export function Login() {
             SisCPTI · Caderno de Projetos de TI do UniCEUB
           </p>
         </div>
+
+        {sessaoExpirada && !isLoggedOut && !error && (
+          <div role="status" className="mb-5 p-3 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900/50 text-xs text-amber-800 dark:text-amber-300">
+            Sua sessão expirou ou é necessário entrar para acessar esta página. Faça login para continuar.
+          </div>
+        )}
 
         {/* Confirmação de Logout */}
         {isLoggedOut && !error && (

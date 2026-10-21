@@ -4,8 +4,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { AprovacoesContasTab } from '../components/AprovacoesContasTab';
 import { SubmissaoDetalhesModal, SubmissaoDetalhes } from '../components/SubmissaoDetalhesModal';
+import { useUI } from '../components/UIProvider';
 
 export function CoordenadorDashboard() {
+  const { avisar } = useUI();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'tab-projetos' | 'tab-submissoes' | 'tab-aprovacoes'>('tab-projetos');
   const [pendentesCount, setPendentesCount] = useState<number>(0);
@@ -81,7 +83,7 @@ export function CoordenadorDashboard() {
   const handleAtribuirOrientador = async (projId: number) => {
     const profId = selectedProfessores[projId];
     if (!profId) {
-      alert('Por favor, selecione um professor orientador na lista.');
+      avisar('Por favor, selecione um professor orientador na lista.');
       return;
     }
 
@@ -94,10 +96,10 @@ export function CoordenadorDashboard() {
         const coordRes = await api.get('/coordenador');
         if (coordRes.data.projetos) setProjetos(coordRes.data.projetos);
       } else {
-        alert(res.data.message || 'Erro ao atribuir orientador');
+        avisar(res.data.message || 'Erro ao atribuir orientador');
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Erro ao atribuir professor.');
+      avisar(err.response?.data?.message || 'Erro ao atribuir professor.');
     } finally {
       setSavingId(null);
     }
@@ -114,7 +116,7 @@ export function CoordenadorDashboard() {
         carregarDados();
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || `Erro ao ${acao} submissão.`);
+      avisar(err.response?.data?.message || `Erro ao ${acao} submissão.`);
     } finally {
       setSavingId(null);
     }

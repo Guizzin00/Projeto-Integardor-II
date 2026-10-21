@@ -56,7 +56,7 @@ class Project(db.Model):
     professor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     tags = db.Column(db.String(300), nullable=True, default='')
     concluido_em = db.Column(db.DateTime, nullable=True)
-    orientador = db.relationship('User', foreign_keys=[professor_id], backref=db.backref('projetos_orientados', lazy=True)) 
+    orientador = db.relationship('User', foreign_keys=[professor_id], lazy='joined', backref=db.backref('projetos_orientados', lazy=True)) 
 
     def to_dict(self):
         detalhes_val = []
@@ -141,7 +141,7 @@ class Application(db.Model):
     experiencia = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(50), nullable=False, default='PENDENTE')
     
-    projeto = db.relationship('Project', backref=db.backref('candidaturas', lazy=True))
+    projeto = db.relationship('Project', backref=db.backref('candidaturas', lazy='selectin'))
 
     def to_dict(self):
         return {

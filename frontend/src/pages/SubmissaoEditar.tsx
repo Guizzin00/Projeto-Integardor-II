@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useUI } from '../components/UIProvider';
 
 export function SubmissaoEditar() {
+  const { avisar } = useUI();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
@@ -67,7 +69,7 @@ export function SubmissaoEditar() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       if (res.data.status === 'success' || res.status === 200) {
-        alert("✅ Proposta editada com sucesso!");
+        avisar("✅ Proposta editada com sucesso!");
         navigate('/perfil');
       } else {
         setError(res.data.message || 'Erro ao editar proposta');

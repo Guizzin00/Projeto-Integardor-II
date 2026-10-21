@@ -151,3 +151,35 @@ Todos os usuários abaixo são gerados automaticamente pelo script `seed_db.py` 
 | `SECRET_KEY` | Sim, em produção | Chave de assinatura das sessões. Gere com `python -c "import secrets; print(secrets.token_hex(32))"`. Sem ela a aplicação não inicia na Vercel/produção. Em desenvolvimento é gerada uma chave temporária. |
 | `CORS_ORIGINS` | Se o frontend estiver em outro domínio | Origens autorizadas a chamar a API com cookies, separadas por vírgula. `APP_URL` também é aceita. |
 | `SUPABASE_URL` / `SUPABASE_KEY` | Para uploads no Supabase | Sem elas os arquivos são salvos localmente. Não há mais URL padrão no código. |
+
+## Variáveis de ambiente (referência completa)
+
+Há um modelo em [`.env.example`](.env.example). Resumo:
+
+| Variável | Uso |
+|---|---|
+| `SECRET_KEY` | Assinatura das sessões. Obrigatória em produção. |
+| `DATABASE_URL` | Conexão Postgres/Supabase. Sem ela usa SQLite (`instance/`). |
+| `APP_URL` | URL pública do frontend, usada nos links dos e-mails e como origem CORS permitida. |
+| `CORS_ORIGINS` | Origens extras autorizadas (vírgula). |
+| `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_BUCKET` | Armazenamento de uploads. Obrigatório na Vercel (o disco é temporário). |
+| `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASS` | Envio de e-mail (timeout de 10 s). |
+| `MAIL_SYNC=1` | Envia e-mail dentro da requisição (usado nos testes). |
+
+## Implantação (Vercel + Supabase)
+
+1. Crie o projeto no Supabase e copie a string de conexão para `DATABASE_URL` e as chaves para `SUPABASE_*` (crie o bucket `uploads`).
+2. Na Vercel, importe o repositório e cadastre todas as variáveis acima (incluindo uma `SECRET_KEY` nova).
+3. O frontend compilado fica em `SISCPTI/dist`. Para atualizá-lo: `cd frontend && npm ci && npm run build`, depois substitua o conteúdo de `SISCPTI/dist` pelo de `frontend/dist` (apague os arquivos antigos de `assets/`) e faça o commit.
+4. As migrações do banco rodam sozinhas na primeira requisição. Para forçar: faça login como administrador e envie `POST /api/migrate-db`.
+5. `requirements.txt` na raiz e em `SISCPTI/` devem ficar idênticos (a Vercel lê o da pasta do ponto de entrada).
+
+## Testes e integração contínua
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest SISCPTI/tests -q
+cd frontend && npm ci && npm run build
+```
+
+O workflow `.github/workflows/ci.yml` roda os testes do backend e o `tsc` + build do frontend a cada pull request. Para tornar o pipeline obrigatório, ative "Require status checks to pass" na proteção da branch `main`.

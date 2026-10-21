@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useUI } from '../components/UIProvider';
 
 export function AdminForm() {
+  const { avisar } = useUI();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -126,7 +128,7 @@ export function AdminForm() {
       const url = id ? `/admin/projeto/${id}/editar` : `/admin/projeto/novo`;
       const res = await api.post(url, data, { headers: { 'Content-Type': 'multipart/form-data' }});
       if (res.data.status === 'success' || res.status === 200) {
-        alert(`✅ Projeto ${id ? 'editado' : 'criado'} com sucesso!`);
+        avisar(`✅ Projeto ${id ? 'editado' : 'criado'} com sucesso!`);
         navigate(user?.role === 'admin' ? '/admin' : `/projeto/${id}`);
       } else {
         setError(res.data.message || 'Erro ao salvar projeto');
@@ -186,9 +188,9 @@ export function AdminForm() {
             <option value="" disabled>Selecione o status</option>
             <option value="DISPONÍVEL">Disponível</option>
             <option value="EM EXECUÇÃO">Em Execução</option>
-            <option value="EXECUTADO">Executado</option>
+            <option value="CONCLUÍDO">Concluído</option>
             <option value="INDISPONÍVEL">Indisponível</option>
-            {formData.status && !['DISPONÍVEL','EM EXECUÇÃO','EXECUTADO','INDISPONÍVEL'].includes(formData.status) && (
+            {formData.status && !['DISPONÍVEL','EM EXECUÇÃO','CONCLUÍDO','INDISPONÍVEL'].includes(formData.status) && (
               <option value={formData.status}>{formData.status}</option>
             )}
           </select>

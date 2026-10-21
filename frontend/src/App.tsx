@@ -25,6 +25,7 @@ import { AdminUserForm } from './pages/AdminUserForm';
 import { AdminLogs } from './pages/AdminLogs';
 import { ErrorPage } from './pages/ErrorPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { UIProvider } from './components/UIProvider';
 
 function AppLayout() {
   const location = useLocation();
@@ -87,7 +88,9 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <AppLayout />
+        <UIProvider>
+          <AppLayout />
+        </UIProvider>
       </Router>
     </AuthProvider>
   );

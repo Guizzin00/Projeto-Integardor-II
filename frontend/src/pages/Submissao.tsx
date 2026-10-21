@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { api } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import { useUI } from '../components/UIProvider';
 
 export function Submissao() {
+  const { avisar } = useUI();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     nome_projeto: '',
@@ -34,7 +36,7 @@ export function Submissao() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       if (res.data.status === 'success' || res.status === 200) {
-        alert("✅ Proposta enviada com sucesso!");
+        avisar("✅ Proposta enviada com sucesso!");
         navigate('/perfil');
       } else {
         setError(res.data.message || 'Erro ao enviar proposta');

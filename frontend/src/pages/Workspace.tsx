@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useUI, useModalA11y } from '../components/UIProvider';
+import { usePolling } from '../hooks/usePolling';
 
 export interface SubtaskItem {
   id?: string;
@@ -30,6 +32,7 @@ export interface MessageItem {
 }
 
 export function Workspace() {
+  const { avisar, confirmar } = useUI();
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   
@@ -76,6 +79,10 @@ export function Workspace() {
 
   // Modal: Detalhes / Edição de Tarefa
   const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
+  const novaTarefaRef = useRef<HTMLDivElement>(null);
+  const editTarefaRef = useRef<HTMLDivElement>(null);
+  useModalA11y(showNewTaskModal, () => setShowNewTaskModal(false), novaTarefaRef);
+  useModalA11y(!!editingTask, () => setEditingTask(null), editTarefaRef);
   const [editTitulo, setEditTitulo] = useState('');
   const [editDescricao, setEditDescricao] = useState('');
   const [editAssigned, setEditAssigned] = useState('');
@@ -146,20 +153,15 @@ export function Workspace() {
   }, [id]);
 
   // Polling de mensagens no chat
-  useEffect(() => {
-    if (activeTab !== 'Mensagens') return;
-    const interval = setInterval(async () => {
-      try {
-        const res = await api.get(`/projeto/${id}/workspace/mensagens`);
-        if (Array.isArray(res.data)) {
-          setMensagens(res.data);
-        }
-      } catch (e) {
-        // Silencioso
-      }
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [id, activeTab]);
+  const totalMensagens = useRef(0);
+  usePolling(async () => {
+    const res = await api.get(`/projeto/${id}/workspace/mensagens`);
+    if (!Array.isArray(res.data)) return false;
+    const houveNovidade = res.data.length !== totalMensagens.current;
+    totalMensagens.current = res.data.length;
+    if (houveNovidade) setMensagens(res.data);
+    return houveNovidade;
+  }, 4000, 30000, activeTab === 'Mensagens', [id, activeTab]);
 
   useEffect(() => {
     if (activeTab === 'Mensagens') {
@@ -190,7 +192,7 @@ export function Workspace() {
         }
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Erro ao enviar mensagem.');
+      avisar(err.response?.data?.message || 'Erro ao enviar mensagem.');
     } finally {
       setEnviando(false);
     }
@@ -202,7 +204,7 @@ export function Workspace() {
     try {
       await api.post(`/projeto/${id}/tasks/${taskId}/mover`, { status: novoStatus });
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao mover tarefa.');
+      avisar(err.response?.data?.error || 'Erro ao mover tarefa.');
       carregarTasks();
     }
   };
@@ -228,7 +230,7 @@ export function Workspace() {
   // Excluir tarefa
   const handleExcluirTask = async (taskId: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (!window.confirm('Tem certeza que deseja excluir esta tarefa do projeto?')) return;
+    if (!await confirmar('Tem certeza que deseja excluir esta tarefa do projeto?')) return;
     try {
       await api.post(`/projeto/${id}/tasks/${taskId}/excluir`);
       setTasks(prev => prev.filter(t => t.id !== taskId));
@@ -236,7 +238,7 @@ export function Workspace() {
         setEditingTask(null);
       }
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao excluir tarefa.');
+      avisar(err.response?.data?.error || 'Erro ao excluir tarefa.');
     }
   };
 
@@ -279,10 +281,10 @@ export function Workspace() {
         setNewSubtasks([]);
         setTempSubtaskInput('');
       } else {
-        alert(res.data.error || 'Erro ao registrar tarefa.');
+        avisar(res.data.error || 'Erro ao registrar tarefa.');
       }
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao criar tarefa.');
+      avisar(err.response?.data?.error || 'Erro ao criar tarefa.');
     } finally {
       setCreatingTask(false);
     }
@@ -335,10 +337,10 @@ export function Workspace() {
         setTasks(prev => prev.map(t => t.id === editingTask.id ? res.data.task : t));
         setEditingTask(null);
       } else {
-        alert(res.data.error || 'Erro ao salvar alterações.');
+        avisar(res.data.error || 'Erro ao salvar alterações.');
       }
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao atualizar tarefa.');
+      avisar(err.response?.data?.error || 'Erro ao atualizar tarefa.');
     } finally {
       setSavingEdit(false);
     }
@@ -940,7 +942,7 @@ export function Workspace() {
               <h3 className="text-xs font-bold text-[#002B49] m-0">Integrantes & Orientação</h3>
             </div>
             <button 
-              onClick={() => setLeftOpen(false)}
+              aria-label="Fechar" onClick={() => setLeftOpen(false)}
               className="text-slate-500 hover:text-slate-800 p-1.5 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
             >
               ✕
@@ -1051,7 +1053,7 @@ export function Workspace() {
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
             <h3 className="text-xs font-bold text-[#002B49] uppercase tracking-wider m-0">Resumo da Pesquisa</h3>
             <button 
-              onClick={() => setRightOpen(false)}
+              aria-label="Fechar" onClick={() => setRightOpen(false)}
               className="text-slate-500 hover:text-slate-800 p-1.5 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
             >
               ✕
@@ -1069,6 +1071,14 @@ export function Workspace() {
               <span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 {projeto.status}
               </span>
+              {projeto.status === 'CONCLUÍDO' && user?.role !== 'coordenador' && (
+                <a
+                  href={`/api/projeto/${id}/certificado`}
+                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-bold bg-[#7A1BB5] text-white no-underline"
+                >
+                  Baixar certificado (PDF)
+                </a>
+              )}
             </div>
 
             <div>
@@ -1088,12 +1098,12 @@ export function Workspace() {
       {/* 5. MODAL: NOVA TAREFA (COM ADIÇÃO DE SUBTAREFAS) */}
       {/* ======================================================== */}
       {showNewTaskModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div ref={novaTarefaRef} role="dialog" aria-modal="true" aria-label="Nova tarefa" className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100 shrink-0">
               <h3 className="text-sm font-bold text-[#002B49] m-0">Cadastrar Nova Tarefa & Subtarefas</h3>
               <button 
-                onClick={() => setShowNewTaskModal(false)}
+                aria-label="Fechar" onClick={() => setShowNewTaskModal(false)}
                 className="text-slate-500 hover:text-slate-800 text-sm p-1 cursor-pointer"
               >
                 ✕
@@ -1228,7 +1238,7 @@ export function Workspace() {
       {/* 6. MODAL: DETALHES E EDIÇÃO DE TAREFA & SUBTAREFAS */}
       {/* ======================================================== */}
       {editingTask && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div ref={editTarefaRef} role="dialog" aria-modal="true" aria-label="Detalhes da tarefa" className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center mb-3 pb-3 border-b border-slate-100 shrink-0">
               <div className="flex items-center gap-2">
@@ -1244,7 +1254,7 @@ export function Workspace() {
                 <h3 className="text-sm font-bold text-[#002B49] m-0">Gerenciar Tarefa #{editingTask.id}</h3>
               </div>
               <button 
-                onClick={() => setEditingTask(null)}
+                aria-label="Fechar" onClick={() => setEditingTask(null)}
                 className="text-slate-500 hover:text-slate-800 text-sm p-1 cursor-pointer"
               >
                 ✕
