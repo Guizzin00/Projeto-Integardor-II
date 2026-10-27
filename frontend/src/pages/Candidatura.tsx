@@ -7,8 +7,10 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useUI } from '../components/UIProvider';
+import { useAuth } from '../contexts/AuthContext';
 
 export function Candidatura() {
+  const { user } = useAuth();
   const { avisar } = useUI();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -25,7 +27,20 @@ export function Candidatura() {
       try {
         const response = await api.get(`/projeto/${id}`);
         if (response.data.status === 'success') {
-          setProjeto(response.data.projeto);
+          const proj = response.data.projeto;
+          setProjeto(proj);
+
+          // Bloqueia dono / criador / orientador de se candidatar ao próprio projeto
+          if (user && (
+            proj.owner_username?.toLowerCase() === user.username?.toLowerCase() ||
+            (proj.owner_id && proj.owner_id === user.id) ||
+            proj.professor?.toLowerCase() === user.username?.toLowerCase() ||
+            (proj.professor_id && proj.professor_id === user.id) ||
+            proj.orientador?.username?.toLowerCase() === user.username?.toLowerCase()
+          )) {
+            avisar("⚠️ Você é o líder/autor deste projeto e já faz parte da equipe. Não é permitido se candidatar ao próprio projeto.", "info");
+            navigate(`/projeto/${id}`, { replace: true });
+          }
         }
       } catch (err) {
         console.error(err);
@@ -34,7 +49,7 @@ export function Candidatura() {
       }
     };
     fetchProjeto();
-  }, [id]);
+  }, [id, user, navigate, avisar]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

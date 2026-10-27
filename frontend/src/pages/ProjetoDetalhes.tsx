@@ -116,7 +116,16 @@ export function ProjetoDetalhes() {
   );
 
   const podeExcluir = !!user && (user.role === 'admin' || projeto.owner_username === user.username);
-  const isAlunoCandidato = !!user && ['aluno', 'lider', 'user'].includes(user.role);
+
+  const isDonoOuOrientador = !!user && (
+    projeto.owner_username?.toLowerCase() === user.username?.toLowerCase() ||
+    (projeto.owner_id && projeto.owner_id === user.id) ||
+    projeto.professor?.toLowerCase() === user.username?.toLowerCase() ||
+    (projeto.professor_id && projeto.professor_id === user.id) ||
+    projeto.orientador?.username?.toLowerCase() === user.username?.toLowerCase()
+  );
+
+  const isAlunoCandidato = !!user && ['aluno', 'lider', 'user'].includes(user.role) && !isDonoOuOrientador;
 
   const totalIntegrantes = projeto?.total_integrantes ?? (
     (projeto?.candidaturas_aprovadas || 0) + (projeto?.owner_username ? 1 : 0) || 1

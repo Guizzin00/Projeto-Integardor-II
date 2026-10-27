@@ -76,7 +76,14 @@ def test_candidatura_validacoes(cenario):
     assert aluno.post(url, json={}).status_code == 400
     assert aluno.post(url, json={'motivo': 'm', 'experiencia': 'e'}).status_code == 200
     assert aluno.post(url, json={'motivo': 'm', 'experiencia': 'e'}).status_code == 409
-    assert logar('dono').post(url, json={'motivo': 'm', 'experiencia': 'e'}).status_code == 403
+    # O dono do projeto não pode se candidatar ao próprio projeto
+    assert logar('dono').post(url, json={'motivo': 'm', 'experiencia': 'e'}).status_code in (400, 403)
+    # Aluno que é líder/dono de seu projeto também é bloqueado
+    criar_usuario('aluno_lider', 'aluno')
+    p_lider = criar_projeto(owner='aluno_lider')
+    r_lider = logar('aluno_lider').post(f'/api/projeto/{p_lider.id}/candidatar', json={'motivo': 'm', 'experiencia': 'e'})
+    assert r_lider.status_code == 400
+    assert 'próprio' in r_lider.get_json()['message'].lower()
 
 
 def test_candidatura_projeto_concluido(app_ctx):

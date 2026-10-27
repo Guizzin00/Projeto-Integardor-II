@@ -84,6 +84,17 @@ def api_candidatar(projeto_id):
     if not projeto_db:
         return jsonify({"status": "error", "message": "Projeto não encontrado."}), 404
 
+    # Bloqueia dono / criador / orientador de se candidatar ao próprio projeto
+    username_sessao = (session.get('user') or '').strip().lower()
+    owner_nome = (projeto_db.owner_username or '').strip().lower()
+    prof_nome = (projeto_db.professor or '').strip().lower()
+
+    if (projeto_db.owner_id and projeto_db.owner_id == g.uid) or (owner_nome and owner_nome == username_sessao):
+        return jsonify({"status": "error", "message": "O próprio dono/líder do projeto já faz parte da equipe e não pode se candidatar ao seu próprio projeto."}), 400
+
+    if (projeto_db.professor_id and projeto_db.professor_id == g.uid) or (prof_nome and prof_nome == username_sessao):
+        return jsonify({"status": "error", "message": "O orientador do projeto não pode se candidatar ao próprio projeto."}), 400
+
     role = session.get('role')
     if role not in ('aluno', 'lider', 'user'):
         return jsonify({"status": "error", "message": "Apenas alunos podem se candidatar a projetos."}), 403
@@ -97,7 +108,7 @@ def api_candidatar(projeto_id):
     if not motivo or not experiencia:
         return jsonify({"status": "error", "message": "Informe sua motivação e sua experiência."}), 400
 
-    if Application.query.filter_by(projeto_id=projeto_id, user_id=g.uid).first():
+    if Application.query.filter(Application.projeto_id == projeto_id, db.or_(Application.user_id == g.uid, Application.username == session['user'])).first():
         return jsonify({"status": "error", "message": "Você já se candidatou a este projeto."}), 409
 
     nova_cand = Application(
@@ -159,9 +170,27 @@ def api_perfil():
     user_obj = User.query.filter_by(username=username).first()
     user_role = session.get('role') or (user_obj.role if user_obj else 'aluno')
 
-    minhas_candidaturas = [{"id": c.id, "projeto_id": c.projeto_id, "projeto": c.projeto.titulo if c.projeto else "", "status": c.status} for c in Application.query.filter_by(user_id=g.uid).all()]
-    meus_projetos = [p.to_dict() for p in Project.query.filter_by(owner_id=g.uid).all()]
-    minhas_submissoes = [s.to_dict() for s in Submission.query.filter_by(user_id=g.uid).all()]
+    # Candidaturas do usuário: limpa e filtra qualquer candidatura ao próprio projeto (onde o usuário é dono ou orientador)
+    raw_cands = Application.query.filter(
+        db.or_(Application.user_id == g.uid, Application.username == username)
+    ).all()
+    cands_validas = []
+    for c in raw_cands:
+        if c.projeto:
+            is_dono = (c.projeto.owner_id and c.projeto.owner_id == g.uid) or (c.projeto.owner_username and c.projeto.owner_username.lower() == username.lower())
+            is_prof = (c.projeto.professor_id and c.projeto.professor_id == g.uid) or (c.projeto.professor and c.projeto.professor.lower() == username.lower())
+            if is_dono or is_prof:
+                try:
+                    db.session.delete(c)
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                continue
+        cands_validas.append(c)
+
+    minhas_candidaturas = [{"id": c.id, "projeto_id": c.projeto_id, "projeto": c.projeto.titulo if c.projeto else "", "status": c.status} for c in cands_validas]
+    meus_projetos = [p.to_dict() for p in Project.query.filter(db.or_(Project.owner_id == g.uid, db.func.lower(Project.owner_username) == username.lower())).all()]
+    minhas_submissoes = [s.to_dict() for s in Submission.query.filter(db.or_(Submission.user_id == g.uid, db.func.lower(Submission.username) == username.lower())).all()]
     
     projetos_orientados = []
     if user_obj and (user_role == 'professor' or user_obj.role == 'professor'):
@@ -309,7 +338,7 @@ def cancelar_candidatura(cand_id):
         return jsonify({"status": "error", "message": "Candidatura não encontrada."}), 404
         
     # Apenas o dono ou admin pode cancelar
-    if cand.user_id != g.uid and session.get('role') != 'admin':
+    if cand.user_id != g.uid and cand.username != session.get('user') and session.get('role') != 'admin':
         return jsonify({"status": "error", "message": "Acesso negado."}), 403
         
     # Apenas se estiver pendente
