@@ -49,6 +49,8 @@ export function Workspace() {
   const [membros, setMembros] = useState<string[]>([]);
   const [mensagens, setMensagens] = useState<MessageItem[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [candidaturas, setCandidaturas] = useState<any[]>([]);
+  const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -131,6 +133,8 @@ export function Workspace() {
         setProjeto(res.data.projeto);
         setMembros(res.data.membros || []);
         setMensagens(res.data.mensagens || []);
+        setCandidaturas(res.data.candidaturas || []);
+        setIsOwner(Boolean(res.data.is_owner));
       } else {
         setError(res.data.message || 'Não foi possível carregar os dados do workspace.');
       }
@@ -138,6 +142,18 @@ export function Workspace() {
       setError(err.response?.data?.message || 'Erro ao autenticar acesso ao workspace deste projeto.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAcaoCandidatura = async (candId: number, acao: 'aprovar' | 'rejeitar') => {
+    try {
+      const res = await api.post(`/perfil/candidatura/${candId}/${acao}`);
+      if (res.data.status === 'success') {
+        avisar(`Candidatura ${acao === 'aprovar' ? 'aprovada' : 'rejeitada'} com sucesso!`);
+        carregarWorkspace();
+      }
+    } catch (err: any) {
+      avisar(err.response?.data?.message || `Erro ao ${acao} candidatura.`);
     }
   };
 
@@ -924,6 +940,94 @@ export function Workspace() {
                 </div>
               ))}
             </div>
+
+            {/* Se o usuário for gestor/dono do projeto e houver candidaturas (ou se for dono), exibe a lista para gestão direta */}
+            {(isOwner || candidaturas.length > 0) && (
+              <div className="mt-8 pt-6 border-t border-slate-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-[#002B49] m-0">Candidaturas e Pedidos de Entrada</h3>
+                    <p className="text-xs text-slate-500 m-0 mt-0.5">Avalie os pedidos de alunos interessados em integrar a equipe deste projeto.</p>
+                  </div>
+                  {candidaturas.filter(c => c.status === 'PENDENTE').length > 0 && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                      {candidaturas.filter(c => c.status === 'PENDENTE').length} aguardando avaliação
+                    </span>
+                  )}
+                </div>
+
+                {candidaturas.length === 0 ? (
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500 text-center">
+                    Nenhuma candidatura submetida até o momento.
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-x-auto">
+                    <table className="w-full border-collapse text-left text-xs text-slate-700">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                          <th className="py-2.5 px-3 font-semibold">Candidato</th>
+                          <th className="py-2.5 px-3 font-semibold">Motivo</th>
+                          <th className="py-2.5 px-3 font-semibold">Experiência</th>
+                          <th className="py-2.5 px-3 font-semibold">Status</th>
+                          <th className="py-2.5 px-3 text-right font-semibold">Ação</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {candidaturas.map((cand) => (
+                          <tr key={cand.id} className="hover:bg-slate-50/50">
+                            <td className="py-2.5 px-3 font-bold align-top">
+                              <div>{cand.username}</div>
+                              {(cand.matricula || cand.email) && (
+                                <div className="text-[10px] text-slate-400 font-normal">
+                                  {cand.matricula ? `Matrícula: ${cand.matricula}` : ''}
+                                  {cand.matricula && cand.email ? ' • ' : ''}
+                                  {cand.email || ''}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-600 align-top max-w-xs">{cand.motivo || '-'}</td>
+                            <td className="py-2.5 px-3 text-slate-600 align-top max-w-xs">{cand.experiencia || '-'}</td>
+                            <td className="py-2.5 px-3 align-top">
+                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                                cand.status === 'APROVADA'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : cand.status === 'REJEITADA'
+                                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+                              }`}>
+                                {cand.status}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-right align-top">
+                              {cand.status === 'PENDENTE' && isOwner ? (
+                                <div className="flex justify-end gap-1.5">
+                                  <button
+                                    onClick={() => handleAcaoCandidatura(cand.id, 'aprovar')}
+                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold cursor-pointer border-none shadow-xs"
+                                  >
+                                    Aprovar
+                                  </button>
+                                  <button
+                                    onClick={() => handleAcaoCandidatura(cand.id, 'rejeitar')}
+                                    className="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded text-[11px] font-semibold cursor-pointer border border-rose-200"
+                                  >
+                                    Rejeitar
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-[11px] text-slate-400 italic">
+                                  {cand.status === 'PENDENTE' ? 'Pendente' : 'Avaliado'}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

@@ -6,13 +6,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { SubmissaoDetalhesModal, SubmissaoDetalhes } from '../components/SubmissaoDetalhesModal';
 import { useUI } from '../components/UIProvider';
 
 export function Perfil() {
   const { avisar, confirmar } = useUI();
   const { user } = useAuth();
+  const location = useLocation();
   
   const isProfessor = user?.role === 'professor';
   const isEmpresa = user?.role === 'empresa' || user?.role === 'cliente';
@@ -27,6 +28,14 @@ export function Perfil() {
   const [meusProjetos, setMeusProjetos] = useState<any[]>([]);
   const [recomendacoes, setRecomendacoes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Contagem de candidaturas pendentes que exigem ação do usuário
+  const pendingCandsCount = useMemo(() => {
+    return meusProjetos.reduce((acc, p) => {
+      const pCands = (p.candidaturas || []).filter((c: any) => c.status === 'PENDENTE').length;
+      return acc + pCands;
+    }, 0);
+  }, [meusProjetos]);
 
   // Filtros locais para a lista de candidaturas
   const [searchCand, setSearchCand] = useState('');
@@ -57,14 +66,26 @@ export function Perfil() {
   }, []);
 
   useEffect(() => {
-    if (isProfessor) {
+    const params = new URLSearchParams(location.search);
+    const tabParam = params.get('tab');
+    if (tabParam === 'meus-projetos' || tabParam === 'meusprojetos' || tabParam === 'projetos') {
       setActiveTab('meusprojetos');
-    } else if (isEmpresa) {
+    } else if (tabParam === 'inscricoes' || tabParam === 'candidaturas') {
+      setActiveTab('inscricoes');
+    } else if (tabParam === 'propostas' || tabParam === 'submissoes') {
       setActiveTab('propostas');
+    } else if (tabParam === 'recomendacoes') {
+      setActiveTab('recomendacoes');
     } else {
-      setActiveTab('meusprojetos');
+      if (isProfessor) {
+        setActiveTab('meusprojetos');
+      } else if (isEmpresa) {
+        setActiveTab('propostas');
+      } else {
+        setActiveTab('meusprojetos');
+      }
     }
-  }, [user?.role]);
+  }, [location.search, user?.role]);
 
   const handleCancelarCandidatura = async (candId: number) => {
     if (!await confirmar('Tem certeza de que deseja cancelar esta candidatura acadêmica?')) return;
@@ -583,6 +604,11 @@ export function Perfil() {
             }`}>
               {meusProjetos.length}
             </span>
+            {pendingCandsCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500 text-white font-bold animate-pulse" title={`${pendingCandsCount} candidatura(s) pendente(s)`}>
+                {pendingCandsCount} pendente{pendingCandsCount > 1 ? 's' : ''}
+              </span>
+            )}
           </button>
 
           {/* Aba de Propostas / Demandas */}
@@ -754,9 +780,16 @@ export function Perfil() {
 
                   {/* Tabela de Candidatos e Integrantes da Equipe */}
                   <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary mb-2.5">
-                      {isProfessor ? 'Alunos Candidatos e Integrantes da Equipe Orientada:' : 'Candidatos Inscritos:'}
-                    </h4>
+                    <div className="flex items-center justify-between mb-2.5">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary m-0">
+                        {isProfessor ? 'Alunos Candidatos e Integrantes da Equipe Orientada:' : 'Candidatos Inscritos:'}
+                      </h4>
+                      {proj.candidaturas && proj.candidaturas.some((c: any) => c.status === 'PENDENTE') && (
+                        <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                          Aguardando sua avaliação
+                        </span>
+                      )}
+                    </div>
 
                     <div className="border border-border-color rounded-xl overflow-x-auto bg-bg-surface">
                       <table className="w-full border-collapse text-left text-xs text-text-primary">
@@ -779,7 +812,16 @@ export function Perfil() {
                           ) : (
                             proj.candidaturas.map((cand: any) => (
                               <tr key={cand.id} className="hover:bg-bg-primary/50 transition-colors">
-                                <td className="py-2.5 px-3 font-bold align-top">{cand.username}</td>
+                                <td className="py-2.5 px-3 font-bold align-top">
+                                  <div>{cand.username}</div>
+                                  {(cand.matricula || cand.email) && (
+                                    <div className="text-[10px] text-text-secondary font-normal mt-0.5">
+                                      {cand.matricula ? `Matrícula: ${cand.matricula}` : ''}
+                                      {cand.matricula && cand.email ? ' • ' : ''}
+                                      {cand.email || ''}
+                                    </div>
+                                  )}
+                                </td>
                                 <td className="py-2.5 px-3 text-text-secondary align-top max-w-xs">{cand.motivo || '-'}</td>
                                 <td className="py-2.5 px-3 text-text-secondary align-top max-w-xs">{cand.experiencia || '-'}</td>
                                 <td className="py-2.5 px-3 align-top">
@@ -798,15 +840,17 @@ export function Perfil() {
                                     <div className="flex justify-end gap-1.5">
                                       <button 
                                         onClick={() => handleAcaoCandidato(cand.id, 'aprovar', proj.id)}
-                                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold cursor-pointer border-none shadow-sm"
+                                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold cursor-pointer border-none shadow-sm transition-colors"
+                                        title="Aprovar entrada do candidato"
                                       >
-                                        Aprovar
+                                        ✓ Aprovar
                                       </button>
                                       <button 
                                         onClick={() => handleAcaoCandidato(cand.id, 'rejeitar', proj.id)}
-                                        className="px-2.5 py-1 bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 rounded text-[11px] font-semibold cursor-pointer border border-rose-500/20"
+                                        className="px-2.5 py-1 bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 rounded text-[11px] font-semibold cursor-pointer border border-rose-500/20 transition-colors"
+                                        title="Rejeitar candidatura"
                                       >
-                                        Rejeitar
+                                        ✕ Rejeitar
                                       </button>
                                     </div>
                                   )}

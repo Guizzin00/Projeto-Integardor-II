@@ -121,35 +121,57 @@ def api_candidatar(projeto_id):
     db.session.add(nova_cand)
     
     destinatarios_notificados = set()
-    if projeto_db.owner_username:
+    dono_obj = None
+    if projeto_db.owner_id:
+        dono_obj = User.query.get(projeto_db.owner_id)
+    if not dono_obj and projeto_db.owner_username:
         dono_obj = User.query.filter_by(username=projeto_db.owner_username).first()
-        link_dono = "/admin?tab=candidaturas" if (dono_obj and dono_obj.role == 'admin') else "/perfil"
-        db.session.add(Notification(
-            user_id=dono_obj.id if dono_obj else projeto_db.owner_id,
-            username=projeto_db.owner_username,
-            mensagem=f"👤 {session['user']} se candidatou ao projeto '{projeto_db.titulo}'!",
-            link=link_dono
-        ))
-        destinatarios_notificados.add(projeto_db.owner_username)
 
-    if projeto_db.orientador and projeto_db.orientador.username not in destinatarios_notificados:
+    if dono_obj:
+        db.session.add(Notification(
+            user_id=dono_obj.id,
+            username=dono_obj.username,
+            mensagem=f"📋 Nova candidatura! {session['user']} solicitou entrada no seu projeto '{projeto_db.titulo}'. Avalie para aprovar ou rejeitar.",
+            link="/perfil?tab=meus-projetos"
+        ))
+        destinatarios_notificados.add(dono_obj.username.lower())
+    elif projeto_db.owner_username:
+        db.session.add(Notification(
+            user_id=projeto_db.owner_id,
+            username=projeto_db.owner_username,
+            mensagem=f"📋 Nova candidatura! {session['user']} solicitou entrada no seu projeto '{projeto_db.titulo}'. Avalie para aprovar ou rejeitar.",
+            link="/perfil?tab=meus-projetos"
+        ))
+        destinatarios_notificados.add(projeto_db.owner_username.lower())
+
+    if projeto_db.orientador and projeto_db.orientador.username.lower() not in destinatarios_notificados:
         db.session.add(Notification(
             user_id=projeto_db.orientador.id,
             username=projeto_db.orientador.username,
-            mensagem=f"👤 {session['user']} se candidatou ao projeto '{projeto_db.titulo}' que você orienta!",
-            link="/perfil"
+            mensagem=f"📋 Nova candidatura! {session['user']} solicitou entrada no projeto '{projeto_db.titulo}' que você orienta. Avalie para aprovar ou rejeitar.",
+            link="/perfil?tab=meus-projetos"
         ))
-        destinatarios_notificados.add(projeto_db.orientador.username)
+        destinatarios_notificados.add(projeto_db.orientador.username.lower())
+    elif projeto_db.professor and projeto_db.professor.lower() not in destinatarios_notificados:
+        prof_obj = User.query.filter_by(username=projeto_db.professor).first()
+        if prof_obj:
+            db.session.add(Notification(
+                user_id=prof_obj.id,
+                username=prof_obj.username,
+                mensagem=f"📋 Nova candidatura! {session['user']} solicitou entrada no projeto '{projeto_db.titulo}' que você orienta. Avalie para aprovar ou rejeitar.",
+                link="/perfil?tab=meus-projetos"
+            ))
+            destinatarios_notificados.add(prof_obj.username.lower())
 
     for admin_u in User.query.filter_by(role='admin').all():
-        if admin_u.username not in destinatarios_notificados:
+        if admin_u.username.lower() not in destinatarios_notificados:
             db.session.add(Notification(
                 user_id=admin_u.id,
                 username=admin_u.username,
                 mensagem=f"👤 Nova candidatura de @{session['user']} ao projeto '{projeto_db.titulo}'.",
                 link="/admin?tab=candidaturas"
             ))
-            destinatarios_notificados.add(admin_u.username)
+            destinatarios_notificados.add(admin_u.username.lower())
         
     try:
         db.session.commit()
@@ -189,19 +211,31 @@ def api_perfil():
         cands_validas.append(c)
 
     minhas_candidaturas = [{"id": c.id, "projeto_id": c.projeto_id, "projeto": c.projeto.titulo if c.projeto else "", "status": c.status} for c in cands_validas]
-    meus_projetos = [p.to_dict() for p in Project.query.filter(db.or_(Project.owner_id == g.uid, db.func.lower(Project.owner_username) == username.lower())).all()]
+    meus_projetos_objs = Project.query.filter(
+        db.or_(Project.owner_id == g.uid, db.func.lower(Project.owner_username) == username.lower())
+    ).all()
+    meus_projetos = []
+    for p in meus_projetos_objs:
+        p_dict = p.to_dict()
+        cands = Application.query.filter_by(projeto_id=p.id).order_by(Application.id.desc()).all()
+        p_dict['candidaturas'] = [c.to_dict() for c in cands]
+        meus_projetos.append(p_dict)
+
     minhas_submissoes = [s.to_dict() for s in Submission.query.filter(db.or_(Submission.user_id == g.uid, db.func.lower(Submission.username) == username.lower())).all()]
     
     projetos_orientados = []
     if user_obj and (user_role == 'professor' or user_obj.role == 'professor'):
         orient_objs = Project.query.filter(
-            (Project.professor_id == user_obj.id)
+            db.or_(Project.professor_id == user_obj.id, db.func.lower(Project.professor) == username.lower())
         ).all()
-        projetos_orientados = [p.to_dict() for p in orient_objs]
         existing_ids = {p['id'] for p in meus_projetos}
-        for op in projetos_orientados:
-            if op['id'] not in existing_ids:
-                meus_projetos.append(op)
+        for op in orient_objs:
+            op_dict = op.to_dict()
+            cands = Application.query.filter_by(projeto_id=op.id).order_by(Application.id.desc()).all()
+            op_dict['candidaturas'] = [c.to_dict() for c in cands]
+            projetos_orientados.append(op_dict)
+            if op_dict['id'] not in existing_ids:
+                meus_projetos.append(op_dict)
 
     recomendacoes = []
     if user_role in ['aluno', 'lider', 'user']:
@@ -251,12 +285,18 @@ def dono_acao_candidatura(cand_id, acao):
         
     ac = acesso_projeto(cand.projeto)
     if not (ac['is_owner'] or ac['is_admin'] or ac['is_coord']):
-        return jsonify({"status": "error", "message": "Acesso negado."}), 403
+        return jsonify({"status": "error", "message": "Acesso negado. Apenas o líder ou orientador do projeto pode avaliar candidaturas."}), 403
         
+    cand_user_id = cand.user_id
+    if not cand_user_id and cand.username:
+        u = User.query.filter_by(username=cand.username).first()
+        if u:
+            cand_user_id = u.id
+
     if acao == 'aprovar':
         cand.status = 'APROVADA'
         notif = Notification(
-            user_id=cand.user_id,
+            user_id=cand_user_id,
             username=cand.username,
             mensagem=f"🎉 Sua candidatura para o projeto '{cand.projeto.titulo}' foi APROVADA!",
             link=f"/workspace/{cand.projeto_id}"
@@ -265,10 +305,10 @@ def dono_acao_candidatura(cand_id, acao):
     elif acao == 'rejeitar':
         cand.status = 'REJEITADA'
         notif = Notification(
-            user_id=cand.user_id,
+            user_id=cand_user_id,
             username=cand.username,
             mensagem=f"⚠️ Sua candidatura para o projeto '{cand.projeto.titulo}' foi recusada.",
-            link="/perfil"
+            link="/perfil?tab=inscricoes"
         )
         db.session.add(notif)
     elif acao == 'reavaliar':
@@ -362,15 +402,24 @@ def workspace(projeto_id):
     if not projeto_db:
         return jsonify({"status": "error", "message": "Projeto não encontrado."}), 404
         
-    if not acesso_projeto(projeto_db)['pode_ver']:
+    ac = acesso_projeto(projeto_db)
+    if not ac['pode_ver']:
         return jsonify({"status": "error", "message": "Acesso negado. Você não é membro aprovado deste projeto."}), 403
 
     membros = [c.username for c in Application.query.filter(Application.projeto_id == projeto_id, Application.status.in_(['APROVADA', 'APROVADO'])).all()]
     mensagens = Message.query.filter_by(projeto_id=projeto_id).order_by(Message.data_envio.asc()).all()
+    
+    candidaturas = []
+    if ac['is_owner'] or ac['is_admin'] or ac['is_coord']:
+        cands_objs = Application.query.filter_by(projeto_id=projeto_id).order_by(Application.id.desc()).all()
+        candidaturas = [c.to_dict() for c in cands_objs]
+
     return jsonify({
         "status": "success",
         "projeto": projeto_db.to_dict(),
+        "is_owner": ac['is_owner'],
         "membros": membros,
+        "candidaturas": candidaturas,
         "mensagens": [{
             "id": m.id,
             "username": m.username,
@@ -832,12 +881,34 @@ def _id_do_usuario(username):
 def acesso_projeto(projeto):
     """Papéis do usuário logado NESTE projeto (por id); o papel global sozinho não concede acesso."""
     uid = g.get('uid')
+    username = (session.get('user') or '').strip().lower()
     role = session.get('role')
-    is_orientador = bool(uid and projeto.professor_id and projeto.professor_id == uid)
-    is_owner = bool(uid and projeto.owner_id == uid) or is_orientador
+    
+    is_orientador = bool(
+        (uid and projeto.professor_id and projeto.professor_id == uid) or
+        (projeto.professor and projeto.professor.strip().lower() == username) or
+        (projeto.orientador and projeto.orientador.username.strip().lower() == username)
+    )
+    is_owner = bool(
+        (uid and projeto.owner_id and projeto.owner_id == uid) or
+        (projeto.owner_username and projeto.owner_username.strip().lower() == username)
+    ) or is_orientador
     is_admin = (role == 'admin')
     is_coord = (role == 'coordenador')
-    is_member = bool(uid) and Application.query.filter(Application.projeto_id == projeto.id, Application.user_id == uid, Application.status.in_(['APROVADA', 'APROVADO'])).first() is not None
+    is_member = False
+    if uid:
+        is_member = Application.query.filter(
+            Application.projeto_id == projeto.id,
+            Application.user_id == uid,
+            Application.status.in_(['APROVADA', 'APROVADO'])
+        ).first() is not None
+    if not is_member and username:
+        is_member = Application.query.filter(
+            Application.projeto_id == projeto.id,
+            db.func.lower(Application.username) == username,
+            Application.status.in_(['APROVADA', 'APROVADO'])
+        ).first() is not None
+
     return {
         'is_owner': is_owner,
         'is_admin': is_admin,

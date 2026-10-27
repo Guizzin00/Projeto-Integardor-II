@@ -190,11 +190,23 @@ class Application(db.Model):
     projeto = db.relationship('Project', backref=db.backref('candidaturas', lazy='selectin', cascade='all, delete-orphan'))
 
     def to_dict(self):
+        candidato_user = None
+        try:
+            if self.user_id:
+                candidato_user = User.query.get(self.user_id)
+            elif self.username:
+                candidato_user = User.query.filter_by(username=self.username).first()
+        except Exception:
+            candidato_user = None
+
         return {
             "id": self.id,
             "projeto_id": self.projeto_id,
             "projeto": {"id": self.projeto.id, "titulo": self.projeto.titulo} if self.projeto else None,
             "username": self.username,
+            "nome": candidato_user.username if candidato_user else self.username,
+            "email": candidato_user.email if candidato_user else "",
+            "matricula": getattr(candidato_user, 'matricula', None) or "",
             "motivo": self.motivo,
             "experiencia": self.experiencia,
             "status": self.status
