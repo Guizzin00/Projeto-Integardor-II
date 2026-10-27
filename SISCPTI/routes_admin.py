@@ -137,10 +137,24 @@ def api_notificacoes():
     
     username = session['user']
     role = session.get('role')
-    notifs = Notification.query.filter(
+
+    # Busca notificações não lidas
+    notifs_nao_lidas = Notification.query.filter(
         db.or_(Notification.user_id == g.uid, Notification.username == username),
         Notification.lida == False
     ).order_by(Notification.data_criacao.desc()).all()
+    
+    unread_count = len(notifs_nao_lidas)
+
+    # Mantém histórico recente visível mesmo após visualização
+    notifs = list(notifs_nao_lidas)
+    if len(notifs) < 10:
+        limite_restante = 10 - len(notifs)
+        notifs_lidas = Notification.query.filter(
+            db.or_(Notification.user_id == g.uid, Notification.username == username),
+            Notification.lida == True
+        ).order_by(Notification.data_criacao.desc()).limit(limite_restante).all()
+        notifs.extend(notifs_lidas)
     
     BRT = timedelta(hours=-3)  # Horário de Brasília = UTC-3
     output = []
@@ -163,9 +177,10 @@ def api_notificacoes():
             "id": n.id,
             "mensagem": n.mensagem,
             "data": data_str,
-            "link": link_notif
+            "link": link_notif,
+            "lida": bool(n.lida)
         })
-    return jsonify({"status": "success", "data": output})
+    return jsonify({"status": "success", "data": output, "unread_count": unread_count})
 
 @app.route('/api/notificacoes/ler/<int:notif_id>', methods=['POST'])
 def api_ler_notificacao(notif_id):

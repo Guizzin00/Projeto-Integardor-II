@@ -14,6 +14,7 @@ interface NotificationItem {
   mensagem: string;
   data: string;
   link?: string;
+  lida?: boolean;
 }
 
 export function Header() {
@@ -22,6 +23,7 @@ export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notificacoes, setNotificacoes] = useState<NotificationItem[]>([]);
+  const [naoLidasCount, setNaoLidasCount] = useState<number>(0);
   
   // Theme state
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -53,8 +55,19 @@ export function Header() {
       const res = await api.get('/notificacoes');
       if (res.data.status === 'success' && Array.isArray(res.data.data)) {
         setNotificacoes(res.data.data);
-        const houveNovidade = res.data.data.length !== ultimoTotalNotif.current;
-        ultimoTotalNotif.current = res.data.data.length;
+        const count = typeof res.data.unread_count === 'number'
+          ? res.data.unread_count
+          : res.data.data.filter((n: any) => !n.lida).length;
+
+        // Se o menu estiver aberto, o usuário já visualizou, então mantém a notificação vermelhinha oculta
+        if (notifOpen) {
+          setNaoLidasCount(0);
+        } else {
+          setNaoLidasCount(count);
+        }
+
+        const houveNovidade = count !== ultimoTotalNotif.current;
+        ultimoTotalNotif.current = count;
         return houveNovidade;
       }
     } catch (err) {
@@ -83,10 +96,29 @@ export function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleToggleNotificacoes = () => {
+    const abrindo = !notifOpen;
+    setNotifOpen(abrindo);
+    setMenuOpen(false);
+
+    if (abrindo) {
+      // Ao abrir/visualizar as notificações, a notificação vermelhinha some imediatamente!
+      setNaoLidasCount(0);
+      if (naoLidasCount > 0 || notificacoes.some(n => !n.lida)) {
+        api.post('/notificacoes/ler-todas')
+          .then(() => {
+            setNotificacoes(prev => prev.map(n => ({ ...n, lida: true })));
+          })
+          .catch(() => {});
+      }
+    }
+  };
+
   const handleMarcarLida = async (id: number) => {
     try {
       await api.post(`/notificacoes/ler/${id}`);
       setNotificacoes(prev => prev.filter(n => n.id !== id));
+      setNaoLidasCount(prev => Math.max(0, prev - 1));
     } catch (err) {
       console.error(err);
     }
@@ -96,6 +128,7 @@ export function Header() {
     try {
       await api.post('/notificacoes/ler-todas');
       setNotificacoes([]);
+      setNaoLidasCount(0);
     } catch (err) {
       console.error(err);
     }
@@ -145,16 +178,16 @@ export function Header() {
                 {/* NOTIFICATIONS */}
                 <li className="relative" ref={notifRef}>
                   <button 
-                    onClick={() => { setNotifOpen(!notifOpen); setMenuOpen(false); }}
+                    onClick={handleToggleNotificacoes}
                     title="Notificações"
                     aria-label="Notificações"
                     aria-expanded={notifOpen}
                     className="text-purple-primary text-xl p-2 rounded-full hover:bg-purple-primary/10 transition-all flex items-center justify-center bg-transparent border-none cursor-pointer relative"
                   >
                     🔔
-                    {notificacoes.length > 0 && (
-                      <span className="absolute top-1 right-1 bg-[#dc3545] text-white text-[0.65rem] font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none">
-                        {notificacoes.length > 9 ? '9+' : notificacoes.length}
+                    {naoLidasCount > 0 && !notifOpen && (
+                      <span className="absolute top-1 right-1 bg-[#dc3545] text-white text-[0.65rem] font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none shadow-sm">
+                        {naoLidasCount > 9 ? '9+' : naoLidasCount}
                       </span>
                     )}
                   </button>
@@ -180,7 +213,10 @@ export function Header() {
                           </div>
                         ) : (
                           notificacoes.map(n => (
-                            <div key={n.id} className="p-3 border-b border-border-color hover:bg-purple-primary/5 transition-colors flex flex-col gap-1">
+                            <div 
+                              key={n.id} 
+                              className={`p-3 border-b border-border-color hover:bg-purple-primary/5 transition-colors flex flex-col gap-1 ${n.lida ? 'opacity-80' : 'bg-purple-primary/5'}`}
+                            >
                               <p className="m-0 text-xs text-text-primary leading-relaxed">{n.mensagem}</p>
                               <div className="flex justify-between items-center text-[0.7rem] text-text-secondary mt-1">
                                 <span>{n.data}</span>
