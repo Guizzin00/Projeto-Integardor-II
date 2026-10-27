@@ -136,27 +136,6 @@ def api_cadastro():
     if User.query.filter(db.func.lower(User.email) == email.lower()).first():
         return jsonify({"status": "error", "message": "Este e-mail já está associado a outra conta."}), 400
 
-    # Se for o primeiro usuário cadastrado no banco zerado, torna admin ativo imediatamente
-    eh_primeiro_usuario = User.query.first() is None
-    if eh_primeiro_usuario:
-        novo_usuario = User(
-            username=username, 
-            matricula=matricula,
-            email=email, 
-            password=generate_password_hash(password), 
-            role='admin', 
-            ativo=True,
-            email_verificado=True,
-            status_aprovacao='APROVADO'
-        )
-        db.session.add(novo_usuario)
-        db.session.commit()
-        log_atividade(username, 'Primeiro usuário registrado (promovido a Administrador)')
-        return jsonify({
-            "status": "success", 
-            "message": "Primeira conta registrada! Você foi configurado como Administrador e já pode fazer login."
-        })
-
     requested_role = (data.get('role') or 'aluno').strip().lower()
     role = requested_role if requested_role in PAPEIS_AUTOCADASTRO else 'aluno'
 

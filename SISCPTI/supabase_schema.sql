@@ -262,9 +262,20 @@ DROP POLICY IF EXISTS "acesso_account_verification" ON account_verification;
 CREATE POLICY "acesso_account_verification" ON account_verification FOR ALL USING (true) WITH CHECK (true);
 
 -- --------------------------------------------------------
--- 6. REINICIALIZAÇÃO DAS SEQUÊNCIAS (BANCO 100% LIMPO)
+-- 6. USUÁRIO ADMINISTRADOR INICIAL (OPCIONAL)
+-- Login por Usuário: admin | Matrícula: 000000 | E-mail: admin@ceub.br
+-- Senha padrão: 1234
+-- (Se desejar o banco 100% sem nenhum registro, basta comentar ou apagar o INSERT abaixo)
 -- --------------------------------------------------------
-SELECT setval('user_id_seq', 1, false);
+INSERT INTO "user" (username, matricula, email, password, role, ativo, status_aprovacao, email_verificado) VALUES
+('admin', '000000', 'admin@ceub.br',
+ 'scrypt:32768:8:1$1VRiIdbCwqFSOKOJ$6d9177ad14859708a06cd5e58cd6d866864874539ef9b374f8a7879594091636285fb06c0314a9dc066fe028c0bd2651d41a8cff5c7a73a43b8919cf37526a82',
+ 'admin', TRUE, 'APROVADO', TRUE);
+
+-- --------------------------------------------------------
+-- 7. REINICIALIZAÇÃO DAS SEQUÊNCIAS
+-- --------------------------------------------------------
+SELECT setval('user_id_seq', COALESCE((SELECT MAX(id) FROM "user"), 1));
 SELECT setval('project_id_seq', 1, false);
 SELECT setval('submission_id_seq', 1, false);
 SELECT setval('application_id_seq', 1, false);
@@ -274,4 +285,4 @@ SELECT setval('notification_id_seq', 1, false);
 SELECT setval('rating_id_seq', 1, false);
 SELECT setval('activity_log_id_seq', 1, false);
 
--- Fim do script. Banco 100% zerado e pronto para uso!
+-- Fim do script. Banco limpo e pronto para uso!
