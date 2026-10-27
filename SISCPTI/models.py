@@ -21,7 +21,7 @@ class User(db.Model):
     username = db.Column(db.String(50), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='user')
-    email = db.Column(db.String(120), nullable=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
     bio = db.Column(db.String(300), nullable=True)
     email_secundario = db.Column(db.String(120), nullable=True)
     interesses = db.Column(db.String(300), nullable=True, default='')

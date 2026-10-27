@@ -36,17 +36,15 @@ def api_login():
         if limite_excedido('login_ip', ip, 20, 600) or limite_excedido('login_user', identificador.lower(), 5, 900):
             return jsonify({"status": "error", "message": "Muitas tentativas de login. Aguarde alguns minutos e tente novamente."}), 429
 
-        # Entrada por matrícula/usuário ou por e-mail cadastrado (principal ou secundário/pessoal)
+        # Entrada flexível por matrícula/usuário ou por e-mail (principal ou secundário)
         usuario = User.query.filter(db.func.lower(User.username) == identificador.lower()).first()
-        if not usuario and '@' in identificador:
-            candidatos = User.query.filter(
+        if not usuario:
+            usuario = User.query.filter(
                 db.or_(
                     db.func.lower(User.email) == identificador.lower(),
                     db.func.lower(User.email_secundario) == identificador.lower()
                 )
-            ).limit(2).all()
-            if len(candidatos) == 1:
-                usuario = candidatos[0]
+            ).first()
 
         if usuario and check_password_hash(usuario.password, password):
             # Validação de contas aguardando homologação
@@ -125,11 +123,31 @@ def api_cadastro():
     if not email_valido(email):
         return jsonify({"status": "error", "message": "Informe um e-mail válido."}), 400
 
-    if User.query.filter_by(username=username).first():
-        return jsonify({"status": "error", "message": "Este nome de usuário já está em uso."}), 400
+    if User.query.filter(db.func.lower(User.username) == username.lower()).first():
+        return jsonify({"status": "error", "message": "Esta matrícula/nome de usuário já está em uso."}), 400
 
     if User.query.filter(db.func.lower(User.email) == email.lower()).first():
         return jsonify({"status": "error", "message": "Este e-mail já está associado a outra conta."}), 400
+
+    # Se for o primeiro usuário cadastrado no banco zerado, torna admin ativo imediatamente
+    eh_primeiro_usuario = User.query.first() is None
+    if eh_primeiro_usuario:
+        novo_usuario = User(
+            username=username, 
+            email=email, 
+            password=generate_password_hash(password), 
+            role='admin', 
+            ativo=True,
+            email_verificado=True,
+            status_aprovacao='APROVADO'
+        )
+        db.session.add(novo_usuario)
+        db.session.commit()
+        log_atividade(username, 'Primeiro usuário registrado (promovido a Administrador)')
+        return jsonify({
+            "status": "success", 
+            "message": "Primeira conta registrada! Você foi configurado como Administrador e já pode fazer login."
+        })
 
     requested_role = (data.get('role') or 'aluno').strip().lower()
     role = requested_role if requested_role in PAPEIS_AUTOCADASTRO else 'aluno'
