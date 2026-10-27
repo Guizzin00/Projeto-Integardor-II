@@ -537,9 +537,9 @@ def email_template_espera_aprovacao(username: str, role: str, email: str, base_u
 
 def email_template_conta_aprovada(username: str, role: str, login_url: str = None) -> str:
     """Template institucional informando que a conta foi formalmente aprovada pela Coordenação/Administração."""
-    cdn_base = "https://cdn.jsdelivr.net/gh/GuilhermeGouveia12/Projeto-Integardor-III@main/SISCPTI"
-    logo_url = f"{cdn_base}/static/logoCEUB.png"
-    img_url = f"{cdn_base}/static/img/mail/authentication.png"
+    cdn_base = "https://cdn.jsdelivr.net/gh/Guizzin00/Projeto-Integardor-II@main"
+    logo_url = f"{cdn_base}/SISCPTI/static/logoCEUB.png"
+    img_url = f"{cdn_base}/telas%20de%20erro/Email%20campaign-amico.svg"
     role_display = "Professor Orientador" if role == "professor" else "Empresa / Parceiro Institucional"
     login_link = login_url or "https://projeto-integardor-ii.vercel.app/login"
 
