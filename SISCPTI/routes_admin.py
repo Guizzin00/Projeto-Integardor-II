@@ -469,8 +469,12 @@ def novo_projeto():
         link_urls = request.form.getlist('link_url[]') if request.form else []
         links_dict = {}
         for nome, url in zip(link_nomes, link_urls):
-            if nome.strip() and url.strip():
-                links_dict[nome.strip()] = url.strip()
+            u = url.strip()
+            if u:
+                n = nome.strip() if nome.strip() else 'Link'
+                if not u.startswith(('http://', 'https://', 'mailto:')):
+                    u = f"https://{u}"
+                links_dict[n] = u
 
         novo = Project(
             titulo=data.get('titulo'),
@@ -504,10 +508,10 @@ def editar_projeto(projeto_id):
         return jsonify({"status": "error", "message": "Projeto não encontrado."}), 404
 
     usuario_atual = User.query.filter_by(username=session['user']).first()
-    is_owner = bool(g.uid and projeto_db.owner_id == g.uid)
+    is_owner = bool((g.uid and projeto_db.owner_id == g.uid) or (projeto_db.owner_username and session.get('user') and projeto_db.owner_username.lower() == session['user'].lower()))
     is_admin = (session.get('role') == 'admin')
     is_orientador = bool(
-        session.get('role') == 'professor' and usuario_atual and projeto_db.professor_id == usuario_atual.id
+        session.get('role') == 'professor' and usuario_atual and (projeto_db.professor_id == usuario_atual.id or (projeto_db.professor and projeto_db.professor.lower() == session['user'].lower()))
     )
 
     if not (is_owner or is_admin or is_orientador):
@@ -550,14 +554,45 @@ def editar_projeto(projeto_id):
                 detalhes_linhas = [linha.strip() for linha in str(raw_detalhes).split('\n') if linha.strip()]
             projeto_db.detalhes = json.dumps(detalhes_linhas)
         
-        if request.form and 'link_nome[]' in request.form:
+        if request.form and ('link_nome[]' in request.form or 'link_url[]' in request.form or 'salvar_links' in request.form):
             link_nomes = request.form.getlist('link_nome[]')
             link_urls = request.form.getlist('link_url[]')
             links_dict = {}
             for nome, url in zip(link_nomes, link_urls):
-                if nome.strip() and url.strip():
-                    links_dict[nome.strip()] = url.strip()
+                u = url.strip()
+                if u:
+                    n = nome.strip() if nome.strip() else 'Link'
+                    if not u.startswith(('http://', 'https://', 'mailto:')):
+                        u = f"https://{u}"
+                    links_dict[n] = u
             projeto_db.links = json.dumps(links_dict)
+        elif data and ('links' in data or 'link_nome[]' in data):
+            raw_links = data.get('links')
+            if isinstance(raw_links, dict):
+                links_dict = {}
+                for n, u in raw_links.items():
+                    u_str = str(u).strip()
+                    if u_str:
+                        if not u_str.startswith(('http://', 'https://', 'mailto:')):
+                            u_str = f"https://{u_str}"
+                        links_dict[str(n).strip()] = u_str
+                projeto_db.links = json.dumps(links_dict)
+            elif isinstance(raw_links, list):
+                links_dict = {}
+                for item in raw_links:
+                    if isinstance(item, dict):
+                        n = (item.get('nome') or 'Link').strip()
+                        u = (item.get('url') or '').strip()
+                        if u:
+                            if not u.startswith(('http://', 'https://', 'mailto:')):
+                                u = f"https://{u}"
+                            links_dict[n] = u
+                    elif isinstance(item, str) and item.strip():
+                        u = item.strip()
+                        if not u.startswith(('http://', 'https://', 'mailto:')):
+                            u = f"https://{u}"
+                        links_dict[u] = u
+                projeto_db.links = json.dumps(links_dict)
 
         if 'imagem_capa' in request.files:
             file = request.files['imagem_capa']

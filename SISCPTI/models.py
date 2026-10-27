@@ -80,10 +80,38 @@ class Project(db.Model):
                 
         links_val = {}
         if self.links:
-            try:
-                links_val = json.loads(self.links)
-            except Exception:
-                links_val = {}
+            if isinstance(self.links, dict):
+                links_val = self.links
+            elif isinstance(self.links, list):
+                for item in self.links:
+                    if isinstance(item, dict):
+                        n = (item.get('nome') or item.get('titulo') or item.get('label') or 'Link').strip()
+                        u = (item.get('url') or item.get('href') or '').strip()
+                        if u:
+                            links_val[n] = u
+                    elif isinstance(item, str) and item.strip():
+                        links_val[item.strip()] = item.strip()
+            elif isinstance(self.links, str):
+                try:
+                    parsed = json.loads(self.links)
+                    if isinstance(parsed, dict):
+                        links_val = parsed
+                    elif isinstance(parsed, list):
+                        for item in parsed:
+                            if isinstance(item, dict):
+                                n = (item.get('nome') or item.get('titulo') or item.get('label') or 'Link').strip()
+                                u = (item.get('url') or item.get('href') or '').strip()
+                                if u:
+                                    links_val[n] = u
+                            elif isinstance(item, str) and item.strip():
+                                links_val[item.strip()] = item.strip()
+                    elif isinstance(parsed, str) and parsed.strip():
+                        links_val = {"Link": parsed.strip()}
+                except Exception:
+                    if self.links.strip().startswith(('http://', 'https://')):
+                        links_val = {"Link": self.links.strip()}
+                    else:
+                        links_val = {}
 
         # Contagem de membros e candidaturas aprovadas
         cands_aprovadas = 0

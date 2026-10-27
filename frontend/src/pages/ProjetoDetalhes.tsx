@@ -3,7 +3,7 @@
  * Todos os direitos reservados. Ver LICENSE.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -131,6 +131,26 @@ export function ProjetoDetalhes() {
     (projeto?.candidaturas_aprovadas || 0) + (projeto?.owner_username ? 1 : 0) || 1
   );
 
+  const linksArray = useMemo<{ nome: string; url: string }[]>(() => {
+    if (!projeto?.links) return [];
+    if (Array.isArray(projeto.links)) {
+      return projeto.links.map((item: any) => {
+        if (typeof item === 'string') return { nome: item, url: item };
+        return { nome: String(item.nome || item.label || item.titulo || 'Link'), url: String(item.url || item.href || '') };
+      }).filter((l: { nome: string; url: string }) => Boolean(l.url));
+    }
+    if (typeof projeto.links === 'object') {
+      return Object.entries(projeto.links).map(([nome, url]) => ({
+        nome: String(nome || 'Link'),
+        url: String(url || '')
+      })).filter((l: { nome: string; url: string }) => Boolean(l.url));
+    }
+    if (typeof projeto.links === 'string' && projeto.links.trim().startsWith('http')) {
+      return [{ nome: 'Link do Projeto', url: projeto.links.trim() }];
+    }
+    return [];
+  }, [projeto?.links]);
+
   const handleExcluirProjeto = async () => {
     if (!await confirmar(`Tem certeza de que deseja excluir o projeto "${projeto.titulo}"? Esta ação apagará tarefas, mensagens e candidaturas vinculadas.`)) return;
 
@@ -229,6 +249,58 @@ export function ProjetoDetalhes() {
                 <p className="text-text-secondary">Informações detalhadas não disponíveis.</p>
               )}
             </div>
+
+            {/* Links e Recursos do Projeto */}
+            {linksArray.length > 0 && (
+              <div className="bg-bg-surface rounded-2xl p-7 mb-6 shadow-light border border-border-color">
+                <h2 className="font-title text-[1.2rem] font-bold text-text-primary m-0 mb-4 pb-2.5 border-b-2 border-border-color flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    🔗 Links e Recursos Relacionados
+                  </span>
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-purple-primary/10 text-purple-primary">
+                    {linksArray.length} {linksArray.length === 1 ? 'recurso' : 'recursos'}
+                  </span>
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {linksArray.map((link, idx) => {
+                    const isGithub = link.url.toLowerCase().includes('github.com') || link.nome.toLowerCase().includes('git');
+                    const isFigma = link.url.toLowerCase().includes('figma.com') || link.nome.toLowerCase().includes('figma') || link.nome.toLowerCase().includes('protótipo');
+                    const isDocs = link.url.toLowerCase().includes('docs') || link.url.toLowerCase().includes('notion') || link.url.toLowerCase().includes('drive.google') || link.nome.toLowerCase().includes('doc');
+                    const isVideo = link.url.toLowerCase().includes('youtube.com') || link.url.toLowerCase().includes('youtu.be') || link.nome.toLowerCase().includes('vídeo') || link.nome.toLowerCase().includes('video');
+                    
+                    const icon = isGithub ? '🐙' : isFigma ? '🎨' : isVideo ? '▶️' : isDocs ? '📑' : '🌐';
+                    const formattedUrl = link.url.startsWith('http') ? link.url : `https://${link.url}`;
+
+                    return (
+                      <a
+                        key={idx}
+                        href={formattedUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-center justify-between p-3.5 rounded-xl bg-bg-primary hover:bg-purple-primary/5 border border-border-color hover:border-purple-primary/50 text-text-primary no-underline transition-all hover:-translate-y-0.5 hover:shadow-sm"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-xl shrink-0 p-2 rounded-lg bg-bg-surface border border-border-color group-hover:border-purple-primary/40 transition-colors">
+                            {icon}
+                          </span>
+                          <div className="min-w-0">
+                            <span className="block font-bold text-xs sm:text-sm text-text-primary group-hover:text-purple-primary truncate">
+                              {link.nome}
+                            </span>
+                            <span className="block text-[11px] text-text-secondary truncate mt-0.5">
+                              {link.url}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-text-secondary group-hover:text-purple-primary group-hover:translate-x-0.5 transition-transform text-xs shrink-0 ml-2 font-bold">
+                          ↗
+                        </span>
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Avaliações Reais */}
             <div className="bg-bg-surface rounded-2xl p-7 mb-6 shadow-light border border-border-color">
@@ -385,6 +457,30 @@ export function ProjetoDetalhes() {
                 <span className="text-text-secondary">👥 Integrantes</span>
                 <strong>{totalIntegrantes} {totalIntegrantes === 1 ? 'no time' : 'no time'}</strong>
               </div>
+              {linksArray.length > 0 && (
+                <div className="py-2.5 border-b border-border-color text-[0.88rem]">
+                  <span className="text-text-secondary block mb-2 font-medium">🔗 Links do Projeto:</span>
+                  <div className="flex flex-col gap-1.5">
+                    {linksArray.map((link, idx) => {
+                      const formattedUrl = link.url.startsWith('http') ? link.url : `https://${link.url}`;
+                      return (
+                        <a
+                          key={idx}
+                          href={formattedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-primary hover:text-purple-hover hover:underline truncate"
+                          title={link.url}
+                        >
+                          <span className="shrink-0">🔗</span>
+                          <span className="truncate">{link.nome}</span>
+                          <span className="text-[10px] opacity-70 shrink-0">↗</span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {projeto.tags && (
                 <div className="py-2.5 text-[0.88rem]">
                   <span className="text-text-secondary block mb-1.5">🏷️ Tags do Projeto:</span>

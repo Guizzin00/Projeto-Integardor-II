@@ -64,9 +64,19 @@ export function AdminForm() {
             imagem: p.imagem || ''
           });
 
-          if (p.links && typeof p.links === 'object') {
-            const arr = Object.entries(p.links).map(([nome, url]) => ({ nome, url: String(url) }));
-            setLinks(arr.length > 0 ? arr : [{ nome: '', url: '' }]);
+          if (p.links) {
+            if (Array.isArray(p.links)) {
+              const arr = p.links.map((item: any) => {
+                if (typeof item === 'string') return { nome: item, url: item };
+                return { nome: item.nome || item.label || 'Link', url: item.url || '' };
+              }).filter((l: any) => Boolean(l.url || l.nome));
+              setLinks(arr.length > 0 ? arr : [{ nome: '', url: '' }]);
+            } else if (typeof p.links === 'object') {
+              const arr = Object.entries(p.links).map(([nome, url]) => ({ nome, url: String(url) }));
+              setLinks(arr.length > 0 ? arr : [{ nome: '', url: '' }]);
+            } else if (typeof p.links === 'string' && p.links.trim().startsWith('http')) {
+              setLinks([{ nome: 'Link do Projeto', url: p.links.trim() }]);
+            }
           }
         }
       } catch (err: any) {
@@ -122,9 +132,14 @@ export function AdminForm() {
       });
     data.append('detalhes_json', JSON.stringify(itensDetalhes));
     
+    data.append('salvar_links', 'true');
     links.forEach(l => {
-      data.append('link_nome[]', l.nome);
-      data.append('link_url[]', l.url);
+      const u = (l.url || '').trim();
+      const n = (l.nome || '').trim();
+      if (u || n) {
+        data.append('link_nome[]', n || u);
+        data.append('link_url[]', u);
+      }
     });
     
     if (imagemCapa) data.append('imagem_capa', imagemCapa);
