@@ -252,15 +252,17 @@ export function Header() {
                           ? '🚀 Painel da Liderança'
                           : '🎓 Painel do Aluno'}
                       </Link>
-                      <Link 
-                        to="/submissao" 
-                        onClick={() => setMenuOpen(false)}
-                        className="block px-4 py-2.5 text-purple-primary hover:bg-purple-primary/5 hover:text-purple-hover font-medium text-sm no-underline"
-                      >
-                        {(user.role === 'empresa' || user.role === 'cliente') 
-                          ? '💡 Submeter Demanda de Projeto' 
-                          : '📤 Submeter Proposta'}
-                      </Link>
+                      {user.role !== 'admin' && (
+                        <Link 
+                          to="/submissao" 
+                          onClick={() => setMenuOpen(false)}
+                          className="block px-4 py-2.5 text-purple-primary hover:bg-purple-primary/5 hover:text-purple-hover font-medium text-sm no-underline"
+                        >
+                          {(user.role === 'empresa' || user.role === 'cliente') 
+                            ? '💡 Submeter Demanda de Projeto' 
+                            : '📤 Submeter Proposta'}
+                        </Link>
+                      )}
                       <div className="h-px bg-border-color my-1"></div>
                       <button 
                         onClick={handleLogout}

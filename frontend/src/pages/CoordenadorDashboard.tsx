@@ -361,68 +361,7 @@ export function CoordenadorDashboard() {
 
       </div>
 
-      {/* 3. DETALHAMENTO DA SATISFAÇÃO MULTIDIMENSIONAL */}
-      <div className="bg-bg-surface border border-border-color rounded-md p-6 shadow-sm">
-        <div className="flex items-center justify-between pb-3 mb-4 border-b border-border-color">
-          <div>
-            <h2 className="text-sm sm:text-base font-bold text-text-primary m-0">
-              Avaliação Multidimensional do Programa Acadêmico
-            </h2>
-            <p className="text-xs text-text-secondary m-0 mt-0.5">
-              Resultados consolidados das avaliações realizadas por discentes e orientadores.
-            </p>
-          </div>
-          <span className="text-xs font-semibold text-text-secondary">
-            {satisfacao.total || 0} formulários submetidos
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* Organização Geral */}
-          <div className="bg-bg-primary border border-border-color rounded-md p-4 space-y-2">
-            <div className="flex justify-between items-center text-xs font-semibold">
-              <span className="text-text-secondary">Organização Geral</span>
-              <span className="text-text-primary font-bold">{satisfacao.nota_organizacao ? Number(satisfacao.nota_organizacao).toFixed(1) : '5.0'} / 5.0</span>
-            </div>
-            <div className="w-full bg-border-color/50 h-2 rounded-full overflow-hidden">
-              <div 
-                className="bg-blue-600 h-full rounded-full transition-all duration-500" 
-                style={{ width: `${Math.min(100, ((satisfacao.nota_organizacao || 5) / 5) * 100)}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Orientação Docente */}
-          <div className="bg-bg-primary border border-border-color rounded-md p-4 space-y-2">
-            <div className="flex justify-between items-center text-xs font-semibold">
-              <span className="text-text-secondary">Orientação Docente</span>
-              <span className="text-text-primary font-bold">{satisfacao.nota_orientacao ? Number(satisfacao.nota_orientacao).toFixed(1) : '5.0'} / 5.0</span>
-            </div>
-            <div className="w-full bg-border-color/50 h-2 rounded-full overflow-hidden">
-              <div 
-                className="bg-emerald-600 h-full rounded-full transition-all duration-500" 
-                style={{ width: `${Math.min(100, ((satisfacao.nota_orientacao || 5) / 5) * 100)}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Aprendizado do Aluno */}
-          <div className="bg-bg-primary border border-border-color rounded-md p-4 space-y-2">
-            <div className="flex justify-between items-center text-xs font-semibold">
-              <span className="text-text-secondary">Aprendizado dos Alunos</span>
-              <span className="text-text-primary font-bold">{satisfacao.nota_aprendizado ? Number(satisfacao.nota_aprendizado).toFixed(1) : '5.0'} / 5.0</span>
-            </div>
-            <div className="w-full bg-border-color/50 h-2 rounded-full overflow-hidden">
-              <div 
-                className="bg-purple-primary h-full rounded-full transition-all duration-500" 
-                style={{ width: `${Math.min(100, ((satisfacao.nota_aprendizado || 5) / 5) * 100)}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. ABAS DE GESTÃO: ORIENTADORES E PROPOSTAS */}
+      {/* 3. ABAS DE GESTÃO: ORIENTADORES E PROPOSTAS */}
       <div className="bg-bg-surface border border-border-color rounded-md p-6 shadow-sm">
         
         {/* Segmented Control */}

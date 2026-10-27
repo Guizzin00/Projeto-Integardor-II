@@ -11,7 +11,9 @@ export function Perfil() {
   
   const isProfessor = user?.role === 'professor';
   const isEmpresa = user?.role === 'empresa' || user?.role === 'cliente';
-  const isAluno = !isProfessor && !isEmpresa;
+  const isAdmin = user?.role === 'admin';
+  const isCoordenador = user?.role === 'coordenador';
+  const isAluno = !isProfessor && !isEmpresa && !isAdmin && !isCoordenador;
 
   const [activeTab, setActiveTab] = useState<'inscricoes' | 'propostas' | 'meusprojetos' | 'recomendacoes'>('meusprojetos');
   
@@ -191,6 +193,8 @@ export function Perfil() {
               </p>
 
               <p className="text-xs text-text-secondary/90 m-0 max-w-2xl pt-0.5">
+                {isAdmin && (user.bio || 'Gestão administrativa, homologação institucional e supervisão geral da plataforma SisCPTI.')}
+                {isCoordenador && (user.bio || 'Coordenação acadêmica, designação de orientadores e avaliação de propostas do SisCPTI.')}
                 {isProfessor && 'Acompanhe as equipes orientadas, valide entregas no Kanban e conduza o desenvolvimento dos alunos.'}
                 {isEmpresa && 'Cadastre problemas reais do mercado, valide protótipos funcionais e acompanhe as entregas dos MVPs.'}
                 {isAluno && (user.bio || 'Estudante participando de projetos práticos e integradores do UniCEUB.')}
@@ -219,22 +223,85 @@ export function Perfil() {
               <span>Editar Perfil</span>
             </Link>
 
-            <Link 
-              to="/submissao" 
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 bg-purple-primary hover:bg-purple-hover text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors no-underline shadow-sm"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span>
-                {isEmpresa ? 'Submeter Demanda' : isProfessor ? 'Propor Projeto' : 'Nova Proposta'}
-              </span>
-            </Link>
+            {isAdmin ? (
+              <Link 
+                to="/admin" 
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 bg-purple-primary hover:bg-purple-hover text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors no-underline shadow-sm"
+              >
+                <span>⚙️ Painel Administrativo</span>
+              </Link>
+            ) : isCoordenador ? (
+              <Link 
+                to="/coordenador" 
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 bg-purple-primary hover:bg-purple-hover text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors no-underline shadow-sm"
+              >
+                <span>📋 Painel da Coordenação</span>
+              </Link>
+            ) : (
+              <Link 
+                to="/submissao" 
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 bg-purple-primary hover:bg-purple-hover text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors no-underline shadow-sm"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>
+                  {isEmpresa ? 'Submeter Demanda' : isProfessor ? 'Propor Projeto' : 'Nova Proposta'}
+                </span>
+              </Link>
+            )}
           </div>
 
         </div>
       </div>
 
+      {(isAdmin || isCoordenador) ? (
+        <div className="bg-bg-surface border border-border-color rounded-2xl p-6 shadow-sm">
+          <h2 className="text-base sm:text-lg font-bold text-text-primary m-0 mb-1">
+            Acesso Rápido à Gestão Institucional
+          </h2>
+          <p className="text-xs text-text-secondary m-0 mb-5">
+            {isAdmin
+              ? 'O perfil de Administrador atua exclusivamente na governança e gerenciamento da plataforma, sem vínculo como participante de equipes.'
+              : 'Acesse as ferramentas de coordenação acadêmica para acompanhar propostas, orientadores e homologações.'}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {isAdmin && (
+              <>
+                <Link to="/admin?tab=projetos" className="p-4 rounded-xl bg-bg-primary border border-border-color hover:border-purple-primary transition-colors no-underline flex flex-col gap-1">
+                  <span className="text-sm font-bold text-text-primary">📁 Gerenciar Projetos</span>
+                  <span className="text-xs text-text-secondary">Criar, editar status, atribuir orientadores ou excluir projetos do catálogo.</span>
+                </Link>
+                <Link to="/admin?tab=submissoes" className="p-4 rounded-xl bg-bg-primary border border-border-color hover:border-purple-primary transition-colors no-underline flex flex-col gap-1">
+                  <span className="text-sm font-bold text-text-primary">📋 Avaliar Propostas</span>
+                  <span className="text-xs text-text-secondary">Analisar, aprovar ou recusar propostas de projetos submetidas.</span>
+                </Link>
+                <Link to="/admin?tab=candidaturas" className="p-4 rounded-xl bg-bg-primary border border-border-color hover:border-purple-primary transition-colors no-underline flex flex-col gap-1">
+                  <span className="text-sm font-bold text-text-primary">🎓 Candidaturas de Alunos</span>
+                  <span className="text-xs text-text-secondary">Supervisionar e gerenciar inscrições de discentes nos projetos.</span>
+                </Link>
+                <Link to="/admin?tab=usuarios" className="p-4 rounded-xl bg-bg-primary border border-border-color hover:border-purple-primary transition-colors no-underline flex flex-col gap-1">
+                  <span className="text-sm font-bold text-text-primary">👥 Contas e Usuários</span>
+                  <span className="text-xs text-text-secondary">Administrar usuários, papéis institucionais e credenciais.</span>
+                </Link>
+                <Link to="/admin?tab=aprovacoes" className="p-4 rounded-xl bg-bg-primary border border-border-color hover:border-purple-primary transition-colors no-underline flex flex-col gap-1">
+                  <span className="text-sm font-bold text-text-primary">✅ Homologação de Contas</span>
+                  <span className="text-xs text-text-secondary">Validar solicitações de cadastro de professores e empresas parceiras.</span>
+                </Link>
+                <Link to="/admin/logs" className="p-4 rounded-xl bg-bg-primary border border-border-color hover:border-purple-primary transition-colors no-underline flex flex-col gap-1">
+                  <span className="text-sm font-bold text-text-primary">🛡️ Logs de Auditoria</span>
+                  <span className="text-xs text-text-secondary">Consultar o histórico de atividades e eventos de segurança do sistema.</span>
+                </Link>
+              </>
+            )}
+            <Link to="/coordenador" className="p-4 rounded-xl bg-bg-primary border border-border-color hover:border-purple-primary transition-colors no-underline flex flex-col gap-1">
+              <span className="text-sm font-bold text-text-primary">📊 Painel da Coordenação</span>
+              <span className="text-xs text-text-secondary">Indicadores acadêmicos, designação de professores orientadores e relatórios.</span>
+            </Link>
+          </div>
+        </div>
+      ) : (
+      <>
       {/* 2. CARDS DE INDICADORES (KPIS CONTEXTUAIS) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         
@@ -883,6 +950,8 @@ export function Perfil() {
         )}
 
       </div>
+      </>
+      )}
 
       <SubmissaoDetalhesModal submissao={submissaoAberta} onClose={() => setSubmissaoAberta(null)} />
     </div>

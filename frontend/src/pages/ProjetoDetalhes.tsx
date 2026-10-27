@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useUI } from '../components/UIProvider';
 
 interface Avaliacao {
   username: string;
@@ -13,6 +14,8 @@ interface Avaliacao {
 export function ProjetoDetalhes() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { avisar, confirmar } = useUI();
   
   const [projeto, setProjeto] = useState<any>(null);
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
@@ -106,6 +109,25 @@ export function ProjetoDetalhes() {
     projeto.owner_username === user.username ||
     (user.role === 'professor' && (projeto.professor === user.username || projeto.orientador?.username === user.username))
   );
+
+  const podeExcluir = !!user && (user.role === 'admin' || projeto.owner_username === user.username);
+  const isAlunoCandidato = !!user && ['aluno', 'lider', 'user'].includes(user.role);
+
+  const handleExcluirProjeto = async () => {
+    if (!await confirmar(`Tem certeza de que deseja excluir o projeto "${projeto.titulo}"? Esta ação apagará tarefas, mensagens e candidaturas vinculadas.`)) return;
+
+    try {
+      const res = await api.post(`/admin/projeto/${projeto.id}/excluir`);
+      if (res.data.status === 'success') {
+        avisar('✅ Projeto excluído com sucesso!');
+        navigate(user?.role === 'admin' ? '/admin' : '/projetos');
+      } else {
+        avisar(res.data.message || 'Erro ao excluir projeto.', 'erro');
+      }
+    } catch (err: any) {
+      avisar(err.response?.data?.message || 'Erro ao tentar excluir o projeto.', 'erro');
+    }
+  };
 
   return (
     <div>
@@ -221,6 +243,7 @@ export function ProjetoDetalhes() {
 
               {/* Formulário de Envio de Avaliação */}
               {user ? (
+                user.role === 'admin' ? null : (
                 <form onSubmit={handleEnviarAvaliacao} className="pt-4 border-t border-border-color flex flex-col gap-3">
                   <h3 className="m-0 font-title text-sm font-bold text-purple-primary">Deixe sua avaliação</h3>
                   {msgAvaliacao && (
@@ -259,6 +282,7 @@ export function ProjetoDetalhes() {
                     {enviandoAvaliacao ? 'Enviando...' : 'Publicar Avaliação'}
                   </button>
                 </form>
+                )
               ) : (
                 <p className="text-text-secondary italic text-sm m-0 pt-3 border-t border-border-color">
                   <Link to="/login" className="text-purple-primary font-semibold no-underline hover:underline">Faça login</Link> para avaliar este projeto.
@@ -271,22 +295,41 @@ export function ProjetoDetalhes() {
           <aside className="flex flex-col gap-4">
             <div className="bg-bg-surface rounded-2xl p-6 shadow-light border border-border-color">
               <h3 className="font-title text-[1rem] font-bold text-text-primary m-0 mb-4 pb-2 border-b-2 border-border-color">
-                Participação
+                {user?.role === 'admin' ? 'Gerenciamento Administrativo' : 'Participação'}
               </h3>
               {user ? (
                 <div className="flex flex-col gap-2.5">
-                  <Link 
-                    to={`/projeto/${projeto.id}/candidatar`} 
-                    className="block w-full text-center py-3 px-4 rounded-full bg-gradient-to-br from-purple-primary to-purple-hover text-white font-bold no-underline text-[0.95rem] shadow-[0_4px_16px_rgba(122,27,181,0.3)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(122,27,181,0.45)] hover:brightness-110 transition-all"
-                  >
-                    🚀 Me Candidatar
-                  </Link>
+                  {isAlunoCandidato && (
+                    <Link 
+                      to={`/projeto/${projeto.id}/candidatar`} 
+                      className="block w-full text-center py-3 px-4 rounded-full bg-gradient-to-br from-purple-primary to-purple-hover text-white font-bold no-underline text-[0.95rem] shadow-[0_4px_16px_rgba(122,27,181,0.3)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(122,27,181,0.45)] hover:brightness-110 transition-all"
+                    >
+                      🚀 Me Candidatar
+                    </Link>
+                  )}
+                  {podeEditar && (
+                    <Link 
+                      to={`/projeto/${projeto.id}/editar`}
+                      className="block w-full text-center py-2.5 px-4 rounded-full bg-purple-primary text-white font-bold no-underline text-[0.88rem] hover:bg-purple-hover transition-all"
+                    >
+                      ✏️ Editar Projeto
+                    </Link>
+                  )}
                   <Link 
                     to={`/workspace/${projeto.id}`}
                     className="block w-full text-center py-2.5 px-4 rounded-full bg-transparent border-2 border-purple-primary text-purple-primary font-bold no-underline text-[0.88rem] hover:bg-purple-primary hover:text-white transition-all"
                   >
-                    💬 Acessar Workspace
+                    {user.role === 'admin' ? '💬 Supervisionar Workspace' : '💬 Acessar Workspace'}
                   </Link>
+                  {podeExcluir && (
+                    <button
+                      type="button"
+                      onClick={handleExcluirProjeto}
+                      className="block w-full text-center py-2.5 px-4 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-bold text-[0.88rem] hover:bg-rose-500/20 transition-all cursor-pointer"
+                    >
+                      🗑️ Excluir Projeto
+                    </button>
+                  )}
                 </div>
               ) : (
                 <>

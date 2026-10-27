@@ -27,10 +27,15 @@ def api_login():
         if limite_excedido('login_ip', ip, 20, 600) or limite_excedido('login_user', identificador.lower(), 5, 900):
             return jsonify({"status": "error", "message": "Muitas tentativas de login. Aguarde alguns minutos e tente novamente."}), 429
 
-        # Entrada por matrícula/usuário ou por e-mail cadastrado
-        usuario = User.query.filter_by(username=identificador).first()
+        # Entrada por matrícula/usuário ou por e-mail cadastrado (principal ou secundário/pessoal)
+        usuario = User.query.filter(db.func.lower(User.username) == identificador.lower()).first()
         if not usuario and '@' in identificador:
-            candidatos = User.query.filter(db.func.lower(User.email) == identificador.lower()).limit(2).all()
+            candidatos = User.query.filter(
+                db.or_(
+                    db.func.lower(User.email) == identificador.lower(),
+                    db.func.lower(User.email_secundario) == identificador.lower()
+                )
+            ).limit(2).all()
             if len(candidatos) == 1:
                 usuario = candidatos[0]
 
@@ -50,7 +55,7 @@ def api_login():
                 }), 403
 
             if not usuario.ativo:
-                return jsonify({"status": "error", "message": "Conta não ativada. Verifique seu e-mail para ativar."}), 403
+                return jsonify({"status": "error", "message": "Conta não ativada. Verifique seu e-mail para ativar.", "needs_verification": True}), 403
 
             limpar_tentativas('login_user', identificador.lower())
             session.clear()
@@ -144,9 +149,10 @@ def api_cadastro():
             role_nome = "Professor Orientador" if role == 'professor' else "Empresa Parceira"
             for staff in staff_users:
                 notif = Notification(
+                    user_id=staff.id,
                     username=staff.username,
                     mensagem=f"Nova solicitação de conta ({role_nome}): @{username}. Requer validação.",
-                    link="/coordenador" if staff.role == 'coordenador' else "/admin"
+                    link="/coordenador" if staff.role == 'coordenador' else "/admin?tab=aprovacoes"
                 )
                 db.session.add(notif)
             db.session.commit()
@@ -214,19 +220,20 @@ def api_verificar_conta(token):
         if expira < agora:
             db.session.delete(verification)
             db.session.commit()
-            return jsonify({"status": "error", "message": "O link de ativação expirou. Faça um novo cadastro."}), 400
+            return jsonify({"status": "error", "message": "O link de ativação expirou. Solicite o reenvio do e-mail de confirmação.", "needs_verification": True}), 400
 
         user = User.query.filter_by(username=verification.username).first()
         if not user:
             return jsonify({"status": "error", "message": "Erro ao ativar: usuário não encontrado."}), 400
 
+        ja_verificado = bool(getattr(user, 'email_verificado', False) and user.ativo)
         user.email_verificado = True
         aprovado = (getattr(user, 'status_aprovacao', 'APROVADO') or 'APROVADO') == 'APROVADO'
         if aprovado:
             user.ativo = True
-        db.session.delete(verification)
         db.session.commit()
-        log_atividade(user.username, 'E-mail confirmado')
+        if not ja_verificado:
+            log_atividade(user.username, 'E-mail confirmado')
         if not aprovado:
             return jsonify({"status": "success", "message": "E-mail confirmado! Sua conta ainda aguarda a validação da coordenação ou administração."})
         return jsonify({"status": "success", "message": "Conta ativada com sucesso! Você já pode fazer o login."})
@@ -235,6 +242,55 @@ def api_verificar_conta(token):
         print(f"Erro ao verificar conta: {e}")
         db.session.rollback()
         return jsonify({"status": "error", "message": "Erro interno ao ativar a conta. Tente novamente."}), 500
+
+
+@app.route('/api/reenviar-verificacao', methods=['POST'])
+def api_reenviar_verificacao():
+    data = request.get_json(silent=True) or {}
+    identificador = str(data.get('user') or data.get('email') or '').strip()
+    if not identificador:
+        return jsonify({"status": "error", "message": "Informe sua matrícula/usuário ou e-mail cadastrado."}), 400
+
+    ip = ip_do_cliente()
+    if limite_excedido('reenviar_verif_ip', ip, 5, 900) or limite_excedido('reenviar_verif_user', identificador.lower(), 3, 900):
+        return jsonify({"status": "error", "message": "Muitas solicitações de reenvio. Aguarde alguns minutos e tente novamente."}), 429
+    registrar_tentativa('reenviar_verif_ip', ip)
+    registrar_tentativa('reenviar_verif_user', identificador.lower())
+
+    usuario = User.query.filter(db.func.lower(User.username) == identificador.lower()).first()
+    if not usuario and '@' in identificador:
+        usuario = User.query.filter(
+            db.or_(
+                db.func.lower(User.email) == identificador.lower(),
+                db.func.lower(User.email_secundario) == identificador.lower()
+            )
+        ).first()
+
+    if not usuario:
+        return jsonify({"status": "error", "message": "Nenhuma conta localizada para os dados informados."}), 404
+
+    if getattr(usuario, 'email_verificado', False) and usuario.ativo:
+        return jsonify({"status": "success", "message": "Sua conta já está ativada! Você já pode fazer login."})
+
+    if not usuario.email:
+        return jsonify({"status": "error", "message": "Esta conta não possui um e-mail cadastrado para envio."}), 400
+
+    AccountVerification.query.filter_by(username=usuario.username).delete()
+    token = str(uuid.uuid4())
+    expira = datetime.utcnow() + timedelta(days=1)
+    db.session.add(AccountVerification(username=usuario.username, token=token, expira_em=expira))
+    db.session.commit()
+
+    base_url = get_frontend_url() or request.host_url.rstrip('/')
+    link = base_url + f"/verificar-conta/{token}"
+    corpo = email_template_ativacao(usuario.username, link, base_url=base_url)
+    enviar_email(usuario.email, 'Ativação de Conta Institucional – SisCPTI · UniCEUB', corpo)
+    log_atividade(usuario.username, 'Solicitou reenvio de e-mail de validação')
+
+    return jsonify({
+        "status": "success",
+        "message": "Enviamos um novo link de validação para o seu e-mail cadastrado. Verifique também a caixa de spam."
+    })
 
 
 @app.route('/api/logout', methods=['POST'])
@@ -303,6 +359,16 @@ def normalizar_interesses(texto):
 def email_valido(valor):
     return bool(re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', valor))
 
+def _propagar_renomeacao(antigo, novo):
+    """Propaga a mudança de username para todas as tabelas que guardam o nome como texto."""
+    from models import Application, Project, Message, Rating, Submission, ActivityLog, Task
+    for modelo, campo in [(Application, 'username'), (Project, 'owner_username'), (Project, 'professor'),
+                          (Message, 'username'), (Notification, 'username'), (Rating, 'username'),
+                          (Submission, 'username'), (ActivityLog, 'username'), (Task, 'assigned_username'),
+                          (PasswordReset, 'username'), (AccountVerification, 'username')]:
+        modelo.query.filter(getattr(modelo, campo) == antigo).update({campo: novo}, synchronize_session=False)
+
+
 @app.route('/api/perfil/editar', methods=['POST', 'PUT'])
 def api_perfil_editar():
     if not session.get('logged_in'):
@@ -315,6 +381,7 @@ def api_perfil_editar():
     if not data:
         return jsonify({"status": "error", "message": "Dados não enviados"}), 400
 
+    novo_username = (data.get('username') or '').strip()
     email = (data.get('email') or '').strip()
     email_secundario = (data.get('email_secundario') or '').strip()
     bio = (data.get('bio') or '').strip()
@@ -322,10 +389,20 @@ def api_perfil_editar():
     nova_senha = (data.get('nova_senha') or '').strip()
     confirmar_senha = (data.get('confirmar_senha') or '').strip()
 
+    if novo_username and novo_username != user.username:
+        if len(novo_username) > 50 or '@' in novo_username:
+            return jsonify({"status": "error", "message": "O nome de usuário não pode conter '@' nem ultrapassar 50 caracteres."}), 400
+        if User.query.filter(db.func.lower(User.username) == novo_username.lower(), User.id != user.id).first():
+            return jsonify({"status": "error", "message": "Este nome de usuário já está em uso."}), 400
+
     if len(interesses) > 300:
         return jsonify({"status": "error", "message": "Os interesses ultrapassam 300 caracteres. Remova alguns itens."}), 400
-    if email and not email_valido(email):
-        return jsonify({"status": "error", "message": "E-mail principal inválido."}), 400
+    if email:
+        if not email_valido(email):
+            return jsonify({"status": "error", "message": "E-mail principal inválido."}), 400
+        if email.lower() != (user.email or '').lower():
+            if User.query.filter(db.func.lower(User.email) == email.lower(), User.id != user.id).first():
+                return jsonify({"status": "error", "message": "Este e-mail já está associado a outra conta."}), 400
     if email_secundario:
         if not email_valido(email_secundario):
             return jsonify({"status": "error", "message": "E-mail secundário inválido."}), 400
@@ -338,7 +415,14 @@ def api_perfil_editar():
         erro_senha = validar_senha(nova_senha)
         if erro_senha:
             return jsonify({"status": "error", "message": erro_senha}), 400
+        if check_password_hash(user.password, nova_senha):
+            return jsonify({"status": "error", "message": "A nova senha não pode ser igual à senha anterior."}), 400
         user.password = generate_password_hash(nova_senha)
+
+    if novo_username and novo_username != user.username:
+        _propagar_renomeacao(user.username, novo_username)
+        user.username = novo_username
+        session['user'] = novo_username
 
     if email: user.email = email
     user.email_secundario = email_secundario or None
@@ -371,7 +455,12 @@ def api_recuperar_senha():
     registrar_tentativa('recuperar_ip', ip)
     registrar_tentativa('recuperar_email', email.lower())
 
-    user = User.query.filter((User.email == email) | (User.email_secundario == email)).first() if email else None
+    user = User.query.filter(
+        db.or_(
+            db.func.lower(User.email) == email.lower(),
+            db.func.lower(User.email_secundario) == email.lower()
+        )
+    ).first() if email else None
     
     if user:
         PasswordReset.query.filter_by(username=user.username).delete()
@@ -418,6 +507,9 @@ def api_redefinir_senha(token):
         user = User.query.filter_by(username=reset.username).first()
         if not user:
             return jsonify({"status": "error", "message": "Erro ao redefinir a senha."}), 400
+
+        if check_password_hash(user.password, nova_senha):
+            return jsonify({"status": "error", "message": "A nova senha não pode ser igual à senha anterior."}), 400
 
         user.password = generate_password_hash(nova_senha)
         db.session.delete(reset)

@@ -300,3 +300,22 @@ def test_login_por_matricula_ou_email(app_ctx):
     assert c.post('/api/login', json={'user': '2024001@CEUB.br', 'password': SENHA}).status_code == 200
     assert c.post('/api/login', json={'user': 'outro@ceub.br', 'password': SENHA}).status_code == 401
     assert c.post('/api/login', json={'user': '2024001', 'password': 'errada1'}).status_code == 401
+
+
+# ---------- Senha igual à anterior bloqueada e #60/#61/#62/#65
+def test_bloqueia_mesma_senha_e_renomeia_perfil(app_ctx):
+    from datetime import datetime, timedelta
+    from models import PasswordReset
+    criar_usuario('aluno1', 'aluno')
+    c = logar('aluno1')
+    # não pode alterar para a mesma senha no perfil
+    r = c.post('/api/perfil/editar', json={'nova_senha': SENHA, 'confirmar_senha': SENHA})
+    assert r.status_code == 400 and 'anterior' in r.get_json()['message']
+    # pode alterar o próprio username (#60)
+    r2 = c.post('/api/perfil/editar', json={'username': 'aluno.renomeado'})
+    assert r2.status_code == 200 and r2.get_json()['user']['username'] == 'aluno.renomeado'
+    # não pode redefinir via token para a mesma senha
+    db.session.add(PasswordReset(username='aluno.renomeado', token='tok-same', expira_em=datetime.utcnow() + timedelta(hours=1)))
+    db.session.commit()
+    r3 = flask_app.test_client().post('/api/redefinir-senha/tok-same', json={'password': SENHA, 'confirm': SENHA})
+    assert r3.status_code == 400 and 'anterior' in r3.get_json()['message']

@@ -100,13 +100,36 @@ def api_candidatar(projeto_id):
     )
     db.session.add(nova_cand)
     
+    destinatarios_notificados = set()
     if projeto_db.owner_username:
-        notif = Notification(
+        dono_obj = User.query.filter_by(username=projeto_db.owner_username).first()
+        link_dono = "/admin?tab=candidaturas" if (dono_obj and dono_obj.role == 'admin') else "/perfil"
+        db.session.add(Notification(
+            user_id=dono_obj.id if dono_obj else projeto_db.owner_id,
             username=projeto_db.owner_username,
-            mensagem=f"👤 {session['user']} se candidatou ao seu projeto '{projeto_db.titulo}'!",
+            mensagem=f"👤 {session['user']} se candidatou ao projeto '{projeto_db.titulo}'!",
+            link=link_dono
+        ))
+        destinatarios_notificados.add(projeto_db.owner_username)
+
+    if projeto_db.orientador and projeto_db.orientador.username not in destinatarios_notificados:
+        db.session.add(Notification(
+            user_id=projeto_db.orientador.id,
+            username=projeto_db.orientador.username,
+            mensagem=f"👤 {session['user']} se candidatou ao projeto '{projeto_db.titulo}' que você orienta!",
             link="/perfil"
-        )
-        db.session.add(notif)
+        ))
+        destinatarios_notificados.add(projeto_db.orientador.username)
+
+    for admin_u in User.query.filter_by(role='admin').all():
+        if admin_u.username not in destinatarios_notificados:
+            db.session.add(Notification(
+                user_id=admin_u.id,
+                username=admin_u.username,
+                mensagem=f"👤 Nova candidatura de @{session['user']} ao projeto '{projeto_db.titulo}'.",
+                link="/admin?tab=candidaturas"
+            ))
+            destinatarios_notificados.add(admin_u.username)
         
     try:
         db.session.commit()
@@ -195,6 +218,7 @@ def dono_acao_candidatura(cand_id, acao):
     if acao == 'aprovar':
         cand.status = 'APROVADA'
         notif = Notification(
+            user_id=cand.user_id,
             username=cand.username,
             mensagem=f"🎉 Sua candidatura para o projeto '{cand.projeto.titulo}' foi APROVADA!",
             link=f"/workspace/{cand.projeto_id}"
@@ -203,6 +227,7 @@ def dono_acao_candidatura(cand_id, acao):
     elif acao == 'rejeitar':
         cand.status = 'REJEITADA'
         notif = Notification(
+            user_id=cand.user_id,
             username=cand.username,
             mensagem=f"⚠️ Sua candidatura para o projeto '{cand.projeto.titulo}' foi recusada.",
             link="/perfil"
@@ -505,6 +530,9 @@ def submissao():
     if not session.get('logged_in'):
         return jsonify({"status": "error", "message": "Você precisa estar logado para acessar a submissão de projetos."}), 401
 
+    if session.get('role') == 'admin':
+        return jsonify({"status": "error", "message": "Administradores apenas gerenciam projetos e não submetem propostas."}), 403
+
     if request.method == 'POST':
         data = request.get_json(silent=True) or request.form
         imagem_path = None
@@ -525,6 +553,16 @@ def submissao():
             imagem=imagem_path
         )
         db.session.add(nova_submissao)
+
+        staff_users = User.query.filter(User.role.in_(['admin', 'coordenador'])).all()
+        for staff in staff_users:
+            db.session.add(Notification(
+                user_id=staff.id,
+                username=staff.username,
+                mensagem=f"📋 Nova proposta de projeto submetida por @{session['user']}: '{nova_submissao.nome_projeto}'.",
+                link="/coordenador" if staff.role == 'coordenador' else "/admin?tab=submissoes"
+            ))
+
         db.session.commit()
 
         return jsonify({

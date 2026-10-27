@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { AprovacoesContasTab } from '../components/AprovacoesContasTab';
@@ -12,8 +12,29 @@ export function AdminDashboard() {
   const { avisar, confirmar } = useUI();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [activeTab, setActiveTab] = useState<'tab-projetos' | 'tab-submissoes' | 'tab-candidaturas' | 'tab-usuarios' | 'tab-aprovacoes'>('tab-projetos');
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    const mapaTabs: Record<string, 'tab-projetos' | 'tab-submissoes' | 'tab-candidaturas' | 'tab-usuarios' | 'tab-aprovacoes'> = {
+      projetos: 'tab-projetos',
+      'tab-projetos': 'tab-projetos',
+      submissoes: 'tab-submissoes',
+      propostas: 'tab-submissoes',
+      'tab-submissoes': 'tab-submissoes',
+      candidaturas: 'tab-candidaturas',
+      'tab-candidaturas': 'tab-candidaturas',
+      usuarios: 'tab-usuarios',
+      'tab-usuarios': 'tab-usuarios',
+      aprovacoes: 'tab-aprovacoes',
+      'tab-aprovacoes': 'tab-aprovacoes'
+    };
+    if (tabParam && mapaTabs[tabParam]) {
+      setActiveTab(mapaTabs[tabParam]);
+    }
+  }, [searchParams]);
   const [pendentesCount, setPendentesCount] = useState<number>(0);
   const [totais, setTotais] = useState({ projetos: 0, submissoes: 0, candidaturas: 0, usuarios: 0 });
   const [submissoesPendentes, setSubmissoesPendentes] = useState(0);
@@ -105,9 +126,14 @@ export function AdminDashboard() {
     if (!await confirmar('Atenção: Deseja realmente excluir este projeto e todo o seu histórico permanentemente?')) return;
     try {
       setActionLoading(`proj-${id}`);
-      await api.post(`/admin/projeto/${id}/excluir`);
-      await projLista.reload();
-      carregarContagens();
+      const res = await api.post(`/admin/projeto/${id}/excluir`);
+      if (res.data.status === 'success') {
+        avisar('✅ Projeto excluído com sucesso!');
+        await projLista.reload();
+        carregarContagens();
+      } else {
+        avisar(res.data.message || 'Erro ao excluir projeto.');
+      }
     } catch (err: any) {
       avisar(err.response?.data?.message || 'Erro ao excluir projeto.');
     } finally {
@@ -564,10 +590,10 @@ export function AdminDashboard() {
                 className="bg-bg-primary border border-border-color rounded-xl px-3 py-2 text-xs text-text-primary outline-none focus:border-purple-primary transition-colors"
               >
                 <option value="TODOS">Todos os Status</option>
-                <option value="INSCRICOES_ABERTAS">Inscrições Abertas</option>
-                <option value="EM_ANDAMENTO">Em Andamento</option>
-                <option value="CONCLUIDO">Concluído</option>
-                <option value="CANCELADO">Cancelado</option>
+                <option value="DISPONÍVEL">Disponível</option>
+                <option value="EM EXECUÇÃO">Em Execução</option>
+                <option value="CONCLUÍDO">Concluído</option>
+                <option value="INDISPONÍVEL">Indisponível</option>
               </select>
             </div>
 

@@ -144,7 +144,7 @@ class Application(db.Model):
     experiencia = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(50), nullable=False, default='PENDENTE')
     
-    projeto = db.relationship('Project', backref=db.backref('candidaturas', lazy='selectin'))
+    projeto = db.relationship('Project', backref=db.backref('candidaturas', lazy='selectin', cascade='all, delete-orphan'))
 
     def to_dict(self):
         return {
@@ -166,7 +166,7 @@ class Message(db.Model):
     arquivo = db.Column(db.String(200), nullable=True)
     data_envio = db.Column(db.DateTime, default=datetime.utcnow)
     
-    projeto = db.relationship('Project', backref=db.backref('mensagens', lazy=True))
+    projeto = db.relationship('Project', backref=db.backref('mensagens', lazy=True, cascade='all, delete-orphan'))
 
 class Notification(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True, index=True)
@@ -188,7 +188,7 @@ class Rating(db.Model):
     nota_aprendizado = db.Column(db.Integer, nullable=True, default=5)
     comentario = db.Column(db.Text, nullable=True)
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
-    projeto = db.relationship('Project', backref=db.backref('avaliacoes', lazy=True))
+    projeto = db.relationship('Project', backref=db.backref('avaliacoes', lazy=True, cascade='all, delete-orphan'))
 
 class ActivityLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -222,7 +222,7 @@ class Task(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime, nullable=True)
     
-    projeto = db.relationship('Project', backref=db.backref('tasks', lazy=True))
+    projeto = db.relationship('Project', backref=db.backref('tasks', lazy=True, cascade='all, delete-orphan'))
 
     def to_dict(self):
         checklist_val = []

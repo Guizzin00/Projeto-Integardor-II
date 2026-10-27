@@ -14,6 +14,9 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   
   const { user, login } = useAuth();
@@ -33,6 +36,8 @@ export function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setNeedsVerification(false);
+    setResendSuccess('');
     setLoading(true);
 
     try {
@@ -43,11 +48,39 @@ export function Login() {
         navigate(origem && origem.startsWith('/') && origem !== '/login' ? origem : getDashboardRoute(loggedUser.role), { replace: true });
       } else {
         setError(response.data.message || 'Credenciais inválidas. Verifique matrícula/e-mail e senha.');
+        if (response.data.needs_verification) setNeedsVerification(true);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Falha de comunicação com o servidor. Tente novamente.');
+      const msg = err.response?.data?.message || 'Falha de comunicação com o servidor. Tente novamente.';
+      setError(msg);
+      if (err.response?.data?.needs_verification || msg.toLowerCase().includes('verifique seu e-mail para ativar')) {
+        setNeedsVerification(true);
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!username.trim()) {
+      setError('Informe sua matrícula ou e-mail acima para reenviar o link de validação.');
+      return;
+    }
+    setResending(true);
+    setResendSuccess('');
+    try {
+      const res = await api.post('/reenviar-verificacao', { user: username.trim() });
+      if (res.data.status === 'success') {
+        setResendSuccess(res.data.message || 'Novo link de validação enviado para seu e-mail!');
+        setError('');
+        setNeedsVerification(false);
+      } else {
+        setError(res.data.message || 'Não foi possível reenviar o e-mail.');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Falha ao reenviar o e-mail de validação.');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -92,16 +125,41 @@ export function Login() {
           </div>
         )}
 
+        {/* Confirmação de Reenvio de Validação */}
+        {resendSuccess && (
+          <div 
+            role="status" 
+            className="mb-5 p-3 rounded-md bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 flex items-start gap-2.5 text-xs text-emerald-700 dark:text-emerald-300"
+          >
+            <svg className="w-4 h-4 mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+            </svg>
+            <span className="leading-relaxed font-medium">{resendSuccess}</span>
+          </div>
+        )}
+
         {/* Mensagem de Erro Institucional */}
         {error && (
           <div 
             role="alert" 
-            className="mb-5 p-3 rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 flex items-start gap-2.5 text-xs text-red-700 dark:text-red-300"
+            className="mb-5 p-3 rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 flex flex-col gap-2.5 text-xs text-red-700 dark:text-red-300"
           >
-            <svg className="w-4 h-4 mt-0.5 shrink-0 text-red-600 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
-            </svg>
-            <span className="leading-relaxed font-medium">{error}</span>
+            <div className="flex items-start gap-2.5">
+              <svg className="w-4 h-4 mt-0.5 shrink-0 text-red-600 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+              </svg>
+              <span className="leading-relaxed font-medium">{error}</span>
+            </div>
+            {needsVerification && (
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={resending}
+                className="self-start ml-6 px-3 py-1.5 rounded bg-purple-primary hover:bg-purple-hover text-white font-semibold text-xs transition-colors cursor-pointer disabled:opacity-60"
+              >
+                {resending ? 'Reenviando e-mail...' : '📨 Reenviar e-mail de validação'}
+              </button>
+            )}
           </div>
         )}
 

@@ -10,6 +10,7 @@ export function PerfilEditar() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
 
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [emailSecundario, setEmailSecundario] = useState('');
   const [bio, setBio] = useState('');
@@ -22,6 +23,7 @@ export function PerfilEditar() {
   useEffect(() => {
     // Fill initial values from user context if available
     if (user) {
+      setUsername(user.username || '');
       setEmail(user.email || '');
       setEmailSecundario(user.email_secundario || '');
       setBio(user.bio || '');
@@ -33,6 +35,18 @@ export function PerfilEditar() {
     e.preventDefault();
     setSubmitting(true);
     setError('');
+
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername) {
+      setError('O nome de usuário não pode ficar vazio.');
+      setSubmitting(false);
+      return;
+    }
+    if (trimmedUsername.includes('@') || trimmedUsername.length > 50) {
+      setError("O nome de usuário não pode conter '@' nem ultrapassar 50 caracteres.");
+      setSubmitting(false);
+      return;
+    }
 
     if (novaSenha && novaSenha !== confirmarSenha) {
       setError('As senhas não coincidem.');
@@ -51,6 +65,7 @@ export function PerfilEditar() {
 
     try {
       const payload = {
+        username: trimmedUsername,
         email,
         email_secundario: emailSecundario,
         bio,
@@ -106,6 +121,22 @@ export function PerfilEditar() {
         </div>
 
         <div className="mb-5 flex flex-col">
+          <label htmlFor="username" className="font-semibold text-[0.9rem] mb-1.5 text-text-primary">
+            👤 Nome de Usuário / Matrícula <small className="text-text-secondary font-normal">(sem @, máx. 50 caracteres)</small>
+          </label>
+          <input 
+            type="text" 
+            id="username" 
+            required
+            maxLength={50}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="ex: aluno.silva" 
+            className="w-full p-2.5 border-[1.5px] border-border-color rounded-lg text-[0.95rem] bg-bg-primary text-text-primary transition-all focus:outline-none focus:border-purple-primary focus:shadow-[0_0_0_3px_rgba(122,27,181,0.15)]"
+          />
+        </div>
+
+        <div className="mb-5 flex flex-col">
           <label htmlFor="email" className="font-semibold text-[0.9rem] mb-1.5 text-text-primary">📧 E-mail</label>
           <input 
             type="email" 
@@ -149,20 +180,22 @@ export function PerfilEditar() {
           </div>
         </div>
 
-        <div className="mb-5 flex flex-col">
-          <label htmlFor="interesses" className="font-semibold text-[0.9rem] mb-1.5 text-text-primary">
-            ✨ Meus Interesses de Tecnologia <small className="text-text-secondary font-normal">(Separados por vírgula)</small>
-          </label>
-          <input 
-            type="text" 
-            id="interesses" 
-            value={interesses}
-            onChange={(e) => setInteresses(e.target.value)}
-            placeholder="Ex: React, Django, UX Design, Data Science" 
-            maxLength={300}
-            className="w-full p-2.5 border-[1.5px] border-border-color rounded-lg text-[0.95rem] bg-bg-primary text-text-primary transition-all focus:outline-none focus:border-purple-primary focus:shadow-[0_0_0_3px_rgba(122,27,181,0.15)]"
-          />
-        </div>
+        {user.role !== 'admin' && (
+          <div className="mb-5 flex flex-col">
+            <label htmlFor="interesses" className="font-semibold text-[0.9rem] mb-1.5 text-text-primary">
+              ✨ Meus Interesses de Tecnologia <small className="text-text-secondary font-normal">(Separados por vírgula)</small>
+            </label>
+            <input 
+              type="text" 
+              id="interesses" 
+              value={interesses}
+              onChange={(e) => setInteresses(e.target.value)}
+              placeholder="Ex: React, Django, UX Design, Data Science" 
+              maxLength={300}
+              className="w-full p-2.5 border-[1.5px] border-border-color rounded-lg text-[0.95rem] bg-bg-primary text-text-primary transition-all focus:outline-none focus:border-purple-primary focus:shadow-[0_0_0_3px_rgba(122,27,181,0.15)]"
+            />
+          </div>
+        )}
 
         <div className="font-title font-bold text-base text-purple-primary border-b-2 border-border-color pb-1.5 mb-5 mt-6">
           Alterar Senha <small className="font-normal text-text-secondary">(deixe em branco para manter)</small>

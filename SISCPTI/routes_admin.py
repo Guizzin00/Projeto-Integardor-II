@@ -127,7 +127,11 @@ def api_notificacoes():
         return jsonify({"status": "error", "message": "Unauthorized"}), 401
     
     username = session['user']
-    notifs = Notification.query.filter_by(user_id=g.uid, lida=False).order_by(Notification.data_criacao.desc()).all()
+    role = session.get('role')
+    notifs = Notification.query.filter(
+        db.or_(Notification.user_id == g.uid, Notification.username == username),
+        Notification.lida == False
+    ).order_by(Notification.data_criacao.desc()).all()
     
     BRT = timedelta(hours=-3)  # Horário de Brasília = UTC-3
     output = []
@@ -140,11 +144,17 @@ def api_notificacoes():
             # Converte de UTC para horário de Brasília (UTC-3)
             data_val = data_val + BRT
         data_str = data_val.strftime('%d/%m %H:%M') if data_val else ''
+        link_notif = n.link
+        if role == 'admin':
+            if link_notif == '/perfil':
+                link_notif = '/admin?tab=candidaturas'
+            elif link_notif == '/admin' and 'solicitação de conta' in (n.mensagem or '').lower():
+                link_notif = '/admin?tab=aprovacoes'
         output.append({
             "id": n.id,
             "mensagem": n.mensagem,
             "data": data_str,
-            "link": n.link
+            "link": link_notif
         })
     return jsonify({"status": "success", "data": output})
 
@@ -153,9 +163,9 @@ def api_ler_notificacao(notif_id):
     if not session.get('logged_in'):
         return jsonify({"status": "error", "message": "Unauthorized"}), 401
     
-    # Bug 2: HTTP 444 → 404  |  Bug 3: query.get() depreciado → db.session.get()
+    username = session.get('user')
     n = db.session.get(Notification, notif_id)
-    if n and n.user_id == g.uid:
+    if n and (n.user_id == g.uid or n.username == username):
         n.lida = True
         db.session.commit()
         return jsonify({"status": "success"})
@@ -168,8 +178,10 @@ def api_ler_todas_notificacoes():
         return jsonify({"status": "error", "message": "Unauthorized"}), 401
         
     username = session['user']
-    # Bug 4: chave deve ser string, não atributo do modelo
-    Notification.query.filter_by(user_id=g.uid, lida=False).update({"lida": True})
+    Notification.query.filter(
+        db.or_(Notification.user_id == g.uid, Notification.username == username),
+        Notification.lida == False
+    ).update({"lida": True}, synchronize_session=False)
     db.session.commit()
     return jsonify({"status": "success"})
 
@@ -350,6 +362,7 @@ def acao_submissao(sub_id, acao):
 
         if subm.username:
             notif = Notification(
+                user_id=subm.user_id,
                 username=subm.username,
                 mensagem=f"✅ Sua proposta de projeto '{subm.nome_projeto}' foi aprovada e criada com sucesso!",
                 link="/perfil"
@@ -360,6 +373,7 @@ def acao_submissao(sub_id, acao):
         subm.status = 'REJEITADA'
         if subm.username:
             notif = Notification(
+                user_id=subm.user_id,
                 username=subm.username,
                 mensagem=f"❌ Sua proposta de projeto '{subm.nome_projeto}' foi recusada pela administração.",
                 link="/perfil"
@@ -514,24 +528,42 @@ def editar_projeto(projeto_id):
     return jsonify({"status": "success", "projeto": projeto_db.to_dict()})
 
 @app.route('/api/admin/projeto/<int:projeto_id>/excluir', methods=['POST', 'DELETE'])
+@app.route('/api/projeto/<int:projeto_id>/excluir', methods=['POST', 'DELETE'])
 @app.route('/admin/excluir/<int:projeto_id>', methods=['POST', 'DELETE'])
 def excluir_projeto(projeto_id):
-    if session.get('role') != 'admin':
-        return jsonify({"status": "error", "message": "Acesso restrito a administradores."}), 403
+    if not session.get('logged_in'):
+        return jsonify({"status": "error", "message": "Não autenticado."}), 401
 
-    projeto_db = Project.query.get(projeto_id)
+    projeto_db = db.session.get(Project, projeto_id)
     if not projeto_db:
         return jsonify({"status": "error", "message": "Projeto não encontrado."}), 404
 
-    for msg in list(projeto_db.mensagens): db.session.delete(msg)
-    for app_row in list(projeto_db.candidaturas): db.session.delete(app_row)
-    for rating in list(projeto_db.avaliacoes): db.session.delete(rating)
-    Task.query.filter_by(projeto_id=projeto_db.id).delete()
-    Submission.query.filter_by(projeto_id=projeto_db.id).update({'projeto_id': None})
-    db.session.delete(projeto_db)
-    db.session.commit()
+    is_admin = (session.get('role') == 'admin')
+    is_owner = bool(g.uid and projeto_db.owner_id == g.uid)
+    if not (is_admin or is_owner):
+        return jsonify({"status": "error", "message": "Acesso restrito a administradores ou ao responsável pelo projeto."}), 403
 
-    return jsonify({"status": "success", "message": "Projeto excluído com sucesso!"})
+    if not is_admin:
+        equipe_ativa = Application.query.filter_by(projeto_id=projeto_db.id, status='APROVADA').count()
+        if equipe_ativa > 0:
+            return jsonify({"status": "error", "message": "Não é possível excluir um projeto com equipe ativa. Solicite à administração."}), 409
+
+    try:
+        titulo = projeto_db.titulo
+        Message.query.filter_by(projeto_id=projeto_db.id).delete(synchronize_session=False)
+        Application.query.filter_by(projeto_id=projeto_db.id).delete(synchronize_session=False)
+        Rating.query.filter_by(projeto_id=projeto_db.id).delete(synchronize_session=False)
+        Task.query.filter_by(projeto_id=projeto_db.id).delete(synchronize_session=False)
+        Submission.query.filter_by(projeto_id=projeto_db.id).update({'projeto_id': None}, synchronize_session=False)
+        db.session.expire(projeto_db)
+        db.session.delete(projeto_db)
+        db.session.commit()
+        log_atividade(session.get('user', 'Sistema'), f"Excluiu o projeto '{titulo}'")
+        return jsonify({"status": "success", "message": "Projeto excluído com sucesso!"})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erro ao excluir projeto {projeto_id}: {e}")
+        return jsonify({"status": "error", "message": "Não foi possível excluir o projeto."}), 500
 
 # =========================
 # Exportar CSV (única rota)

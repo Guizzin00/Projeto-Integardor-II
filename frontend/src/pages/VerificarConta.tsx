@@ -7,7 +7,25 @@ export function VerificarConta() {
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
   const [message, setMessage] = useState('');
+  const [resendUser, setResendUser] = useState('');
+  const [resending, setResending] = useState(false);
+  const [resendFeedback, setResendFeedback] = useState('');
   const requestedRef = useRef(false);
+
+  const handleResend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resendUser.trim()) return;
+    setResending(true);
+    setResendFeedback('');
+    try {
+      const res = await api.post('/reenviar-verificacao', { user: resendUser.trim() });
+      setResendFeedback(res.data.message || 'Novo link de validação enviado!');
+    } catch (err: any) {
+      setResendFeedback(err.response?.data?.message || 'Não foi possível reenviar o e-mail.');
+    } finally {
+      setResending(false);
+    }
+  };
 
   useEffect(() => {
     const ativarConta = async () => {
@@ -92,6 +110,34 @@ export function VerificarConta() {
             <p className="text-xs text-text-secondary leading-relaxed mb-6">
               {message}
             </p>
+
+            {!success && (
+              <form onSubmit={handleResend} className="mb-5 p-4 rounded-md bg-bg-primary border border-border-color text-left space-y-2.5">
+                <label className="block text-xs font-semibold text-text-primary">
+                  Precisa de um novo link de confirmação?
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={resendUser}
+                  onChange={(e) => setResendUser(e.target.value)}
+                  placeholder="Informe sua matrícula/usuário ou e-mail"
+                  className="w-full px-3 py-2 text-xs bg-bg-surface text-text-primary border border-border-color rounded-md focus:outline-none focus:border-purple-primary"
+                />
+                <button
+                  type="submit"
+                  disabled={resending}
+                  className="w-full py-2 px-3 bg-purple-primary/10 hover:bg-purple-primary/20 text-purple-primary border border-purple-primary/30 text-xs font-semibold rounded-md transition-colors cursor-pointer disabled:opacity-60"
+                >
+                  {resending ? 'Reenviando...' : '📨 Reenviar E-mail de Validação'}
+                </button>
+                {resendFeedback && (
+                  <p className="text-xs text-purple-primary font-medium m-0 pt-1">
+                    {resendFeedback}
+                  </p>
+                )}
+              </form>
+            )}
 
             <Link 
               to="/login"

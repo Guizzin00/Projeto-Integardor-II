@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useUI } from '../components/UIProvider';
 
 export function AdminForm() {
-  const { avisar } = useUI();
+  const { avisar, confirmar } = useUI();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -292,13 +292,36 @@ export function AdminForm() {
           />
         </div>
 
-        <div className="flex gap-2.5 mt-6">
+        <div className="flex flex-wrap gap-2.5 mt-6">
           <button 
             type="submit" disabled={submitting}
             className="flex-1 bg-purple-primary text-text-on-purple border-none rounded-lg p-3 text-base font-bold cursor-pointer transition-colors hover:bg-purple-hover disabled:opacity-70"
           >
             {submitting ? 'Salvando...' : 'Salvar Projeto'}
           </button>
+          {id && user?.role === 'admin' && (
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={async () => {
+                if (!await confirmar('Tem certeza de que deseja excluir este projeto permanentemente?')) return;
+                try {
+                  const res = await api.post(`/admin/projeto/${id}/excluir`);
+                  if (res.data.status === 'success') {
+                    avisar('✅ Projeto excluído com sucesso!');
+                    navigate('/admin');
+                  } else {
+                    setError(res.data.message || 'Erro ao excluir projeto.');
+                  }
+                } catch (err: any) {
+                  setError(err.response?.data?.message || 'Erro ao excluir projeto.');
+                }
+              }}
+              className="px-4 bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 rounded-lg p-3 text-base font-bold cursor-pointer transition-colors hover:bg-rose-500/20 disabled:opacity-70"
+            >
+              🗑️ Excluir
+            </button>
+          )}
           <Link 
             to={user?.role === 'admin' ? '/admin' : (id ? `/projeto/${id}` : '/perfil')} 
             className="flex-1 bg-transparent border-[1.5px] border-border-color text-text-primary rounded-lg p-3 text-base font-bold text-center no-underline transition-colors hover:bg-border-color flex items-center justify-center"
