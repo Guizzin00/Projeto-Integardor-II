@@ -36,8 +36,12 @@ def seed():
     senha_padrao = generate_password_hash("1234")
     
     usuarios = [
-        User(username="admin", password=senha_padrao, role="admin", email="admin@ceub.br", bio="Super Administrador do sistema.", ativo=True),
+        User(username="admin", password=senha_padrao, role="admin", email="admin@ceub.br", bio="Super Administrador do sistema SisCPTI.", ativo=True),
         User(username="coord1", password=senha_padrao, role="coordenador", email="coord1@ceub.br", bio="Coordenador de Projetos de TI do UniCEUB.", ativo=True),
+        User(username="guilherme.oliveira", password=senha_padrao, role="admin", email="guilherme.oliveira@ceub.br", bio="Coautor e Desenvolvedor Full Stack do SisCPTI.", interesses="React, TypeScript, Python, Flask, PostgreSQL", ativo=True),
+        User(username="guilherme.gouveia", password=senha_padrao, role="lider", email="guilherme.gouveia@ceub.br", bio="Coautor e Scrum Master do SisCPTI.", interesses="Scrum, Gestão Ágil, Python, React", ativo=True),
+        User(username="arthur.grangeiro", password=senha_padrao, role="lider", email="arthur.grangeiro@ceub.br", bio="Coautor e Product Owner do SisCPTI.", interesses="Product Management, Requisitos, Qualidade de Software", ativo=True),
+        User(username="davi.souza", password=senha_padrao, role="aluno", email="davi.souza@ceub.br", bio="Coautor e Desenvolvedor do SisCPTI.", interesses="Frontend, UI/UX, Tailwind CSS, React", ativo=True),
         User(username="prof.ana", password=senha_padrao, role="professor", email="ana.silva@ceub.br", bio="Professora Orientadora especialista em Engenharia de Software e Desenvolvimento Web.", ativo=True),
         User(username="prof.carlos", password=senha_padrao, role="professor", email="carlos.souza@ceub.br", bio="Professor Orientador especialista em IA, Ciência de Dados e Redes.", ativo=True),
         User(username="aluno.lucas", password=senha_padrao, role="aluno", email="lucas.silva@aluno.ceub.br", bio="Estudante de Ciência da Computação, focado em frontend e mobile.", interesses="React, Flutter, UI/UX", ativo=True),
@@ -46,7 +50,7 @@ def seed():
         User(username="lider.bruno", password=senha_padrao, role="lider", email="bruno.lima@aluno.ceub.br", bio="Estudante e Scrum Master da equipe.", interesses="Metodologias Ágeis, Django", ativo=True),
         User(username="empresa.tech", password=senha_padrao, role="empresa", email="contato@techsolutions.com.br", bio="Empresa parceira com foco em soluções de nuvem.", ativo=True),
         User(username="cliente.maria", password=senha_padrao, role="cliente", email="maria.po@cliente.com.br", bio="Product Owner de projeto parceiro.", ativo=True),
-        User(username="user.inativo", password=senha_padrao, role="aluno", email="inativo@aluno.ceub.br", bio="Usuário aguardando ativação.", interesses="HTML, CSS", ativo=False)
+        User(username="user.inativo", password=senha_padrao, role="aluno", email="inativo@aluno.ceub.br", bio="Usuário aguardando ativação.", interesses="HTML, CSS", ativo=False, status_aprovacao="PENDENTE", email_verificado=False)
     ]
     
     for u in usuarios:
@@ -75,7 +79,7 @@ def seed():
         descricao_curta="Plataforma para conectar alunos do UniCEUB a oportunidades de estágio e monitoria.",
         detalhes=json.dumps(detalhes_padrao),
         links=json.dumps({"github": "https://github.com/ceub/portal-vagas", "trello": "https://trello.com/b/vagas-ceub"}),
-        owner_username="lider.bruno",
+        owner_username="guilherme.oliveira",
         tags="Flask, Python, React, PostgreSQL"
     )
     
@@ -125,7 +129,7 @@ def seed():
             {"titulo": "Escopo", "conteudo": "Análise preditiva utilizando técnicas de aprendizado de máquina supervisionado."}
         ]),
         links=json.dumps({}),
-        owner_username="aluno.rodrigo",
+        owner_username="guilherme.gouveia",
         tags="Python, NLTK, Scikit-Learn, Pandas"
     )
     
