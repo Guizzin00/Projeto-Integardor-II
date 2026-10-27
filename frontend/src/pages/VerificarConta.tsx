@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 
@@ -7,11 +7,14 @@ export function VerificarConta() {
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
   const [message, setMessage] = useState('');
+  const requestedRef = useRef(false);
 
   useEffect(() => {
     const ativarConta = async () => {
+      if (requestedRef.current) return;
+      requestedRef.current = true;
       try {
-        const res = await api.get(`/verificar-conta/${token}`);
+        const res = await api.post(`/verificar-conta/${token}`);
         if (res.data.status === 'success') {
           setSuccess(true);
           setMessage(res.data.message || 'Sua conta foi ativada com sucesso!');

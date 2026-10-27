@@ -49,9 +49,9 @@ def bloquear_origem_cruzada():
     origem = (request.headers.get('Origin') or '').rstrip('/')
     if not origem:
         return None  # clientes não-navegador (sem Origin) não enviam cookies de terceiros
-    if origem in ALLOWED_ORIGINS or origem == request.host_url.rstrip('/'):
+    if origem in ALLOWED_ORIGINS or origem in (request.host_url.rstrip('/'), f"https://{request.host}", f"http://{request.host}"):
         return None
-    return jsonify({"status": "error", "error": "Origem não autorizada."}), 403
+    return jsonify({"status": "error", "message": "Origem não autorizada."}), 403
 
 
 db_url = os.environ.get('DATABASE_URL', 'sqlite:///siscpti.db')

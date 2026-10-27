@@ -192,7 +192,7 @@ def email_template_ativacao(username: str, link: str, base_url: str = None) -> s
           Centro Universitário de Brasília – UniCEUB
         </p>
         <p style="margin:0 0 10px;font-size:12px;color:#64748b;line-height:1.6;">
-          SEPN 707/907 - Campus Universitário Darcy Ribeiro, Asa Norte, Brasília - DF, CEP 70790-075<br/>
+          SEPN 707/907 - Campus Asa Norte, Brasília - DF, CEP 70790-075<br/>
           Pró-Reitoria de Graduação · Coordenação de Cursos de Tecnologia da Informação
         </p>
         <p style="margin:0;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px;">
@@ -357,7 +357,7 @@ def email_template_recuperacao(username: str, link: str, base_url: str = None) -
           Centro Universitário de Brasília – UniCEUB
         </p>
         <p style="margin:0 0 10px;font-size:12px;color:#64748b;line-height:1.6;">
-          SEPN 707/907 - Campus Universitário Darcy Ribeiro, Asa Norte, Brasília - DF, CEP 70790-075<br/>
+          SEPN 707/907 - Campus Asa Norte, Brasília - DF, CEP 70790-075<br/>
           Pró-Reitoria de Graduação · Coordenação de Cursos de Tecnologia da Informação
         </p>
         <p style="margin:0;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px;">
@@ -511,7 +511,7 @@ def email_template_espera_aprovacao(username: str, role: str, email: str, base_u
           Centro Universitário de Brasília – UniCEUB
         </p>
         <p style="margin:0 0 10px;font-size:12px;color:#64748b;line-height:1.6;">
-          SEPN 707/907 - Campus Universitário Darcy Ribeiro, Asa Norte, Brasília - DF, CEP 70790-075<br/>
+          SEPN 707/907 - Campus Asa Norte, Brasília - DF, CEP 70790-075<br/>
           Pró-Reitoria de Graduação · Coordenação de Cursos de Tecnologia da Informação
         </p>
         <p style="margin:0;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px;">
@@ -637,7 +637,7 @@ def email_template_conta_aprovada(username: str, role: str, login_url: str = Non
           Centro Universitário de Brasília – UniCEUB
         </p>
         <p style="margin:0 0 10px;font-size:12px;color:#64748b;line-height:1.6;">
-          SEPN 707/907 - Campus Universitário Darcy Ribeiro, Asa Norte, Brasília - DF, CEP 70790-075<br/>
+          SEPN 707/907 - Campus Asa Norte, Brasília - DF, CEP 70790-075<br/>
           Pró-Reitoria de Graduação · Coordenação de Cursos de Tecnologia da Informação
         </p>
         <p style="margin:0;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px;">
@@ -740,7 +740,7 @@ def email_template_conta_recusada(username: str, role: str, motivo: str = None) 
           Centro Universitário de Brasília – UniCEUB
         </p>
         <p style="margin:0 0 10px;font-size:12px;color:#64748b;line-height:1.6;">
-          SEPN 707/907 - Campus Universitário Darcy Ribeiro, Asa Norte, Brasília - DF, CEP 70790-075<br/>
+          SEPN 707/907 - Campus Asa Norte, Brasília - DF, CEP 70790-075<br/>
           Pró-Reitoria de Graduação · Coordenação de Cursos de Tecnologia da Informação
         </p>
         <p style="margin:0;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px;">

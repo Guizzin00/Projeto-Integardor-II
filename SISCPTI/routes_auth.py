@@ -198,7 +198,7 @@ def api_cadastro():
             "message": "Conta criada com sucesso! Verifique seu e-mail para ativar."
         })
 
-@app.route('/api/verificar-conta/<token>', methods=['POST'])
+@app.route('/api/verificar-conta/<token>', methods=['POST', 'GET'])
 def api_verificar_conta(token):
     try:
         verification = AccountVerification.query.filter_by(token=token).first()
