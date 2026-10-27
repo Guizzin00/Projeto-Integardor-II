@@ -336,7 +336,7 @@ def workspace(projeto_id):
     if not acesso_projeto(projeto_db)['pode_ver']:
         return jsonify({"status": "error", "message": "Acesso negado. Você não é membro aprovado deste projeto."}), 403
 
-    membros = [c.username for c in Application.query.filter_by(projeto_id=projeto_id, status='APROVADA').all()]
+    membros = [c.username for c in Application.query.filter(Application.projeto_id == projeto_id, Application.status.in_(['APROVADA', 'APROVADO'])).all()]
     mensagens = Message.query.filter_by(projeto_id=projeto_id).order_by(Message.data_envio.asc()).all()
     return jsonify({
         "status": "success",
@@ -392,7 +392,7 @@ def enviar_mensagem_ajax(projeto_id):
     if not acesso_projeto(projeto_db)['pode_ver']:
         return jsonify({"status": "error", "message": "Acesso negado"}), 403
 
-    membros = [c.username for c in Application.query.filter_by(projeto_id=projeto_id, status='APROVADA').all()]
+    membros = [c.username for c in Application.query.filter(Application.projeto_id == projeto_id, Application.status.in_(['APROVADA', 'APROVADO'])).all()]
     data = request.get_json(silent=True) or request.form
     texto = data.get('texto')
     arquivo_path = None
@@ -808,7 +808,7 @@ def acesso_projeto(projeto):
     is_owner = bool(uid and projeto.owner_id == uid) or is_orientador
     is_admin = (role == 'admin')
     is_coord = (role == 'coordenador')
-    is_member = bool(uid) and Application.query.filter_by(projeto_id=projeto.id, user_id=uid, status='APROVADA').first() is not None
+    is_member = bool(uid) and Application.query.filter(Application.projeto_id == projeto.id, Application.user_id == uid, Application.status.in_(['APROVADA', 'APROVADO'])).first() is not None
     return {
         'is_owner': is_owner,
         'is_admin': is_admin,

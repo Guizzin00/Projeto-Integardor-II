@@ -118,6 +118,10 @@ export function ProjetoDetalhes() {
   const podeExcluir = !!user && (user.role === 'admin' || projeto.owner_username === user.username);
   const isAlunoCandidato = !!user && ['aluno', 'lider', 'user'].includes(user.role);
 
+  const totalIntegrantes = projeto?.total_integrantes ?? (
+    (projeto?.candidaturas_aprovadas || 0) + (projeto?.owner_username ? 1 : 0) || 1
+  );
+
   const handleExcluirProjeto = async () => {
     if (!await confirmar(`Tem certeza de que deseja excluir o projeto "${projeto.titulo}"? Esta ação apagará tarefas, mensagens e candidaturas vinculadas.`)) return;
 
@@ -183,7 +187,7 @@ export function ProjetoDetalhes() {
                 ⭐ Média: <strong>{mediaNota > 0 ? mediaNota.toFixed(1) : '—'}</strong> / 5.0
               </div>
               <div className="bg-bg-surface border border-border-color rounded-full px-4 py-1.5 text-[0.85rem] text-text-secondary font-medium shadow-sm">
-                👥 {projeto.candidaturas_aprovadas || 0} no time
+                👥 {totalIntegrantes} {totalIntegrantes === 1 ? 'integrante no time' : 'integrantes no time'}
               </div>
             </div>
 
@@ -361,6 +365,16 @@ export function ProjetoDetalhes() {
               <div className="flex justify-between items-start gap-2 py-2.5 border-b border-border-color text-[0.88rem] flex-wrap">
                 <span className="text-text-secondary">👨‍🏫 Professor</span>
                 <strong>{projeto.professor || '—'}</strong>
+              </div>
+              {projeto.owner_username && (
+                <div className="flex justify-between items-start gap-2 py-2.5 border-b border-border-color text-[0.88rem] flex-wrap">
+                  <span className="text-text-secondary">👤 Líder / Autor</span>
+                  <strong>{projeto.owner_username}</strong>
+                </div>
+              )}
+              <div className="flex justify-between items-start gap-2 py-2.5 border-b border-border-color text-[0.88rem] flex-wrap">
+                <span className="text-text-secondary">👥 Integrantes</span>
+                <strong>{totalIntegrantes} {totalIntegrantes === 1 ? 'no time' : 'no time'}</strong>
               </div>
               {projeto.tags && (
                 <div className="py-2.5 text-[0.88rem]">

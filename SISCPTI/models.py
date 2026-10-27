@@ -85,12 +85,43 @@ class Project(db.Model):
             except Exception:
                 links_val = {}
 
+        # Contagem de membros e candidaturas aprovadas
         cands_aprovadas = 0
+        membros_set = set()
+        if self.owner_username and self.owner_username.strip():
+            membros_set.add(self.owner_username.strip().lower())
+
         try:
-            if hasattr(self, 'candidaturas') and self.candidaturas:
-                cands_aprovadas = len([c for c in self.candidaturas if c.status == 'APROVADA'])
+            from models import Application
+            cand_list = []
+            if hasattr(self, 'candidaturas') and self.candidaturas is not None:
+                cand_list = self.candidaturas
+            elif self.id:
+                cand_list = Application.query.filter_by(projeto_id=self.id).all()
+
+            for c in cand_list:
+                st = (c.status or '').strip().upper()
+                if st in ('APROVADA', 'APROVADO'):
+                    cands_aprovadas += 1
+                    if c.username and c.username.strip():
+                        membros_set.add(c.username.strip().lower())
         except Exception:
-            cands_aprovadas = 0
+            try:
+                from models import Application
+                if self.id:
+                    cands_aprovadas = Application.query.filter(
+                        Application.projeto_id == self.id,
+                        db.or_(Application.status == 'APROVADA', Application.status == 'APROVADO')
+                    ).count()
+            except Exception:
+                cands_aprovadas = 0
+
+        # Total de integrantes da equipe (líder do projeto + estudantes com candidatura aprovada)
+        total_integrantes = len(membros_set)
+        if total_integrantes == 0:
+            total_integrantes = (1 if self.owner_username else 0) + cands_aprovadas
+        if total_integrantes == 0 and (self.owner_username or self.id):
+            total_integrantes = 1
 
         orientador_info = None
         try:
@@ -113,7 +144,8 @@ class Project(db.Model):
             "tags": self.tags or "",
             "professor_id": self.professor_id,
             "orientador": orientador_info,
-            "candidaturas_aprovadas": cands_aprovadas
+            "candidaturas_aprovadas": cands_aprovadas,
+            "total_integrantes": total_integrantes
         }
 
 class Submission(db.Model):

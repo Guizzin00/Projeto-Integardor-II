@@ -271,9 +271,12 @@ def seed():
     # 7. Criando Candidaturas (Applications)
     print("Criando candidaturas...")
     apps = [
-        Application(projeto_id=1, username="aluno.rodrigo", motivo="Gostaria muito de trabalhar no desenvolvimento do portal pois tenho interesse em Flask.", experiencia="Já desenvolvi pequenos projetos web usando Flask e SQLite.", status="APROVADO"),
-        Application(projeto_id=2, username="aluno.julia", motivo="Tenho interesse em aprender Flutter e mobile development.", experiencia="Tenho conhecimento em Java e POO.", status="PENDENTE"),
-        Application(projeto_id=4, username="aluno.lucas", motivo="Quero aprofundar meus conhecimentos em IA e Machine Learning.", experiencia="Concluí disciplinas de IA e análise estatística.", status="PENDENTE")
+        Application(projeto_id=1, username="aluno.rodrigo", motivo="Gostaria muito de trabalhar no desenvolvimento do portal pois tenho interesse em Flask.", experiencia="Já desenvolvi pequenos projetos web usando Flask e SQLite.", status="APROVADA"),
+        Application(projeto_id=1, username="aluno.julia", motivo="Interesse em modelagem de dados e arquitetura backend em Python.", experiencia="Conhecimento prévio em SQL e Python.", status="APROVADA"),
+        Application(projeto_id=1, username="aluno.lucas", motivo="Interesse em desenvolvimento frontend e interfaces responsivas.", experiencia="Experiência em React e CSS.", status="APROVADA"),
+        Application(projeto_id=2, username="aluno.julia", motivo="Tenho interesse em aprender Flutter e mobile development.", experiencia="Tenho conhecimento em Java e POO.", status="APROVADA"),
+        Application(projeto_id=3, username="aluno.lucas", motivo="Gostaria de colaborar com a gestão de relatórios e TCC.", experiencia="Conhecimento em Django e documentação acadêmica.", status="APROVADA"),
+        Application(projeto_id=4, username="aluno.lucas", motivo="Quero aprofundar meus conhecimentos em IA e Machine Learning.", experiencia="Concluí disciplinas de IA e análise estatística.", status="APROVADA")
     ]
     db.session.add_all(apps)
     db.session.commit()

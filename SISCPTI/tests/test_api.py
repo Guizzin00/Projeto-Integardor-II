@@ -337,3 +337,14 @@ def test_bloqueia_mesma_senha_e_renomeia_perfil(app_ctx):
     db.session.commit()
     r3 = flask_app.test_client().post('/api/redefinir-senha/tok-same', json={'password': SENHA, 'confirm': SENHA})
     assert r3.status_code == 400 and 'anterior' in r3.get_json()['message']
+
+
+# ---------- Contagem de integrantes do time (Líder + Membros)
+def test_contagem_integrantes_time(cenario):
+    # cenario tem owner_username='dono' e 'membro' com candidatura aprovada
+    c = flask_app.test_client()
+    r = c.get(f'/api/projeto/{cenario.id}')
+    assert r.status_code == 200
+    dados = r.get_json()['projeto']
+    assert dados['total_integrantes'] == 2  # 1 líder + 1 membro aprovado
+    assert dados['candidaturas_aprovadas'] == 1
