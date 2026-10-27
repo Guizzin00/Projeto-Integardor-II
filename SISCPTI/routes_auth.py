@@ -36,10 +36,9 @@ def api_login():
         if limite_excedido('login_ip', ip, 20, 600) or limite_excedido('login_user', identificador.lower(), 5, 900):
             return jsonify({"status": "error", "message": "Muitas tentativas de login. Aguarde alguns minutos e tente novamente."}), 429
 
-        # Entrada flexível por Nome de Usuário, Matrícula ou E-mail (principal ou secundário)
+        # Entrada exclusivamente por Matrícula ou E-mail (principal ou secundário)
         usuario = User.query.filter(
             db.or_(
-                db.func.lower(User.username) == identificador.lower(),
                 db.func.lower(User.matricula) == identificador.lower(),
                 db.func.lower(User.email) == identificador.lower(),
                 db.func.lower(User.email_secundario) == identificador.lower()
@@ -265,7 +264,7 @@ def api_reenviar_verificacao():
     data = request.get_json(silent=True) or {}
     identificador = str(data.get('user') or data.get('email') or '').strip()
     if not identificador:
-        return jsonify({"status": "error", "message": "Informe sua matrícula/usuário ou e-mail cadastrado."}), 400
+        return jsonify({"status": "error", "message": "Informe sua matrícula ou e-mail cadastrado."}), 400
 
     ip = ip_do_cliente()
     if limite_excedido('reenviar_verif_ip', ip, 5, 900) or limite_excedido('reenviar_verif_user', identificador.lower(), 3, 900):
@@ -273,14 +272,13 @@ def api_reenviar_verificacao():
     registrar_tentativa('reenviar_verif_ip', ip)
     registrar_tentativa('reenviar_verif_user', identificador.lower())
 
-    usuario = User.query.filter(db.func.lower(User.username) == identificador.lower()).first()
-    if not usuario and '@' in identificador:
-        usuario = User.query.filter(
-            db.or_(
-                db.func.lower(User.email) == identificador.lower(),
-                db.func.lower(User.email_secundario) == identificador.lower()
-            )
-        ).first()
+    usuario = User.query.filter(
+        db.or_(
+            db.func.lower(User.matricula) == identificador.lower(),
+            db.func.lower(User.email) == identificador.lower(),
+            db.func.lower(User.email_secundario) == identificador.lower()
+        )
+    ).first()
 
     if not usuario:
         return jsonify({"status": "error", "message": "Nenhuma conta localizada para os dados informados."}), 404

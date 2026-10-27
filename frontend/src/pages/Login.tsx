@@ -52,7 +52,7 @@ export function Login() {
         login(loggedUser);
         navigate(origem && origem.startsWith('/') && origem !== '/login' ? origem : getDashboardRoute(loggedUser.role), { replace: true });
       } else {
-        setError(response.data.message || 'Credenciais inválidas. Verifique matrícula/e-mail e senha.');
+        setError(response.data.message || 'Credenciais inválidas. Verifique matrícula ou e-mail e senha.');
         if (response.data.needs_verification) setNeedsVerification(true);
       }
     } catch (err: any) {
@@ -68,7 +68,7 @@ export function Login() {
 
   const handleResendVerification = async () => {
     if (!username.trim()) {
-      setError('Informe seu usuário, matrícula ou e-mail para reenviar o link de validação.');
+      setError('Informe sua matrícula ou e-mail para reenviar o link de validação.');
       return;
     }
     setResending(true);
@@ -175,7 +175,7 @@ export function Login() {
               htmlFor="username" 
               className="block text-xs font-semibold uppercase tracking-wider text-text-secondary mb-1.5"
             >
-              Usuário, Matrícula ou E-mail
+              Matrícula ou E-mail
             </label>
             <div className="relative flex items-center">
               <span className="absolute left-3 text-text-secondary pointer-events-none">
@@ -190,7 +190,7 @@ export function Login() {
                 autoComplete="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Nome de usuário, matrícula ou e-mail"
+                placeholder="Matrícula ou e-mail cadastrado"
                 className="w-full pl-9 pr-3 py-2 text-sm bg-bg-surface text-text-primary border border-border-color rounded-md placeholder:text-text-secondary/60 focus:outline-none focus:border-purple-primary focus:ring-1 focus:ring-purple-primary transition-colors"
               />
             </div>

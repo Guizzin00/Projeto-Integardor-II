@@ -194,7 +194,7 @@ def test_admin_usuarios(cenario):
 # ---------- #44: confirmação de e-mail
 def test_professor_precisa_confirmar_email(app_ctx):
     c = flask_app.test_client()
-    r = c.post('/api/cadastro', json={'username': 'novo.prof', 'email': 'p@x.com', 'password': SENHA,
+    r = c.post('/api/cadastro', json={'username': 'novo.prof', 'matricula': 'PROF001', 'email': 'p@x.com', 'password': SENHA,
                                       'confirm': SENHA, 'role': 'professor'})
     assert r.status_code == 200
     from models import AccountVerification
@@ -203,9 +203,13 @@ def test_professor_precisa_confirmar_email(app_ctx):
     uid = User.query.filter_by(username='novo.prof').first().id
     logar('adm2').post(f'/api/admin/aprovacoes/{uid}/aprovar')
     # aprovado, mas sem e-mail confirmado: continua inativo
-    assert c.post('/api/login', json={'user': 'novo.prof', 'password': SENHA}).status_code == 403
+    assert c.post('/api/login', json={'user': 'p@x.com', 'password': SENHA}).status_code == 403
+    assert c.post('/api/login', json={'user': 'PROF001', 'password': SENHA}).status_code == 403
     assert c.post(f'/api/verificar-conta/{token}').status_code == 200
-    assert c.post('/api/login', json={'user': 'novo.prof', 'password': SENHA}).status_code == 200
+    # com confirmação, login funciona com email e matrícula, mas NÃO com nome de usuário
+    assert c.post('/api/login', json={'user': 'p@x.com', 'password': SENHA}).status_code == 200
+    assert c.post('/api/login', json={'user': 'PROF001', 'password': SENHA}).status_code == 200
+    assert c.post('/api/login', json={'user': 'novo.prof', 'password': SENHA}).status_code == 401
 
 
 # ---------- #45: limite de tentativas
@@ -301,12 +305,17 @@ def test_migracao_preenche_ids(app_ctx):
     assert db.session.execute(text("SELECT user_id FROM notification")).scalar() == User.query.filter_by(username='ana').first().id
 
 
-# ---------- Login: matrícula (username) ou e-mail cadastrado
+# ---------- Login: matrícula ou e-mail cadastrado (nome de usuário bloqueado)
 def test_login_por_matricula_ou_email(app_ctx):
-    criar_usuario('2024001', 'aluno')
+    criar_usuario('aluno_user', 'aluno', matricula='2024001', email='2024001@ceub.br')
     c = flask_app.test_client()
+    # Login por matrícula funciona
     assert c.post('/api/login', json={'user': '2024001', 'password': SENHA}).status_code == 200
+    # Login por e-mail funciona (inclusive case-insensitive)
     assert c.post('/api/login', json={'user': '2024001@CEUB.br', 'password': SENHA}).status_code == 200
+    # Login por nome de usuário NÃO deve funcionar
+    assert c.post('/api/login', json={'user': 'aluno_user', 'password': SENHA}).status_code == 401
+    # Outro e-mail ou senha incorreta falha
     assert c.post('/api/login', json={'user': 'outro@ceub.br', 'password': SENHA}).status_code == 401
     assert c.post('/api/login', json={'user': '2024001', 'password': 'errada1'}).status_code == 401
 
