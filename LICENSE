@@ -1,21 +1,59 @@
-MIT License
+LICENÇA PROPRIETÁRIA - TODOS OS DIREITOS RESERVADOS
 
-Copyright (c) 2026 Guilherme Gouveia Dalla Mutta 
+SisCPTI - Sistema de Gestão do Caderno de Projetos de TI
+Copyright (c) 2026 Equipe SisCPTI
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Autores (coautores, em ordem alfabética):
+  - Arthur Grangeiro
+  - Davi Souza
+  - Guilherme Gouveia
+  - Guilherme Oliveira Ribeiro Soares
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. TITULARIDADE
+Este software, incluindo código-fonte, código compilado, banco de dados,
+documentação, interface, design, identidade visual e demais materiais
+associados (o "Software"), é obra criada em coautoria pelos autores acima,
+que detêm todos os direitos morais e patrimoniais sobre ele.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. ORIGEM ACADÊMICA
+O Software foi desenvolvido como Projeto Integrador II do curso de
+Análise e Desenvolvimento de Sistemas do Centro Universitário de Brasília
+(CEUB), no ano de 2026. O desenvolvimento em contexto acadêmico não
+implica cessão ou transferência de direitos a terceiros.
+
+3. PROIBIÇÕES
+Sem autorização prévia, expressa e por escrito de TODOS os autores, é
+proibido, total ou parcialmente:
+  a) copiar, reproduzir ou duplicar o Software;
+  b) modificar, adaptar, traduzir ou criar obras derivadas;
+  c) distribuir, publicar, sublicenciar, vender, alugar ou ceder;
+  d) utilizar para fins comerciais ou não comerciais;
+  e) apresentar o Software, ou partes dele, como trabalho próprio
+     em qualquer atividade acadêmica ou profissional;
+  f) remover ou alterar avisos de autoria e de copyright.
+
+4. ACESSO PARA AVALIAÇÃO ACADÊMICA
+O acesso concedido a professores, coordenadores e avaliadores do CEUB
+destina-se exclusivamente à avaliação acadêmica do Projeto Integrador,
+não constituindo licença de uso, cópia ou exploração.
+
+5. COMPONENTES DE TERCEIROS
+Bibliotecas e componentes de terceiros utilizados no Software
+(ex.: Python, Flask, PostgreSQL, Socket.IO) permanecem sob suas
+respectivas licenças originais. Esta licença aplica-se exclusivamente
+ao código e aos materiais criados pelos autores.
+
+6. FUNDAMENTO LEGAL
+Esta obra é protegida pela Lei nº 9.609/1998 (Lei do Software) e pela
+Lei nº 9.610/1998 (Lei de Direitos Autorais). No âmbito do CEUB, a
+utilização indevida de trabalhos de terceiros e o plágio constituem
+infração disciplinar, nos termos do Art. 95, inciso IV, alínea "a",
+do Regimento Geral do CEUB (maio de 2026).
+
+7. AUSÊNCIA DE GARANTIA
+O Software é fornecido "no estado em que se encontra", sem garantias
+de qualquer tipo. Os autores não se responsabilizam por danos
+decorrentes do seu uso.
+
+8. CONTATO
+Pedidos de autorização devem ser dirigidos a todos os autores.

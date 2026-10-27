@@ -1,3 +1,8 @@
+/*!
+ * SisCPTI - Copyright (c) 2026 Equipe SisCPTI (CEUB).
+ * Todos os direitos reservados. Ver LICENSE.
+ */
+
 /** Política de senha (espelha o backend): mínimo de 8 caracteres, com letras e números. */
 export const DICA_SENHA = 'Use no mínimo 8 caracteres, com letras e números.';
 

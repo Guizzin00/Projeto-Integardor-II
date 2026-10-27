@@ -1,3 +1,8 @@
+/*!
+ * SisCPTI - Copyright (c) 2026 Equipe SisCPTI (CEUB).
+ * Todos os direitos reservados. Ver LICENSE.
+ */
+
 import { useEffect, useRef } from 'react';
 import { useModalA11y } from './UIProvider';
 

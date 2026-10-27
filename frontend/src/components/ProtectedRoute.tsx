@@ -1,3 +1,8 @@
+/*!
+ * SisCPTI - Copyright (c) 2026 Equipe SisCPTI (CEUB).
+ * Todos os direitos reservados. Ver LICENSE.
+ */
+
 import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';

@@ -1,3 +1,8 @@
+/*!
+ * SisCPTI - Copyright (c) 2026 Equipe SisCPTI (CEUB).
+ * Todos os direitos reservados. Ver LICENSE.
+ */
+
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';

@@ -1,3 +1,6 @@
+-- SisCPTI - Copyright (c) 2026 Equipe SisCPTI (CEUB).
+-- Todos os direitos reservados. Ver LICENSE.
+
 -- ============================================================
 --  SISCPTI — SCHEMA COMPLETO E CORRIGIDO PARA SUPABASE (POSTGRESQL)
 --  Cole todo este script de uma vez no "SQL Editor" do Supabase

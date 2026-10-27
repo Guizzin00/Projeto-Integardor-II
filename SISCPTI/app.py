@@ -1,7 +1,26 @@
+# -------------------------------------------------------------------
+# SisCPTI - Sistema de Gestão do Caderno de Projetos de TI
+# Copyright (c) 2026 Equipe SisCPTI (CEUB). Todos os direitos reservados.
+# Autores: Arthur Grangeiro, Davi Souza, Guilherme Gouveia,
+#          Guilherme Oliveira Ribeiro Soares
+# Software proprietário. Uso, cópia ou distribuição proibidos sem
+# autorização dos autores. Ver arquivo LICENSE.
+# -------------------------------------------------------------------
+
 from werkzeug.security import generate_password_hash
 import json, os
 from dotenv import load_dotenv
 load_dotenv()
+
+__project__ = "SisCPTI"
+__copyright__ = "Copyright (c) 2026 Equipe SisCPTI (CEUB). Todos os direitos reservados."
+__authors__ = [
+    "Arthur Grangeiro",
+    "Davi Souza",
+    "Guilherme Gouveia",
+    "Guilherme Oliveira Ribeiro Soares",
+]
+__license__ = "Proprietary"
 
 from app_instance import app, db
 from models import User, Project, Submission

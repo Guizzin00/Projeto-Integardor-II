@@ -362,3 +362,22 @@ Este projeto foi construído pelo grupo de acadêmicos da Faculdade de Tecnologi
 ## 📄 Licença
 
 Distribuído sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+
+
+---
+
+## Licença e Autores
+
+© 2026 Equipe SisCPTI. **Todos os direitos reservados.**
+
+Este é um software proprietário desenvolvido como Projeto Integrador II
+do curso de Análise e Desenvolvimento de Sistemas do CEUB.
+
+É **proibida** a cópia, modificação, distribuição ou uso, total ou parcial,
+sem autorização prévia e por escrito de todos os autores.
+O acesso de professores e avaliadores destina-se exclusivamente à avaliação acadêmica.
+
+**Autores:** Arthur Grangeiro, Davi Souza, Guilherme Gouveia e Guilherme Oliveira Ribeiro Soares.
+
+- Termos completos: [`LICENSE`](./LICENSE)
+- Autores: [`AUTHORS.md`](./AUTHORS.md)

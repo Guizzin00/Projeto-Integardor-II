@@ -1,3 +1,8 @@
+/*!
+ * SisCPTI - Copyright (c) 2026 Equipe SisCPTI (CEUB).
+ * Todos os direitos reservados. Ver LICENSE.
+ */
+
 /* =====================
    VARIÁVEIS DE TEMA (MODO CLARO E ESCURO)
 ===================== */
@@ -2566,3 +2571,11 @@ body.workspace-page footer {
   color: var(--text-primary);
 }
 
+
+
+.siscpti-copyright {
+  text-align: center;
+  font-size: 0.8rem;
+  padding: 1rem;
+  opacity: 0.7;
+}

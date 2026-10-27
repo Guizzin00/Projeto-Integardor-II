@@ -1,8 +1,27 @@
+# -------------------------------------------------------------------
+# SisCPTI - Sistema de Gestão do Caderno de Projetos de TI
+# Copyright (c) 2026 Equipe SisCPTI (CEUB). Todos os direitos reservados.
+# Autores: Arthur Grangeiro, Davi Souza, Guilherme Gouveia,
+#          Guilherme Oliveira Ribeiro Soares
+# Software proprietário. Uso, cópia ou distribuição proibidos sem
+# autorização dos autores. Ver arquivo LICENSE.
+# -------------------------------------------------------------------
+
 from flask import Flask, request, jsonify
 import os
 import secrets
 import tempfile
 from models import db
+
+__project__ = "SisCPTI"
+__copyright__ = "Copyright (c) 2026 Equipe SisCPTI (CEUB). Todos os direitos reservados."
+__authors__ = [
+    "Arthur Grangeiro",
+    "Davi Souza",
+    "Guilherme Gouveia",
+    "Guilherme Oliveira Ribeiro Soares",
+]
+__license__ = "Proprietary"
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 

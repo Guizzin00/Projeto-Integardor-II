@@ -1,3 +1,8 @@
+/*!
+ * SisCPTI - Copyright (c) 2026 Equipe SisCPTI (CEUB).
+ * Todos os direitos reservados. Ver LICENSE.
+ */
+
 import type { ListaPaginada } from '../hooks/useListaPaginada';
 
 export function Paginacao({ lista, rotulo }: { lista: Pick<ListaPaginada<unknown>, 'page' | 'pages' | 'total' | 'setPage' | 'loading'>; rotulo: string }) {

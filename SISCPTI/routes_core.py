@@ -1,3 +1,12 @@
+# -------------------------------------------------------------------
+# SisCPTI - Sistema de Gestão do Caderno de Projetos de TI
+# Copyright (c) 2026 Equipe SisCPTI (CEUB). Todos os direitos reservados.
+# Autores: Arthur Grangeiro, Davi Souza, Guilherme Gouveia,
+#          Guilherme Oliveira Ribeiro Soares
+# Software proprietário. Uso, cópia ou distribuição proibidos sem
+# autorização dos autores. Ver arquivo LICENSE.
+# -------------------------------------------------------------------
+
 from flask import jsonify, send_from_directory, abort, session
 import os
 from app_instance import app, base_dir
