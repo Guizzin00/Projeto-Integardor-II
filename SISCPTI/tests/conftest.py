@@ -43,7 +43,8 @@ def app_ctx():
 
 def criar_usuario(username, role='aluno', **extra):
     matricula = extra.pop('matricula', username)
-    u = User(username=username, matricula=matricula, email=f'{username}@ceub.br', password=generate_password_hash(SENHA),
+    email = extra.pop('email', f'{username}@ceub.br')
+    u = User(username=username, matricula=matricula, email=email, password=generate_password_hash(SENHA),
              role=role, ativo=True, **extra)
     db.session.add(u)
     db.session.commit()
