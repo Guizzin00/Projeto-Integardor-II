@@ -10,6 +10,7 @@ import { validarSenha, DICA_SENHA } from '../utils/senha';
 
 export function Register() {
   const [username, setUsername] = useState('');
+  const [matricula, setMatricula] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -43,6 +44,7 @@ export function Register() {
     try {
       const response = await api.post('/cadastro', { 
         username: username.trim(), 
+        matricula: matricula.trim() || undefined,
         email: email.trim(), 
         password, 
         confirm,
@@ -175,7 +177,7 @@ export function Register() {
               htmlFor="username" 
               className="block text-xs font-semibold uppercase tracking-wider text-text-secondary mb-1.5"
             >
-              Matrícula / Usuário
+              Nome de Usuário (Identificador)
             </label>
             <div className="relative flex items-center">
               <span className="absolute left-3 text-text-secondary pointer-events-none">
@@ -189,9 +191,33 @@ export function Register() {
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="ex: aluno.silva ou 12345678 (sem @)"
+                placeholder="ex: guilherme.oliveira (sem @)"
                 pattern="[^@]+"
-                title="Não use @ na matrícula/usuário; seu e-mail também serve para entrar."
+                title="Não use @ no nome de usuário."
+                className="w-full pl-9 pr-3 py-2 text-sm bg-bg-surface text-text-primary border border-border-color rounded-md placeholder:text-text-secondary/60 focus:outline-none focus:border-purple-primary focus:ring-1 focus:ring-purple-primary transition-colors"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label 
+              htmlFor="matricula" 
+              className="block text-xs font-semibold uppercase tracking-wider text-text-secondary mb-1.5"
+            >
+              Matrícula Institucional {role !== 'empresa' ? '(CEUB)' : '(Opcional)'}
+            </label>
+            <div className="relative flex items-center">
+              <span className="absolute left-3 text-text-secondary pointer-events-none">
+                <svg className="w-4 h-4 text-text-secondary" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M2.5 4A1.5 1.5 0 001 5.5V6h18v-.5A1.5 1.5 0 0017.5 4h-15zM19 8.5H1v6A1.5 1.5 0 002.5 16h15a1.5 1.5 0 001.5-1.5v-6zM3 13.25a.75.75 0 01.75-.75h3.5a.75.75 0 010 1.5h-3.5a.75.75 0 01-.75-.75z" clipRule="evenodd" />
+                </svg>
+              </span>
+              <input 
+                id="matricula"
+                type="text"
+                value={matricula}
+                onChange={(e) => setMatricula(e.target.value)}
+                placeholder={role === 'aluno' ? 'ex: 23101234' : 'Número de matrícula (opcional)'}
                 className="w-full pl-9 pr-3 py-2 text-sm bg-bg-surface text-text-primary border border-border-color rounded-md placeholder:text-text-secondary/60 focus:outline-none focus:border-purple-primary focus:ring-1 focus:ring-purple-primary transition-colors"
               />
             </div>

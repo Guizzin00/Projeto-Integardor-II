@@ -29,7 +29,8 @@ DROP TABLE IF EXISTS "user"               CASCADE;
 -- Tabela de Usuários (Autenticação por Matrícula ou E-mail)
 CREATE TABLE "user" (
     id               SERIAL       PRIMARY KEY,
-    username         VARCHAR(50)  NOT NULL UNIQUE,  -- Matrícula acadêmica ou identificador único
+    username         VARCHAR(50)  NOT NULL UNIQUE,  -- Nome de usuário / handle único
+    matricula        VARCHAR(30)  UNIQUE,           -- Matrícula institucional CEUB
     email            VARCHAR(120) NOT NULL UNIQUE,  -- E-mail institucional ou de contato principal
     password         VARCHAR(255) NOT NULL,
     role             VARCHAR(20)  NOT NULL DEFAULT 'aluno', -- 'aluno', 'lider', 'professor', 'coordenador', 'admin', 'empresa', 'cliente'
@@ -167,9 +168,10 @@ CREATE TABLE task (
 -- --------------------------------------------------------
 -- 3. ÍNDICES DE PERFORMANCE E CHAVES ESTRANGEIRAS
 -- --------------------------------------------------------
--- Índices case-insensitive para login ultrarrápido por Matrícula ou E-mail
-CREATE UNIQUE INDEX idx_user_username_lower ON "user" (LOWER(username));
-CREATE UNIQUE INDEX idx_user_email_lower    ON "user" (LOWER(email));
+-- Índices case-insensitive para login ultrarrápido por Nome de Usuário, Matrícula ou E-mail
+CREATE UNIQUE INDEX idx_user_username_lower  ON "user" (LOWER(username));
+CREATE UNIQUE INDEX idx_user_matricula_lower ON "user" (LOWER(matricula)) WHERE matricula IS NOT NULL;
+CREATE UNIQUE INDEX idx_user_email_lower     ON "user" (LOWER(email));
 
 CREATE INDEX idx_project_status         ON project(status);
 CREATE INDEX idx_project_categoria      ON project(categoria);

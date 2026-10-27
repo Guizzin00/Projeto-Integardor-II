@@ -16,6 +16,7 @@ export function PerfilEditar() {
   const navigate = useNavigate();
 
   const [username, setUsername] = useState('');
+  const [matricula, setMatricula] = useState('');
   const [email, setEmail] = useState('');
   const [emailSecundario, setEmailSecundario] = useState('');
   const [bio, setBio] = useState('');
@@ -29,6 +30,7 @@ export function PerfilEditar() {
     // Fill initial values from user context if available
     if (user) {
       setUsername(user.username || '');
+      setMatricula(user.matricula || '');
       setEmail(user.email || '');
       setEmailSecundario(user.email_secundario || '');
       setBio(user.bio || '');
@@ -71,6 +73,7 @@ export function PerfilEditar() {
     try {
       const payload = {
         username: trimmedUsername,
+        matricula: matricula.trim() || '',
         email,
         email_secundario: emailSecundario,
         bio,
@@ -127,7 +130,7 @@ export function PerfilEditar() {
 
         <div className="mb-5 flex flex-col">
           <label htmlFor="username" className="font-semibold text-[0.9rem] mb-1.5 text-text-primary">
-            👤 Nome de Usuário / Matrícula <small className="text-text-secondary font-normal">(sem @, máx. 50 caracteres)</small>
+            👤 Nome de Usuário <small className="text-text-secondary font-normal">(sem @, máx. 50 caracteres)</small>
           </label>
           <input 
             type="text" 
@@ -137,6 +140,21 @@ export function PerfilEditar() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="ex: aluno.silva" 
+            className="w-full p-2.5 border-[1.5px] border-border-color rounded-lg text-[0.95rem] bg-bg-primary text-text-primary transition-all focus:outline-none focus:border-purple-primary focus:shadow-[0_0_0_3px_rgba(122,27,181,0.15)]"
+          />
+        </div>
+
+        <div className="mb-5 flex flex-col">
+          <label htmlFor="matricula" className="font-semibold text-[0.9rem] mb-1.5 text-text-primary">
+            🎓 Matrícula Institucional CEUB <small className="text-text-secondary font-normal">(ex: 23101234)</small>
+          </label>
+          <input 
+            type="text" 
+            id="matricula" 
+            maxLength={30}
+            value={matricula}
+            onChange={(e) => setMatricula(e.target.value)}
+            placeholder="Sua matrícula no CEUB" 
             className="w-full p-2.5 border-[1.5px] border-border-color rounded-lg text-[0.95rem] bg-bg-primary text-text-primary transition-all focus:outline-none focus:border-purple-primary focus:shadow-[0_0_0_3px_rgba(122,27,181,0.15)]"
           />
         </div>

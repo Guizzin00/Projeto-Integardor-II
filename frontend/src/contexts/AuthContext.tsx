@@ -8,6 +8,7 @@ import { api } from '../services/api';
 
 export interface User {
   username: string;
+  matricula?: string;
   email: string;
   role: string;
   email_secundario?: string;

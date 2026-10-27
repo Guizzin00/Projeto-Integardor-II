@@ -17,6 +17,7 @@ export function AdminUserForm() {
   
   const [formData, setFormData] = useState({
     username: '',
+    matricula: '',
     password: '',
     role: 'user'
   });
@@ -32,6 +33,7 @@ export function AdminUserForm() {
         if (res.data.status === 'success' && res.data.user) {
           setFormData({
             username: res.data.user.username || '',
+            matricula: res.data.user.matricula || '',
             password: '',
             role: res.data.user.role || 'user'
           });
@@ -108,6 +110,21 @@ export function AdminUserForm() {
             required 
             placeholder="Ex: professor.jose"
             value={formData.username}
+            onChange={handleChange}
+            className="p-2.5 border-[1.5px] border-border-color rounded-lg text-[0.95rem] bg-bg-primary text-text-primary transition-all focus:border-purple-primary focus:shadow-[0_0_0_3px_rgba(122,27,181,0.15)] focus:outline-none"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label htmlFor="matricula" className="font-semibold text-[0.9rem] text-purple-primary mb-1.5">
+            Matrícula CEUB (Opcional):
+          </label>
+          <input 
+            type="text" 
+            id="matricula" 
+            name="matricula" 
+            placeholder="Ex: 23101234"
+            value={formData.matricula}
             onChange={handleChange}
             className="p-2.5 border-[1.5px] border-border-color rounded-lg text-[0.95rem] bg-bg-primary text-text-primary transition-all focus:border-purple-primary focus:shadow-[0_0_0_3px_rgba(122,27,181,0.15)] focus:outline-none"
           />

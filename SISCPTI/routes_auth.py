@@ -36,15 +36,15 @@ def api_login():
         if limite_excedido('login_ip', ip, 20, 600) or limite_excedido('login_user', identificador.lower(), 5, 900):
             return jsonify({"status": "error", "message": "Muitas tentativas de login. Aguarde alguns minutos e tente novamente."}), 429
 
-        # Entrada flexível por matrícula/usuário ou por e-mail (principal ou secundário)
-        usuario = User.query.filter(db.func.lower(User.username) == identificador.lower()).first()
-        if not usuario:
-            usuario = User.query.filter(
-                db.or_(
-                    db.func.lower(User.email) == identificador.lower(),
-                    db.func.lower(User.email_secundario) == identificador.lower()
-                )
-            ).first()
+        # Entrada flexível por Nome de Usuário, Matrícula ou E-mail (principal ou secundário)
+        usuario = User.query.filter(
+            db.or_(
+                db.func.lower(User.username) == identificador.lower(),
+                db.func.lower(User.matricula) == identificador.lower(),
+                db.func.lower(User.email) == identificador.lower(),
+                db.func.lower(User.email_secundario) == identificador.lower()
+            )
+        ).first()
 
         if usuario and check_password_hash(usuario.password, password):
             # Validação de contas aguardando homologação
@@ -100,12 +100,13 @@ def api_cadastro():
     registrar_tentativa('cadastro_ip', ip)
 
     username = str(data.get('username') or '').strip()
+    matricula = str(data.get('matricula') or '').strip() or None
     email = str(data.get('email') or '').strip()
     password = data.get('password')
     confirm = data.get('confirm')
 
     if not email or not username or not password:
-        return jsonify({"status": "error", "message": "Preencha todos os campos."}), 400
+        return jsonify({"status": "error", "message": "Preencha todos os campos obrigatórios."}), 400
 
     if password != confirm:
         return jsonify({"status": "error", "message": "As senhas não coincidem."}), 400
@@ -115,16 +116,22 @@ def api_cadastro():
         return jsonify({"status": "error", "message": erro_senha}), 400
 
     if len(username) > 50:
-        return jsonify({"status": "error", "message": "A matrícula/usuário deve ter no máximo 50 caracteres."}), 400
+        return jsonify({"status": "error", "message": "O nome de usuário deve ter no máximo 50 caracteres."}), 400
 
     if '@' in username:
-        return jsonify({"status": "error", "message": "A matrícula/usuário não pode conter '@'. Seu e-mail também serve para entrar."}), 400
+        return jsonify({"status": "error", "message": "O nome de usuário não pode conter '@'."}), 400
+
+    if matricula and len(matricula) > 30:
+        return jsonify({"status": "error", "message": "A matrícula deve ter no máximo 30 caracteres."}), 400
 
     if not email_valido(email):
         return jsonify({"status": "error", "message": "Informe um e-mail válido."}), 400
 
     if User.query.filter(db.func.lower(User.username) == username.lower()).first():
-        return jsonify({"status": "error", "message": "Esta matrícula/nome de usuário já está em uso."}), 400
+        return jsonify({"status": "error", "message": "Este nome de usuário já está em uso."}), 400
+
+    if matricula and User.query.filter(db.func.lower(User.matricula) == matricula.lower()).first():
+        return jsonify({"status": "error", "message": "Esta matrícula já está associada a outra conta."}), 400
 
     if User.query.filter(db.func.lower(User.email) == email.lower()).first():
         return jsonify({"status": "error", "message": "Este e-mail já está associado a outra conta."}), 400
@@ -134,6 +141,7 @@ def api_cadastro():
     if eh_primeiro_usuario:
         novo_usuario = User(
             username=username, 
+            matricula=matricula,
             email=email, 
             password=generate_password_hash(password), 
             role='admin', 
@@ -156,6 +164,7 @@ def api_cadastro():
         # Contas de Professor e Empresa passam por validação obrigatória
         novo_usuario = User(
             username=username, 
+            matricula=matricula,
             email=email, 
             password=generate_password_hash(password), 
             role=role, 
@@ -204,6 +213,7 @@ def api_cadastro():
         # Aluno e demais perfis padrão
         novo_usuario = User(
             username=username, 
+            matricula=matricula,
             email=email, 
             password=generate_password_hash(password), 
             role=role, 
@@ -365,11 +375,13 @@ def validar_sessao():
 
 def perfil_payload(user):
     return {
+        "id": user.id,
         "username": user.username,
+        "matricula": getattr(user, 'matricula', None) or "",
         "email": user.email,
         "email_secundario": user.email_secundario or "",
         "role": user.role,
-        "bio": user.bio,
+        "bio": user.bio or "",
         "interesses": user.interesses or ""
     }
 
@@ -409,6 +421,7 @@ def api_perfil_editar():
         return jsonify({"status": "error", "message": "Dados não enviados"}), 400
 
     novo_username = (data.get('username') or '').strip()
+    matricula = (data.get('matricula') or '').strip() or None
     email = (data.get('email') or '').strip()
     email_secundario = (data.get('email_secundario') or '').strip()
     bio = (data.get('bio') or '').strip()
@@ -421,6 +434,12 @@ def api_perfil_editar():
             return jsonify({"status": "error", "message": "O nome de usuário não pode conter '@' nem ultrapassar 50 caracteres."}), 400
         if User.query.filter(db.func.lower(User.username) == novo_username.lower(), User.id != user.id).first():
             return jsonify({"status": "error", "message": "Este nome de usuário já está em uso."}), 400
+
+    if matricula and matricula != getattr(user, 'matricula', None):
+        if len(matricula) > 30:
+            return jsonify({"status": "error", "message": "A matrícula deve ter no máximo 30 caracteres."}), 400
+        if User.query.filter(db.func.lower(User.matricula) == matricula.lower(), User.id != user.id).first():
+            return jsonify({"status": "error", "message": "Esta matrícula já está associada a outra conta."}), 400
 
     if len(interesses) > 300:
         return jsonify({"status": "error", "message": "Os interesses ultrapassam 300 caracteres. Remova alguns itens."}), 400
@@ -450,6 +469,9 @@ def api_perfil_editar():
         _propagar_renomeacao(user.username, novo_username)
         user.username = novo_username
         session['user'] = novo_username
+
+    if 'matricula' in data:
+        user.matricula = matricula
 
     if email: user.email = email
     user.email_secundario = email_secundario or None

@@ -19,6 +19,7 @@ db = SQLAlchemy()
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
+    matricula = db.Column(db.String(30), unique=True, nullable=True)
     password = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='user')
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -36,6 +37,7 @@ class User(db.Model):
         return {
             "id": self.id,
             "username": self.username,
+            "matricula": getattr(self, 'matricula', None) or "",
             "role": self.role,
             "email": self.email,
             "email_secundario": getattr(self, 'email_secundario', None) or "",

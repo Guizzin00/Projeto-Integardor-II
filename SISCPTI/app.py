@@ -48,6 +48,7 @@ def run_db_migrations(force=False):
                     # No PostgreSQL, ALTER TABLE ... ADD COLUMN IF NOT EXISTS é atômico, não bloqueia e leva < 5ms
                     pg_statements = [
                         'ALTER TABLE "user" ALTER COLUMN password TYPE VARCHAR(255)',
+                        'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS matricula VARCHAR(30)',
                         'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS email VARCHAR(120)',
                         'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS email_secundario VARCHAR(120)',
                         'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS bio VARCHAR(300)',
@@ -100,6 +101,8 @@ def run_db_migrations(force=False):
                 else:
                     inspector = sa_inspect(db.engine)
                     user_cols = [c['name'] for c in inspector.get_columns('user')]
+                    if 'matricula' not in user_cols:
+                        conn.execute(text('ALTER TABLE "user" ADD COLUMN matricula VARCHAR(30)'))
                     if 'email' not in user_cols:
                         conn.execute(text('ALTER TABLE "user" ADD COLUMN email VARCHAR(120)'))
                     if 'email_secundario' not in user_cols:

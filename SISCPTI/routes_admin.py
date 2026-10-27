@@ -109,7 +109,7 @@ def api_admin_lista(tipo):
             query = query.filter(cond)
         if filtro and filtro.upper() != 'TODOS':
             query = query.filter(db.func.lower(User.role) == filtro.lower())
-        return _paginar(query, lambda u: {"id": u.id, "username": u.username, "role": u.role, "email": u.email,
+        return _paginar(query, lambda u: {"id": u.id, "username": u.username, "matricula": getattr(u, 'matricula', None) or "", "role": u.role, "email": u.email,
                                           "ativo": u.ativo, "status_aprovacao": getattr(u, 'status_aprovacao', 'APROVADO')})
 
     return jsonify({"status": "error", "message": "Lista inexistente."}), 404
@@ -208,6 +208,7 @@ def api_admin_novo_usuario():
     
     data = request.get_json(silent=True) or request.form
     username = str(data.get('username') or '').strip()
+    matricula = str(data.get('matricula') or '').strip() or None
     password = data.get('password')
     role = str(data.get('role') or 'aluno').strip().lower()
 
@@ -215,7 +216,10 @@ def api_admin_novo_usuario():
         return jsonify({"status": "error", "message": "Username e senha são obrigatórios."}), 400
 
     if '@' in username or len(username) > 50:
-        return jsonify({"status": "error", "message": "O usuário/matrícula não pode conter '@' nem passar de 50 caracteres."}), 400
+        return jsonify({"status": "error", "message": "O nome de usuário não pode conter '@' nem passar de 50 caracteres."}), 400
+
+    if matricula and len(matricula) > 30:
+        return jsonify({"status": "error", "message": "A matrícula não pode passar de 30 caracteres."}), 400
 
     if role not in PAPEIS_VALIDOS:
         return jsonify({"status": "error", "message": "Papel inválido."}), 400
@@ -224,12 +228,15 @@ def api_admin_novo_usuario():
     if erro_senha:
         return jsonify({"status": "error", "message": erro_senha}), 400
 
-    if User.query.filter_by(username=username).first():
+    if User.query.filter(db.func.lower(User.username) == username.lower()).first():
         return jsonify({"status": "error", "message": "Usuário já existe."}), 400
+
+    if matricula and User.query.filter(db.func.lower(User.matricula) == matricula.lower()).first():
+        return jsonify({"status": "error", "message": "Esta matrícula já está associada a outra conta."}), 400
         
     from werkzeug.security import generate_password_hash
     hashed_pw = generate_password_hash(password)
-    novo_u = User(username=username, email=(data.get('email') or f"{username.lower()}@ceub.br"), password=hashed_pw, role=role, ativo=True)
+    novo_u = User(username=username, matricula=matricula, email=(data.get('email') or f"{username.lower()}@ceub.br"), password=hashed_pw, role=role, ativo=True)
     db.session.add(novo_u)
     db.session.commit()
     return jsonify({"status": "success", "message": "Usuário criado com sucesso.", "user": {"id": novo_u.id, "username": novo_u.username, "role": novo_u.role}})
@@ -250,6 +257,7 @@ def api_admin_usuario(user_id):
             "user": {
                 "id": u.id,
                 "username": u.username,
+                "matricula": getattr(u, 'matricula', None) or "",
                 "role": u.role,
                 "email": u.email,
                 "bio": u.bio,
@@ -284,8 +292,16 @@ def api_admin_usuario(user_id):
         if new_username and new_username != u.username:
             if '@' in new_username or len(new_username) > 50:
                 return jsonify({"status": "error", "message": "O usuário/matrícula não pode conter '@' nem passar de 50 caracteres."}), 400
-            if User.query.filter_by(username=new_username).first():
+            if User.query.filter(db.func.lower(User.username) == new_username.lower(), User.id != u.id).first():
                 return jsonify({"status": "error", "message": "Nome de usuário já existe."}), 400
+
+        nova_matricula = None
+        if 'matricula' in data:
+            nova_matricula = str(data.get('matricula') or '').strip() or None
+            if nova_matricula and len(nova_matricula) > 30:
+                return jsonify({"status": "error", "message": "A matrícula não pode passar de 30 caracteres."}), 400
+            if nova_matricula and User.query.filter(db.func.lower(User.matricula) == nova_matricula.lower(), User.id != u.id).first():
+                return jsonify({"status": "error", "message": "Esta matrícula já está associada a outra conta."}), 400
 
         plain_pw = data.get('password')
         if plain_pw:
@@ -307,6 +323,8 @@ def api_admin_usuario(user_id):
             u.password = generate_password_hash(plain_pw)
         if novo_papel:
             u.role = novo_papel
+        if 'matricula' in data:
+            u.matricula = nova_matricula
 
         db.session.commit()
         return jsonify({"status": "success", "message": "Usuário atualizado com sucesso.", "user": {"id": u.id, "username": u.username, "role": u.role}})
