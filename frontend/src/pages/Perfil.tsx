@@ -149,6 +149,14 @@ export function Perfil() {
     });
   }, [minhasSubmissoes, searchSubm]);
 
+  // Contagem de alunos orientandos para o professor
+  const totalOrientandos = useMemo(() => {
+    return meusProjetos.reduce((total, p) => {
+      const aprovados = (p.candidaturas || []).filter((c: any) => c.status === 'APROVADA').length;
+      return total + aprovados;
+    }, 0);
+  }, [meusProjetos]);
+
   if (!user) return null;
 
   const roleLabels: Record<string, string> = {
@@ -172,14 +180,6 @@ export function Perfil() {
     aluno: 'bg-purple-primary/10 text-purple-primary border border-purple-primary/20',
     user: 'bg-purple-primary/10 text-purple-primary border border-purple-primary/20'
   };
-
-  // Contagem de alunos orientandos para o professor
-  const totalOrientandos = useMemo(() => {
-    return meusProjetos.reduce((total, p) => {
-      const aprovados = (p.candidaturas || []).filter((c: any) => c.status === 'APROVADA').length;
-      return total + aprovados;
-    }, 0);
-  }, [meusProjetos]);
 
   if (loading) {
     return (

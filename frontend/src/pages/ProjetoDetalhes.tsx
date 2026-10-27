@@ -3,7 +3,7 @@
  * Todos os direitos reservados. Ver LICENSE.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -14,6 +14,34 @@ interface Avaliacao {
   nota: number;
   comentario: string;
   data: string;
+}
+
+function parseLinks(linksData: any): { nome: string; url: string }[] {
+  if (!linksData) return [];
+  try {
+    if (Array.isArray(linksData)) {
+      return linksData.map((item: any) => {
+        if (!item) return null;
+        if (typeof item === 'string') return { nome: item, url: item };
+        const n = String(item.nome || item.label || item.titulo || 'Link').trim();
+        const u = String(item.url || item.href || '').trim();
+        return u ? { nome: n || u, url: u } : null;
+      }).filter((l): l is { nome: string; url: string } => Boolean(l && l.url));
+    }
+    if (typeof linksData === 'object' && linksData !== null) {
+      return Object.entries(linksData).map(([nome, url]) => {
+        const u = String(url || '').trim();
+        const n = String(nome || '').trim();
+        return u ? { nome: n || u, url: u } : null;
+      }).filter((l): l is { nome: string; url: string } => Boolean(l && l.url));
+    }
+    if (typeof linksData === 'string' && linksData.trim().startsWith('http')) {
+      return [{ nome: 'Link do Projeto', url: linksData.trim() }];
+    }
+  } catch (err) {
+    console.error('Erro ao processar links do projeto:', err);
+  }
+  return [];
 }
 
 export function ProjetoDetalhes() {
@@ -131,25 +159,7 @@ export function ProjetoDetalhes() {
     (projeto?.candidaturas_aprovadas || 0) + (projeto?.owner_username ? 1 : 0) || 1
   );
 
-  const linksArray = useMemo<{ nome: string; url: string }[]>(() => {
-    if (!projeto?.links) return [];
-    if (Array.isArray(projeto.links)) {
-      return projeto.links.map((item: any) => {
-        if (typeof item === 'string') return { nome: item, url: item };
-        return { nome: String(item.nome || item.label || item.titulo || 'Link'), url: String(item.url || item.href || '') };
-      }).filter((l: { nome: string; url: string }) => Boolean(l.url));
-    }
-    if (typeof projeto.links === 'object') {
-      return Object.entries(projeto.links).map(([nome, url]) => ({
-        nome: String(nome || 'Link'),
-        url: String(url || '')
-      })).filter((l: { nome: string; url: string }) => Boolean(l.url));
-    }
-    if (typeof projeto.links === 'string' && projeto.links.trim().startsWith('http')) {
-      return [{ nome: 'Link do Projeto', url: projeto.links.trim() }];
-    }
-    return [];
-  }, [projeto?.links]);
+  const linksArray = parseLinks(projeto?.links);
 
   const handleExcluirProjeto = async () => {
     if (!await confirmar(`Tem certeza de que deseja excluir o projeto "${projeto.titulo}"? Esta ação apagará tarefas, mensagens e candidaturas vinculadas.`)) return;
@@ -245,6 +255,10 @@ export function ProjetoDetalhes() {
                     </p>
                   );
                 })
+              ) : typeof projeto.detalhes === 'string' && projeto.detalhes.trim() ? (
+                <p className="leading-[1.8] text-text-primary mb-4 text-[0.95rem] whitespace-pre-line">
+                  {projeto.detalhes}
+                </p>
               ) : (
                 <p className="text-text-secondary">Informações detalhadas não disponíveis.</p>
               )}
