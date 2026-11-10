@@ -385,6 +385,83 @@ def _propagar_renomeacao(antigo, novo):
         modelo.query.filter(getattr(modelo, campo) == antigo).update({campo: novo}, synchronize_session=False)
 
 
+USUARIO_REMOVIDO = 'Usuário removido'
+
+
+def impedimentos_exclusao(user, saindo_das_equipes=False):
+    """Motivos que impedem excluir a conta. Sem `saindo_das_equipes`, participar de equipe também impede."""
+    from models import Project, Application
+    motivos = []
+    if Project.query.filter(db.or_(Project.owner_id == user.id, Project.owner_username == user.username)).count():
+        motivos.append("é dono de projetos")
+    if Project.query.filter_by(professor_id=user.id).count():
+        motivos.append("é orientador de projetos")
+    if not saindo_das_equipes and Application.query.filter(
+            db.or_(Application.user_id == user.id, Application.username == user.username),
+            Application.status == 'APROVADA').count():
+        motivos.append("integra equipes de projetos")
+    if user.role == 'admin' and User.query.filter(User.role == 'admin', User.id != user.id).count() == 0:
+        motivos.append("é o único administrador")
+    return motivos
+
+
+def apagar_conta(user):
+    """Remove a conta e os dados pessoais ligados a ela. Mensagens, avaliações e o histórico do Kanban
+    continuam no projeto, sem o nome do autor; tarefas atribuídas ficam sem responsável."""
+    from models import Application, Message, Rating, Submission, Task, TaskLog, Project
+    do_usuario = lambda modelo, campo='username', campo_id='user_id': db.or_(
+        getattr(modelo, campo_id) == user.id, getattr(modelo, campo) == user.username)
+
+    # Avisa o responsável de cada equipe que o integrante saiu
+    for cand in Application.query.filter(do_usuario(Application), Application.status == 'APROVADA').all():
+        projeto = db.session.get(Project, cand.projeto_id)
+        if projeto and projeto.owner_username:
+            db.session.add(Notification(username=projeto.owner_username,
+                                        mensagem=f"{user.username} excluiu a conta e saiu da equipe do projeto '{projeto.titulo}'.",
+                                        link=f"/workspace/{projeto.id}"))
+
+    Application.query.filter(do_usuario(Application)).delete(synchronize_session=False)
+    Notification.query.filter(do_usuario(Notification)).delete(synchronize_session=False)
+    PasswordReset.query.filter_by(username=user.username).delete(synchronize_session=False)
+    AccountVerification.query.filter_by(username=user.username).delete(synchronize_session=False)
+    Submission.query.filter(do_usuario(Submission), Submission.status == 'EM ANÁLISE').delete(synchronize_session=False)
+    Submission.query.filter(do_usuario(Submission)).update({'username': None, 'user_id': None}, synchronize_session=False)
+    for modelo in (Message, Rating, TaskLog):
+        modelo.query.filter(do_usuario(modelo)).update({'username': USUARIO_REMOVIDO, 'user_id': None}, synchronize_session=False)
+    Task.query.filter(do_usuario(Task, 'assigned_username', 'assigned_user_id')).update(
+        {'assigned_username': None, 'assigned_user_id': None}, synchronize_session=False)
+
+    papel = user.role
+    db.session.delete(user)
+    db.session.commit()
+    log_atividade(USUARIO_REMOVIDO, 'Conta excluída', f'Perfil: {papel}')
+
+
+@app.route('/api/perfil/excluir', methods=['POST'])
+def api_excluir_propria_conta():
+    if not g.get('user'):
+        return jsonify({"status": "error", "message": "Não autenticado"}), 401
+    user = g.user
+    data = request.get_json(silent=True) or {}
+
+    if limite_excedido('excluir_conta', user.id, 5, 900):
+        return jsonify({"status": "error", "message": "Muitas tentativas. Aguarde alguns minutos e tente novamente."}), 429
+    if str(data.get('confirmacao') or '').strip().upper() != 'EXCLUIR':
+        return jsonify({"status": "error", "message": "Digite EXCLUIR para confirmar."}), 400
+    if not check_password_hash(user.password, str(data.get('senha') or '')):
+        registrar_tentativa('excluir_conta', user.id)
+        return jsonify({"status": "error", "message": "Senha incorreta."}), 403
+
+    motivos = impedimentos_exclusao(user, saindo_das_equipes=True)
+    if motivos:
+        return jsonify({"status": "error", "message": "Não é possível excluir a conta porque você " + ", ".join(motivos)
+                        + ". Transfira ou exclua esses projetos antes, ou peça ajuda à coordenação."}), 409
+
+    apagar_conta(user)
+    session.clear()
+    return jsonify({"status": "success", "message": "Sua conta foi excluída."})
+
+
 @app.route('/api/perfil/editar', methods=['POST', 'PUT'])
 def api_perfil_editar():
     if not session.get('logged_in'):

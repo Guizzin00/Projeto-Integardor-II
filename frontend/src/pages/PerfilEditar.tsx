@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUI } from '../components/UIProvider';
 import { validarSenha, DICA_SENHA } from '../utils/senha';
+import { ExcluirConta } from '../components/ExcluirConta';
 
 export function PerfilEditar() {
   const { avisar } = useUI();
@@ -257,6 +258,8 @@ export function PerfilEditar() {
           {submitting ? 'Salvando...' : '💾 Salvar Alterações'}
         </button>
       </form>
+
+      <ExcluirConta />
     </div>
   );
 }

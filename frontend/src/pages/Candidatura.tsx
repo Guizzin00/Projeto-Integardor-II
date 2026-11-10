@@ -3,11 +3,12 @@
  * Todos os direitos reservados. Ver LICENSE.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useUI } from '../components/UIProvider';
 import { useAuth } from '../contexts/AuthContext';
+import { CamposCandidatura, erroCandidatura } from '../components/CamposCandidatura';
 
 export function Candidatura() {
   const { user } = useAuth();
@@ -21,6 +22,8 @@ export function Candidatura() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  // Evita repetir o aviso: `avisar` muda a cada aviso exibido e reexecuta o efeito
+  const redirecionado = useRef(false);
 
   useEffect(() => {
     const fetchProjeto = async () => {
@@ -30,7 +33,8 @@ export function Candidatura() {
           const proj = response.data.projeto;
           setProjeto(proj);
 
-          // Bloqueia dono / criador / orientador de se candidatar ao próprio projeto
+          // Bloqueia dono / criador / orientador, quem já participa, não-alunos e projetos fechados
+          let bloqueio = '';
           if (user && (
             proj.owner_username?.toLowerCase() === user.username?.toLowerCase() ||
             (proj.owner_id && proj.owner_id === user.id) ||
@@ -38,10 +42,17 @@ export function Candidatura() {
             (proj.professor_id && proj.professor_id === user.id) ||
             proj.orientador?.username?.toLowerCase() === user.username?.toLowerCase()
           )) {
-            avisar("⚠️ Você é o líder/autor deste projeto e já faz parte da equipe. Não é permitido se candidatar ao próprio projeto.", "info");
-            navigate(`/projeto/${id}`, { replace: true });
+            bloqueio = "⚠️ Você é o líder/autor deste projeto e já faz parte da equipe. Não é permitido se candidatar ao próprio projeto.";
           } else if (proj.minha_candidatura) {
-            avisar("ℹ️ Você já possui uma candidatura ou participação neste projeto.", "info");
+            bloqueio = "ℹ️ Você já possui uma candidatura ou participação neste projeto.";
+          } else if (user && !['aluno', 'lider', 'user'].includes(user.role)) {
+            bloqueio = "ℹ️ Apenas alunos podem se candidatar a projetos.";
+          } else if (!['DISPONÍVEL', 'EM EXECUÇÃO'].includes(proj.status)) {
+            bloqueio = "ℹ️ Este projeto não está recebendo candidaturas.";
+          }
+          if (bloqueio && !redirecionado.current) {
+            redirecionado.current = true;
+            avisar(bloqueio, "info");
             navigate(`/projeto/${id}`, { replace: true });
           }
         }
@@ -56,8 +67,13 @@ export function Candidatura() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
     setError('');
+    const erroLocal = erroCandidatura(motivo);
+    if (erroLocal) {
+      setError(erroLocal);
+      return;
+    }
+    setSubmitting(true);
     try {
       const res = await api.post(`/projeto/${id}/candidatar`, { motivo, experiencia });
       if (res.data.status === 'success') {
@@ -97,34 +113,12 @@ export function Candidatura() {
       )}
       
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2">
-        <div className="flex flex-col">
-          <label htmlFor="motivo" className="font-semibold text-purple-primary mb-1.5">
-            Por que você quer participar deste projeto?
-          </label>
-          <textarea 
-            id="motivo" 
-            rows={4} 
-            required 
-            placeholder="Explique seu interesse e motivação..."
-            value={motivo}
-            onChange={(e) => setMotivo(e.target.value)}
-            className="p-3 border border-border-color rounded-md text-base bg-bg-primary text-text-primary resize-y transition-all focus:border-purple-primary focus:outline-none"
-          ></textarea>
-        </div>
-        
-        <div className="flex flex-col mt-4">
-          <label htmlFor="experiencia" className="font-semibold text-purple-primary mb-1.5">
-            Qual sua experiência prévia? (Opcional)
-          </label>
-          <textarea 
-            id="experiencia" 
-            rows={3} 
-            placeholder="Linguagens, frameworks, cursos..."
-            value={experiencia}
-            onChange={(e) => setExperiencia(e.target.value)}
-            className="p-3 border border-border-color rounded-md text-base bg-bg-primary text-text-primary resize-y transition-all focus:border-purple-primary focus:outline-none"
-          ></textarea>
-        </div>
+        <CamposCandidatura
+          motivo={motivo}
+          experiencia={experiencia}
+          onMotivo={setMotivo}
+          onExperiencia={setExperiencia}
+        />
         
         <div className="mt-6 flex gap-2.5">
           <button 

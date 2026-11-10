@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 import json, os, uuid, io, csv
 
 from app_instance import app
+from routes_auth import impedimentos_exclusao, apagar_conta
 from models import db, Project, Submission, Application, User, Notification, ActivityLog, get_random_default_cover, Message, Rating, Task, TaskLog, PasswordReset, AccountVerification
 from utils import PAPEIS_VALIDOS, STATUS_PROJETO, normalizar_status_projeto, proteger_celula_csv, validar_senha, log_atividade, upload_file_to_supabase, enviar_email, email_template_conta_aprovada, email_template_conta_recusada, email_template_projeto_aprovado, get_frontend_url
 
@@ -284,21 +285,10 @@ def api_admin_usuario(user_id):
     if request.method == 'DELETE':
         if u.username == session.get('user'):
             return jsonify({"status": "error", "message": "Não pode excluir a si mesmo."}), 400
-        vinculos = []
-        if Project.query.filter_by(owner_id=u.id).count():
-            vinculos.append("é dono de projetos")
-        if Project.query.filter_by(professor_id=u.id).count():
-            vinculos.append("é orientador de projetos")
-        if Application.query.filter_by(user_id=u.id, status='APROVADA').count():
-            vinculos.append("integra equipes de projetos")
+        vinculos = impedimentos_exclusao(u)
         if vinculos:
             return jsonify({"status": "error", "message": "Não é possível excluir: o usuário " + ", ".join(vinculos) + ". Reatribua ou desative a conta."}), 409
-        Notification.query.filter_by(user_id=u.id).delete()
-        Application.query.filter_by(user_id=u.id).delete()
-        PasswordReset.query.filter_by(username=u.username).delete()
-        AccountVerification.query.filter_by(username=u.username).delete()
-        db.session.delete(u)
-        db.session.commit()
+        apagar_conta(u)
         return jsonify({"status": "success", "message": "Usuário excluído com sucesso."})
 
     if request.method in ['PUT', 'POST']:

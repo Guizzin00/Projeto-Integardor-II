@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useUI } from '../components/UIProvider';
+import { CamposCandidatura, erroCandidatura } from '../components/CamposCandidatura';
 
 export function CandidaturaEditar() {
   const { avisar } = useUI();
@@ -44,8 +45,13 @@ export function CandidaturaEditar() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
     setError('');
+    const erroLocal = erroCandidatura(motivo);
+    if (erroLocal) {
+      setError(erroLocal);
+      return;
+    }
+    setSubmitting(true);
     try {
       const res = await api.post(`/candidatura/${id}/editar`, { motivo, experiencia });
       if (res.data.status === 'success') {
@@ -79,34 +85,12 @@ export function CandidaturaEditar() {
       )}
       
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2">
-        <div className="flex flex-col">
-          <label htmlFor="motivo" className="font-semibold text-[0.9rem] text-purple-primary mb-1.5">
-            Por que você quer participar deste projeto?
-          </label>
-          <textarea 
-            id="motivo" 
-            rows={4} 
-            required 
-            placeholder="Explique seu interesse e motivação..."
-            value={motivo}
-            onChange={(e) => setMotivo(e.target.value)}
-            className="p-2.5 border-[1.5px] border-border-color rounded-lg text-[0.95rem] bg-bg-primary text-text-primary resize-y transition-all focus:border-purple-primary focus:shadow-[0_0_0_3px_rgba(122,27,181,0.15)] focus:outline-none"
-          ></textarea>
-        </div>
-        
-        <div className="flex flex-col mt-4">
-          <label htmlFor="experiencia" className="font-semibold text-[0.9rem] text-purple-primary mb-1.5">
-            Qual sua experiência prévia? (Opcional)
-          </label>
-          <textarea 
-            id="experiencia" 
-            rows={3} 
-            placeholder="Linguagens, frameworks, cursos..."
-            value={experiencia}
-            onChange={(e) => setExperiencia(e.target.value)}
-            className="p-2.5 border-[1.5px] border-border-color rounded-lg text-[0.95rem] bg-bg-primary text-text-primary resize-y transition-all focus:border-purple-primary focus:shadow-[0_0_0_3px_rgba(122,27,181,0.15)] focus:outline-none"
-          ></textarea>
-        </div>
+        <CamposCandidatura
+          motivo={motivo}
+          experiencia={experiencia}
+          onMotivo={setMotivo}
+          onExperiencia={setExperiencia}
+        />
         
         <div className="mt-6 flex gap-2.5">
           <button 

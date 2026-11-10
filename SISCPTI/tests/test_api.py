@@ -13,6 +13,8 @@ from conftest import SENHA, criar_projeto, criar_usuario, logar, aprovar
 from app import app as flask_app
 from models import db, Application, Project, Submission, Task, User
 
+CANDIDATURA = {'motivo': 'Quero aplicar o que aprendi em Python no projeto.', 'experiencia': 'Flask'}
+
 
 # ---------- #29 / #30: Kanban e permissões por projeto
 def test_kanban_criar_editar_excluir(cenario):
@@ -74,14 +76,14 @@ def test_candidatura_validacoes(cenario):
     aluno = logar('fora')
     url = f'/api/projeto/{cenario.id}/candidatar'
     assert aluno.post(url, json={}).status_code == 400
-    assert aluno.post(url, json={'motivo': 'm', 'experiencia': 'e'}).status_code == 200
-    assert aluno.post(url, json={'motivo': 'm', 'experiencia': 'e'}).status_code == 409
+    assert aluno.post(url, json=CANDIDATURA).status_code == 200
+    assert aluno.post(url, json=CANDIDATURA).status_code == 409
     # O dono do projeto não pode se candidatar ao próprio projeto
-    assert logar('dono').post(url, json={'motivo': 'm', 'experiencia': 'e'}).status_code in (400, 403)
+    assert logar('dono').post(url, json=CANDIDATURA).status_code in (400, 403)
     # Aluno que é líder/dono de seu projeto também é bloqueado
     criar_usuario('aluno_lider', 'aluno')
     p_lider = criar_projeto(owner='aluno_lider')
-    r_lider = logar('aluno_lider').post(f'/api/projeto/{p_lider.id}/candidatar', json={'motivo': 'm', 'experiencia': 'e'})
+    r_lider = logar('aluno_lider').post(f'/api/projeto/{p_lider.id}/candidatar', json=CANDIDATURA)
     assert r_lider.status_code == 400
     assert 'próprio' in r_lider.get_json()['message'].lower()
 
@@ -89,7 +91,7 @@ def test_candidatura_validacoes(cenario):
 def test_candidatura_projeto_concluido(app_ctx):
     criar_usuario('a1')
     p = criar_projeto(status='CONCLUÍDO')
-    assert logar('a1').post(f'/api/projeto/{p.id}/candidatar', json={'motivo': 'm', 'experiencia': 'e'}).status_code == 400
+    assert logar('a1').post(f'/api/projeto/{p.id}/candidatar', json=CANDIDATURA).status_code == 400
 
 
 # ---------- #36: orientador e coordenador
@@ -365,7 +367,7 @@ def test_detalhe_informa_minha_candidatura(cenario):
     membro = logar('membro').get(url).get_json()['projeto']['minha_candidatura']
     assert membro['status'] == 'APROVADA'
     aluno = logar('fora')
-    aluno.post(f'/api/projeto/{cenario.id}/candidatar', json={'motivo': 'm', 'experiencia': 'e'})
+    aluno.post(f'/api/projeto/{cenario.id}/candidatar', json=CANDIDATURA)
     assert aluno.get(url).get_json()['projeto']['minha_candidatura']['status'] == 'PENDENTE'
 
 
@@ -433,7 +435,7 @@ def test_email_ao_aprovar_proposta(cenario, monkeypatch):
 
 def test_email_ao_aprovar_candidatura(cenario, monkeypatch):
     enviados = _capturar_emails(monkeypatch)
-    logar('fora').post(f'/api/projeto/{cenario.id}/candidatar', json={'motivo': 'm', 'experiencia': 'e'})
+    logar('fora').post(f'/api/projeto/{cenario.id}/candidatar', json=CANDIDATURA)
     cand = Application.query.filter_by(username='fora').first()
     assert logar('dono').post(f'/api/candidatura/{cand.id}/rejeitar').status_code == 200
     assert enviados == []
@@ -510,7 +512,7 @@ def test_remover_membro_e_convidar_de_volta(cenario):
     # perde o acesso e não pode se candidatar de novo
     membro = logar('membro')
     assert membro.get(f'/api/projeto/{cenario.id}/workspace').status_code == 403
-    r = membro.post(f'/api/projeto/{cenario.id}/candidatar', json={'motivo': 'm', 'experiencia': 'e'})
+    r = membro.post(f'/api/projeto/{cenario.id}/candidatar', json=CANDIDATURA)
     assert r.status_code == 409 and 'removido' in r.get_json()['message']
     # aprovar pela lista de candidaturas não contorna o convite
     assert dono.post(f'/api/candidatura/{cand.id}/aprovar').status_code == 409
@@ -564,3 +566,80 @@ def test_historico_de_tarefas(cenario):
     from models import TaskLog
     logar('admin').post(f'/api/projeto/{cenario.id}/excluir')
     assert TaskLog.query.count() == 0
+
+
+# ---------- #73: obrigatoriedade dos campos da candidatura
+def test_candidatura_campos_obrigatorios(cenario):
+    aluno = logar('fora')
+    url = f'/api/projeto/{cenario.id}/candidatar'
+    r = aluno.post(url, json={'motivo': '   ', 'experiencia': 'Flask'})
+    assert r.status_code == 400 and 'participar' in r.get_json()['message']
+    r = aluno.post(url, json={'motivo': 'curto', 'experiencia': ''})
+    assert r.status_code == 400 and '20' in r.get_json()['message']
+    assert aluno.post(url, json={'motivo': 'x' * 2001}).status_code == 400
+    # A experiência é opcional
+    assert aluno.post(url, json={'motivo': CANDIDATURA['motivo']}).status_code == 200
+    cand = Application.query.filter_by(username='fora').one()
+    assert cand.experiencia == ''
+
+
+def test_editar_candidatura_valida_campos(cenario):
+    aluno = logar('fora')
+    aluno.post(f'/api/projeto/{cenario.id}/candidatar', json=CANDIDATURA)
+    cand = Application.query.filter_by(username='fora').one()
+    assert aluno.post(f'/api/candidatura/{cand.id}/editar', json={'motivo': '', 'experiencia': 'x'}).status_code == 400
+    r = aluno.post(f'/api/candidatura/{cand.id}/editar', json={'motivo': '  ' + CANDIDATURA['motivo'] + '  ', 'experiencia': ''})
+    assert r.status_code == 200
+    db.session.refresh(cand)
+    assert cand.motivo == CANDIDATURA['motivo'] and cand.experiencia == ''
+
+
+# ---------- #72: o usuário exclui a própria conta
+def test_excluir_propria_conta(cenario):
+    from models import Message, Notification, Rating, TaskLog
+    membro = logar('membro')
+    url = '/api/perfil/excluir'
+    assert membro.post(url, json={'senha': SENHA, 'confirmacao': 'nao'}).status_code == 400
+    assert membro.post(url, json={'senha': 'errada', 'confirmacao': 'EXCLUIR'}).status_code == 403
+
+    uid = User.query.filter_by(username='membro').one().id
+    tk = Task(projeto_id=cenario.id, titulo='t', status='todo', assigned_username='membro')
+    db.session.add_all([tk, Message(projeto_id=cenario.id, username='membro', texto='oi'),
+                        Rating(projeto_id=cenario.id, username='membro', nota=5),
+                        Notification(username='membro', mensagem='x')])
+    db.session.add(Submission(nome_projeto='p', categoria='c', descricao='d', proponente='membro', email='m@x.com', username='membro'))
+    db.session.commit()
+
+    r = membro.post(url, json={'senha': SENHA, 'confirmacao': 'excluir'})
+    assert r.status_code == 200, r.get_json()
+    db.session.expire_all()
+    assert db.session.get(User, uid) is None
+    assert Application.query.filter_by(username='membro').count() == 0
+    assert Notification.query.filter_by(username='membro').count() == 0
+    assert Submission.query.count() == 0  # proposta em análise é apagada
+    assert Message.query.one().username == 'Usuário removido'
+    assert Rating.query.one().username == 'Usuário removido'
+    assert db.session.get(Task, tk.id).assigned_username is None
+    # O dono do projeto é avisado e a sessão é encerrada
+    assert Notification.query.filter_by(username='dono').count() == 1
+    assert membro.get('/api/me').status_code == 401
+    assert logar_falha('membro')
+
+
+def logar_falha(username):
+    r = flask_app.test_client().post('/api/login', json={'user': username, 'password': SENHA})
+    return r.status_code == 401
+
+
+def test_excluir_conta_bloqueios(cenario):
+    url = '/api/perfil/excluir'
+    dados = {'senha': SENHA, 'confirmacao': 'EXCLUIR'}
+    r = logar('dono').post(url, json=dados)
+    assert r.status_code == 409 and 'dono de projetos' in r.get_json()['message']
+    r = logar('prof').post(url, json=dados)
+    assert r.status_code == 409 and 'orientador' in r.get_json()['message']
+    r = logar('admin').post(url, json=dados)
+    assert r.status_code == 409 and 'único administrador' in r.get_json()['message']
+    criar_usuario('admin2', 'admin')
+    assert logar('admin').post(url, json=dados).status_code == 200
+    assert flask_app.test_client().post(url, json=dados).status_code == 401

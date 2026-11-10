@@ -92,6 +92,23 @@ def api_projeto_detalhes(projeto_id):
 # =========================
 # Candidaturas de Alunos
 # =========================
+MOTIVO_MIN = 20
+CANDIDATURA_MAX = 2000
+
+
+def validar_candidatura(data):
+    """Motivação obrigatória (mín. 20 caracteres); experiência opcional. Retorna (motivo, experiencia, erro)."""
+    motivo = str(data.get('motivo') or '').strip()
+    experiencia = str(data.get('experiencia') or '').strip()
+    if not motivo:
+        return motivo, experiencia, "Conte por que você quer participar do projeto."
+    if len(motivo) < MOTIVO_MIN:
+        return motivo, experiencia, f"A motivação precisa ter pelo menos {MOTIVO_MIN} caracteres."
+    if len(motivo) > CANDIDATURA_MAX or len(experiencia) > CANDIDATURA_MAX:
+        return motivo, experiencia, f"Cada campo aceita no máximo {CANDIDATURA_MAX} caracteres."
+    return motivo, experiencia, None
+
+
 @app.route('/api/projeto/<int:projeto_id>/candidatar', methods=['POST'])
 def api_candidatar(projeto_id):
     if not session.get('logged_in'):
@@ -119,11 +136,9 @@ def api_candidatar(projeto_id):
     if projeto_db.status not in STATUS_ABERTOS_CANDIDATURA:
         return jsonify({"status": "error", "message": "Este projeto não está recebendo candidaturas."}), 400
 
-    data = request.get_json(silent=True) or {}
-    motivo = str(data.get('motivo') or '').strip()
-    experiencia = str(data.get('experiencia') or '').strip()
-    if not motivo or not experiencia:
-        return jsonify({"status": "error", "message": "Informe sua motivação e sua experiência."}), 400
+    motivo, experiencia, erro = validar_candidatura(request.get_json(silent=True) or {})
+    if erro:
+        return jsonify({"status": "error", "message": erro}), 400
 
     existente = Application.query.filter(Application.projeto_id == projeto_id, db.or_(Application.user_id == g.uid, Application.username == session['user'])).first()
     if existente:
@@ -393,9 +408,11 @@ def editar_candidatura(cand_id):
         return jsonify({"status": "error", "message": "Essa candidatura já foi avaliada e não pode mais ser editada."}), 400
         
     if request.method in ['POST', 'PUT']:
-        data = request.get_json(silent=True) or request.form
-        cand.motivo = data.get('motivo', cand.motivo)
-        cand.experiencia = data.get('experiencia', cand.experiencia)
+        motivo, experiencia, erro = validar_candidatura(request.get_json(silent=True) or request.form)
+        if erro:
+            return jsonify({"status": "error", "message": erro}), 400
+        cand.motivo = motivo
+        cand.experiencia = experiencia
         db.session.commit()
         return jsonify({"status": "success", "message": "Candidatura atualizada com sucesso!", "cand": {"id": cand.id, "motivo": cand.motivo, "experiencia": cand.experiencia, "status": cand.status}})
         
