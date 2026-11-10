@@ -30,6 +30,12 @@ from models import User, Project, Submission
 # =========================
 _db_migrated = False
 
+# Projetos criados por um professor e ainda sem orientador passam a ser orientados pelo próprio criador (#66)
+SQL_PROFESSOR_CRIADOR_ORIENTA = (
+    'UPDATE "project" SET professor_id = owner_id, professor = owner_username '
+    'WHERE professor_id IS NULL AND owner_id IN (SELECT u.id FROM "user" u WHERE u.role = \'professor\')'
+)
+
 def run_db_migrations(force=False):
     global _db_migrated
     if _db_migrated and not force:
@@ -90,6 +96,12 @@ def run_db_migrations(force=False):
                         'UPDATE "project" SET owner_id = (SELECT u.id FROM "user" u WHERE u.username = "project".owner_username) WHERE owner_id IS NULL AND owner_username IS NOT NULL'
                     ]
                     pg_statements.append('CREATE UNIQUE INDEX IF NOT EXISTS uq_application_projeto_username ON "application" (projeto_id, username)')
+                    pg_statements.append(SQL_PROFESSOR_CRIADOR_ORIENTA)
+                    pg_statements += [
+                        'ALTER TABLE "project" ADD COLUMN IF NOT EXISTS exclusao_solicitada_por VARCHAR(50)',
+                        'ALTER TABLE "project" ADD COLUMN IF NOT EXISTS exclusao_motivo TEXT',
+                        'ALTER TABLE "project" ADD COLUMN IF NOT EXISTS exclusao_solicitada_em TIMESTAMP',
+                    ]
                     for stmt in pg_statements:
                         try:
                             conn.execute(text(stmt))
@@ -130,6 +142,12 @@ def run_db_migrations(force=False):
                         conn.execute(text('ALTER TABLE "project" ADD COLUMN tags VARCHAR(300)'))
                     if 'concluido_em' not in proj_cols:
                         conn.execute(text('ALTER TABLE "project" ADD COLUMN concluido_em DATETIME'))
+                    if 'exclusao_solicitada_por' not in proj_cols:
+                        conn.execute(text('ALTER TABLE "project" ADD COLUMN exclusao_solicitada_por VARCHAR(50)'))
+                    if 'exclusao_motivo' not in proj_cols:
+                        conn.execute(text('ALTER TABLE "project" ADD COLUMN exclusao_motivo TEXT'))
+                    if 'exclusao_solicitada_em' not in proj_cols:
+                        conn.execute(text('ALTER TABLE "project" ADD COLUMN exclusao_solicitada_em DATETIME'))
                     conn.execute(text("UPDATE \"project\" SET status = 'EM EXECUÇÃO' WHERE status = 'EM DESENVOLVIMENTO'"))
                     conn.execute(text("UPDATE \"project\" SET status = 'CONCLUÍDO' WHERE status = 'EXECUTADO'"))
 
@@ -196,6 +214,8 @@ def run_db_migrations(force=False):
                         conn.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS uq_application_projeto_username ON "application" (projeto_id, username)'))
                     except Exception as idx_err:
                         print(f"[DB MIGRATION NOTICE] índice único de candidatura: {idx_err}")
+                    conn.commit()
+                    conn.execute(text(SQL_PROFESSOR_CRIADOR_ORIENTA))
                     conn.commit()
 
             print("[DB MIGRATION] Migração do banco concluída com sucesso.")

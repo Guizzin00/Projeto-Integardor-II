@@ -14,8 +14,12 @@ import os, uuid, json
 from io import BytesIO
 
 from app_instance import app
-from models import db, Project, Application, Submission, Message, Notification, Rating, Task, User
-from utils import log_atividade, upload_file_to_supabase, STATUS_ABERTOS_CANDIDATURA
+from models import db, Project, Application, Submission, Message, Notification, Rating, Task, TaskLog, User
+STATUS_REMOVIDA = 'REMOVIDA'   # aluno retirado da equipe; não pode se candidatar de novo
+STATUS_CONVIDADO = 'CONVIDADO'  # aluno removido convidado de volta pelo responsável
+
+from utils import (log_atividade, upload_file_to_supabase, STATUS_ABERTOS_CANDIDATURA, enviar_email,
+                   email_template_candidatura_aprovada, get_frontend_url)
 
 # =========================
 # Catálogo e Detalhes
@@ -57,13 +61,26 @@ def api_projetos():
             "message": f"Erro ao listar projetos: {str(e)}"
         }), 500
 
+def candidatura_do_usuario(projeto_id):
+    """Candidatura do usuário logado no projeto (por id ou, em registros antigos, pelo nome)."""
+    if not session.get('logged_in'):
+        return None
+    filtros = [db.func.lower(Application.username) == (session.get('user') or '').lower()]
+    if g.get('uid'):
+        filtros.append(Application.user_id == g.uid)
+    return Application.query.filter(Application.projeto_id == projeto_id, db.or_(*filtros)).first()
+
+
 @app.route('/api/projeto/<int:projeto_id>', methods=['GET'])
 def api_projeto_detalhes(projeto_id):
     try:
         projeto_db = Project.query.get(projeto_id)
         if not projeto_db:
             return jsonify({"status": "error", "message": "Projeto não encontrado"}), 404
-        return jsonify({"status": "success", "projeto": projeto_db.to_dict()})
+        projeto_dict = projeto_db.to_dict()
+        cand = candidatura_do_usuario(projeto_id)
+        projeto_dict['minha_candidatura'] = {"id": cand.id, "status": cand.status} if cand else None
+        return jsonify({"status": "success", "projeto": projeto_dict})
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -108,7 +125,12 @@ def api_candidatar(projeto_id):
     if not motivo or not experiencia:
         return jsonify({"status": "error", "message": "Informe sua motivação e sua experiência."}), 400
 
-    if Application.query.filter(Application.projeto_id == projeto_id, db.or_(Application.user_id == g.uid, Application.username == session['user'])).first():
+    existente = Application.query.filter(Application.projeto_id == projeto_id, db.or_(Application.user_id == g.uid, Application.username == session['user'])).first()
+    if existente:
+        if existente.status == STATUS_REMOVIDA:
+            return jsonify({"status": "error", "message": "Você foi removido deste projeto e não pode se candidatar novamente. Somente o responsável pelo projeto pode convidá-lo de volta."}), 409
+        if existente.status == STATUS_CONVIDADO:
+            return jsonify({"status": "error", "message": "Você já possui um convite para este projeto. Aceite-o pela página do projeto ou pelo seu perfil."}), 409
         return jsonify({"status": "error", "message": "Você já se candidatou a este projeto."}), 409
 
     nova_cand = Application(
@@ -287,13 +309,18 @@ def dono_acao_candidatura(cand_id, acao):
     if not (ac['is_owner'] or ac['is_admin'] or ac['is_coord']):
         return jsonify({"status": "error", "message": "Acesso negado. Apenas o líder ou orientador do projeto pode avaliar candidaturas."}), 403
         
+    if cand.status in (STATUS_REMOVIDA, STATUS_CONVIDADO):
+        return jsonify({"status": "error", "message": "Este aluno foi removido da equipe. Para trazê-lo de volta, envie um convite pela aba Participantes do workspace."}), 409
+
     cand_user_id = cand.user_id
     if not cand_user_id and cand.username:
         u = User.query.filter_by(username=cand.username).first()
         if u:
             cand_user_id = u.id
 
+    aviso_email = None
     if acao == 'aprovar':
+        ja_aprovada = cand.status in ('APROVADA', 'APROVADO')
         cand.status = 'APROVADA'
         notif = Notification(
             user_id=cand_user_id,
@@ -302,6 +329,11 @@ def dono_acao_candidatura(cand_id, acao):
             link=f"/workspace/{cand.projeto_id}"
         )
         db.session.add(notif)
+        candidato = db.session.get(User, cand_user_id) if cand_user_id else None
+        if candidato and candidato.email and not ja_aprovada:
+            base_url = get_frontend_url() or request.host_url.rstrip('/')
+            aviso_email = (candidato.email, email_template_candidatura_aprovada(
+                candidato.username, cand.projeto.titulo, link=f"{base_url}/workspace/{cand.projeto_id}"))
     elif acao == 'rejeitar':
         cand.status = 'REJEITADA'
         notif = Notification(
@@ -317,6 +349,8 @@ def dono_acao_candidatura(cand_id, acao):
         return jsonify({"status": "error", "message": "Ação inválida."}), 400
         
     db.session.commit()
+    if aviso_email:
+        enviar_email(aviso_email[0], 'Candidatura Aprovada – SisCPTI · UniCEUB', aviso_email[1])
     return jsonify({"status": "success", "new_status": cand.status, "message": f"Candidatura marcada como {cand.status}!"})
 
 @app.route('/api/candidatura/<int:cand_id>', methods=['GET'])
@@ -390,6 +424,116 @@ def cancelar_candidatura(cand_id):
     return jsonify({"status": "success", "message": "Candidatura cancelada com sucesso!"})
 
 # =========================
+# Gestão da equipe: remover e convidar de volta (#70)
+# =========================
+def _usuario_da_candidatura(cand):
+    if cand.user_id:
+        return db.session.get(User, cand.user_id)
+    return User.query.filter_by(username=cand.username).first() if cand.username else None
+
+
+def _candidatura_do_projeto(projeto_id, cand_id):
+    projeto_db = db.session.get(Project, projeto_id)
+    if not projeto_db:
+        return None, None, (jsonify({"status": "error", "message": "Projeto não encontrado."}), 404)
+    cand = Application.query.filter_by(id=cand_id, projeto_id=projeto_id).first()
+    if not cand:
+        return projeto_db, None, (jsonify({"status": "error", "message": "Integrante não encontrado neste projeto."}), 404)
+    ac = acesso_projeto(projeto_db)
+    if not (ac['is_owner'] or ac['is_admin']):
+        return projeto_db, cand, (jsonify({"status": "error", "message": "Apenas o responsável, o orientador ou a administração pode gerenciar a equipe."}), 403)
+    return projeto_db, cand, None
+
+
+@app.route('/api/projeto/<int:projeto_id>/membros/<int:cand_id>/remover', methods=['POST'])
+def remover_membro(projeto_id, cand_id):
+    if not session.get('logged_in'):
+        return jsonify({"status": "error", "message": "Não autenticado."}), 401
+    projeto_db, cand, erro = _candidatura_do_projeto(projeto_id, cand_id)
+    if erro:
+        return erro
+    if cand.status not in ('APROVADA', 'APROVADO'):
+        return jsonify({"status": "error", "message": "Somente integrantes ativos da equipe podem ser removidos."}), 400
+
+    data = request.get_json(silent=True) or {}
+    motivo = str(data.get('motivo') or '').strip()[:500]
+    aluno = _usuario_da_candidatura(cand)
+    cand.status = STATUS_REMOVIDA
+
+    # As tarefas do aluno voltam a ficar sem responsável
+    filtros = [db.func.lower(Task.assigned_username) == cand.username.lower()]
+    if aluno:
+        filtros.append(Task.assigned_user_id == aluno.id)
+    for t in Task.query.filter(Task.projeto_id == projeto_id, db.or_(*filtros)).all():
+        t.assigned_username = None
+        t.assigned_user_id = None
+
+    texto = f"🚫 Você foi removido da equipe do projeto '{projeto_db.titulo}'."
+    if motivo:
+        texto += f" Motivo: {motivo}"
+    db.session.add(Notification(user_id=aluno.id if aluno else None, username=cand.username, mensagem=texto, link="/perfil?tab=inscricoes"))
+    db.session.commit()
+    log_atividade(session['user'], 'Removeu aluno do projeto', f"@{cand.username} do projeto #{projeto_id}" + (f": {motivo}" if motivo else ''))
+    return jsonify({"status": "success", "message": f"@{cand.username} foi removido da equipe.", "new_status": cand.status})
+
+
+@app.route('/api/projeto/<int:projeto_id>/membros/<int:cand_id>/convidar', methods=['POST'])
+def convidar_membro(projeto_id, cand_id):
+    if not session.get('logged_in'):
+        return jsonify({"status": "error", "message": "Não autenticado."}), 401
+    projeto_db, cand, erro = _candidatura_do_projeto(projeto_id, cand_id)
+    if erro:
+        return erro
+    if cand.status != STATUS_REMOVIDA:
+        return jsonify({"status": "error", "message": "Só é possível convidar de volta alunos que foram removidos da equipe."}), 400
+
+    aluno = _usuario_da_candidatura(cand)
+    cand.status = STATUS_CONVIDADO
+    db.session.add(Notification(
+        user_id=aluno.id if aluno else None,
+        username=cand.username,
+        mensagem=f"💌 @{session['user']} convidou você para voltar à equipe do projeto '{projeto_db.titulo}'. Aceite ou recuse o convite.",
+        link=f"/projeto/{projeto_id}"
+    ))
+    db.session.commit()
+    log_atividade(session['user'], 'Convidou aluno de volta ao projeto', f"@{cand.username} no projeto #{projeto_id}")
+    return jsonify({"status": "success", "message": f"Convite enviado para @{cand.username}.", "new_status": cand.status})
+
+
+@app.route('/api/candidatura/<int:cand_id>/convite/<acao>', methods=['POST'])
+def responder_convite(cand_id, acao):
+    if not session.get('logged_in'):
+        return jsonify({"status": "error", "message": "Não autenticado."}), 401
+    cand = db.session.get(Application, cand_id)
+    if not cand:
+        return jsonify({"status": "error", "message": "Convite não encontrado."}), 404
+    if not ((cand.user_id and cand.user_id == g.uid) or (cand.username or '').lower() == (session.get('user') or '').lower()):
+        return jsonify({"status": "error", "message": "Este convite não é seu."}), 403
+    if cand.status != STATUS_CONVIDADO:
+        return jsonify({"status": "error", "message": "Não há convite pendente para este projeto."}), 400
+    if acao not in ('aceitar', 'recusar'):
+        return jsonify({"status": "error", "message": "Ação inválida."}), 400
+
+    projeto_db = cand.projeto
+    if acao == 'aceitar':
+        cand.status = 'APROVADA'
+        texto = f"✅ @{cand.username} aceitou o convite e voltou para a equipe do projeto '{projeto_db.titulo}'."
+        mensagem = "Convite aceito! Você voltou para a equipe do projeto."
+    else:
+        cand.status = STATUS_REMOVIDA
+        texto = f"ℹ️ @{cand.username} recusou o convite para voltar ao projeto '{projeto_db.titulo}'."
+        mensagem = "Convite recusado."
+
+    avisados = {(cand.username or '').lower()}
+    for nome in (projeto_db.owner_username, projeto_db.orientador.username if projeto_db.orientador else None):
+        if nome and nome.lower() not in avisados:
+            avisados.add(nome.lower())
+            dest = User.query.filter_by(username=nome).first()
+            db.session.add(Notification(user_id=dest.id if dest else None, username=nome, mensagem=texto, link=f"/workspace/{projeto_db.id}"))
+    db.session.commit()
+    return jsonify({"status": "success", "message": mensagem, "new_status": cand.status})
+
+# =========================
 # Workspace e Chat
 # =========================
 @app.route('/api/projeto/<int:projeto_id>/workspace')
@@ -418,6 +562,8 @@ def workspace(projeto_id):
         "status": "success",
         "projeto": projeto_db.to_dict(),
         "is_owner": ac['is_owner'],
+        "pode_gerenciar_equipe": ac['is_owner'] or ac['is_admin'],
+        "pode_ver_historico": ac['is_owner'] or ac['is_admin'] or ac['is_coord'],
         "membros": membros,
         "candidaturas": candidaturas,
         "mensagens": [{
@@ -920,6 +1066,73 @@ def acesso_projeto(projeto):
     }
 
 # ==========================================
+# Histórico das tarefas (#69)
+# ==========================================
+NOMES_STATUS_TAREFA = {'todo': 'A Fazer', 'doing': 'Em Andamento', 'done': 'Concluído'}
+
+
+def registrar_log_tarefa(task, acao, detalhes=None):
+    db.session.add(TaskLog(
+        projeto_id=task.projeto_id,
+        task_id=task.id,
+        task_titulo=(task.titulo or '')[:150],
+        user_id=g.get('uid'),
+        username=session.get('user') or 'sistema',
+        acao=acao,
+        detalhes=detalhes
+    ))
+
+
+def _resumo_checklist(checklist_json):
+    try:
+        itens = json.loads(checklist_json) if checklist_json else []
+    except (ValueError, TypeError):
+        itens = []
+    if not isinstance(itens, list):
+        return '0/0'
+    feitos = sum(1 for i in itens if isinstance(i, dict) and (i.get('done') or i.get('concluida')))
+    return f"{feitos}/{len(itens)}"
+
+
+def _descrever_alteracoes(antes, task):
+    mudancas = []
+    if antes['titulo'] != task.titulo:
+        mudancas.append(f"título: '{antes['titulo']}' → '{task.titulo}'")
+    if (antes['descricao'] or '') != (task.descricao or ''):
+        mudancas.append("descrição atualizada")
+    if (antes['responsavel'] or '') != (task.assigned_username or ''):
+        mudancas.append(f"responsável: {antes['responsavel'] or 'ninguém'} → {task.assigned_username or 'ninguém'}")
+    if antes['deadline'] != task.deadline:
+        fmt = lambda d: d.strftime('%d/%m/%Y') if d else 'sem prazo'
+        mudancas.append(f"prazo: {fmt(antes['deadline'])} → {fmt(task.deadline)}")
+    if (antes['checklist'] or '') != (task.checklist or ''):
+        mudancas.append(f"checklist: {_resumo_checklist(antes['checklist'])} → {_resumo_checklist(task.checklist)} itens concluídos")
+    return '; '.join(mudancas)
+
+
+@app.route('/api/projeto/<int:projeto_id>/tasks/log')
+def api_log_tasks(projeto_id):
+    if not session.get('logged_in'):
+        return jsonify({"status": "error", "message": "Não autenticado."}), 401
+    projeto = db.session.get(Project, projeto_id)
+    if not projeto:
+        return jsonify({"status": "error", "message": "Projeto não encontrado."}), 404
+    ac = acesso_projeto(projeto)
+    if not (ac['is_owner'] or ac['is_admin'] or ac['is_coord']):
+        return jsonify({"status": "error", "message": "O histórico de tarefas é restrito ao professor orientador, ao responsável e à coordenação."}), 403
+
+    query = TaskLog.query.filter_by(projeto_id=projeto_id)
+    usuario = (request.args.get('usuario') or '').strip()
+    if usuario:
+        query = query.filter(db.func.lower(TaskLog.username) == usuario.lower())
+    task_id = request.args.get('task_id', type=int)
+    if task_id:
+        query = query.filter(TaskLog.task_id == task_id)
+    registros = query.order_by(TaskLog.data.desc(), TaskLog.id.desc()).limit(500).all()
+    autores = sorted({u for (u,) in db.session.query(TaskLog.username).filter_by(projeto_id=projeto_id).distinct()}, key=str.lower)
+    return jsonify({"status": "success", "logs": [r.to_dict() for r in registros], "usuarios": autores})
+
+# ==========================================
 # APIs do Quadro Kanban
 # ==========================================
 @app.route('/api/projeto/<int:projeto_id>/tasks')
@@ -990,6 +1203,13 @@ def api_criar_task(projeto_id):
         checklist=checklist_str
     )
     db.session.add(task)
+    db.session.flush()
+    extras = []
+    if task.assigned_username:
+        extras.append(f"responsável: {task.assigned_username}")
+    if task.deadline:
+        extras.append(f"prazo: {task.deadline.strftime('%d/%m/%Y')}")
+    registrar_log_tarefa(task, 'criou', '; '.join(extras) or None)
     db.session.commit()
     return jsonify({
         "status": "success",
@@ -1031,7 +1251,10 @@ def api_mover_task(projeto_id, task_id):
     if novo_status not in ['todo', 'doing', 'done']:
         return jsonify({"status": "error", "message": "Status inválido"}), 400
         
+    status_anterior = task.status
     task.status = novo_status
+    if status_anterior != novo_status:
+        registrar_log_tarefa(task, 'moveu', f"{NOMES_STATUS_TAREFA.get(status_anterior, status_anterior)} → {NOMES_STATUS_TAREFA[novo_status]}")
     if novo_status == 'done':
         task.completed_at = datetime.utcnow()
     else:
@@ -1064,7 +1287,10 @@ def api_editar_task(projeto_id, task_id):
     checklist_str = data.get('checklist')
     if isinstance(checklist_str, list):
         checklist_str = json.dumps(checklist_str)
-    
+
+    antes = {'titulo': task.titulo, 'descricao': task.descricao, 'responsavel': task.assigned_username,
+             'deadline': task.deadline, 'checklist': task.checklist}
+
     if titulo:
         task.titulo = titulo
     if descricao is not None:
@@ -1083,7 +1309,10 @@ def api_editar_task(projeto_id, task_id):
         
     if checklist_str is not None:
         task.checklist = checklist_str
-        
+
+    alteracoes = _descrever_alteracoes(antes, task)
+    if alteracoes:
+        registrar_log_tarefa(task, 'editou', alteracoes)
     db.session.commit()
     return jsonify({
         "status": "success",
@@ -1116,6 +1345,7 @@ def api_excluir_task(projeto_id, task_id):
     if not (ac['is_owner'] or ac['is_admin'] or ac['is_lider']):
         return jsonify({"status": "error", "message": "Apenas Líderes da equipe, Administradores ou Orientadores podem excluir tarefas."}), 403
         
+    registrar_log_tarefa(task, 'excluiu', f"estava em {NOMES_STATUS_TAREFA.get(task.status, task.status)}")
     db.session.delete(task)
     db.session.commit()
     return jsonify({"status": "success"})

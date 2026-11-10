@@ -764,6 +764,156 @@ def email_template_conta_recusada(username: str, role: str, motivo: str = None) 
 """
 
 
+def _email_template_aviso_projeto(titulo_pagina: str, selo: str, faixa: str, titulo: str, username: str,
+                                  paragrafos: list, botao_texto: str, botao_link: str) -> str:
+    """Layout institucional comum aos avisos de projeto. Os textos dinâmicos já devem vir escapados."""
+    cdn_base = "https://cdn.jsdelivr.net/gh/Guizzin00/Projeto-Integardor-II@main"
+    logo_url = f"{cdn_base}/SISCPTI/static/logoCEUB.png"
+    img_url = f"{cdn_base}/telas%20de%20erro/Email%20campaign-amico.svg"
+    corpo_paragrafos = "\n".join(
+        f'        <p style="margin:0 0 18px;font-size:14px;line-height:1.7;color:#475569;">{p}</p>' for p in paragrafos
+    )
+
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{titulo_pagina} – UniCEUB</title>
+</head>
+<body style="margin:0;padding:40px 15px;background:#f0f2f5;font-family:'Segoe UI',Roboto,-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;color:#1e293b;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.06);border:1px solid #e2e8f0;">
+
+    <tr>
+      <td style="height:5px;background:linear-gradient(90deg, #3A1346 0%, #3A1346 70%, #A2237D 70%, #A2237D 100%);"></td>
+    </tr>
+
+    <tr>
+      <td style="padding:24px 36px 20px;background:#ffffff;border-bottom:1px solid #edf2f7;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td align="left" valign="middle">
+              <img src="{logo_url}" alt="CEUB - Centro Universitário de Brasília" width="70" height="42"
+                   style="height:42px;width:auto;max-height:42px;display:block;border:0;outline:none;" />
+            </td>
+            <td align="right" valign="middle">
+              <div style="text-align:right;">
+                <span style="font-size:13px;font-weight:700;color:#3A1346;letter-spacing:0.5px;text-transform:uppercase;display:block;">SisCPTI</span>
+                <span style="font-size:11px;color:#059669;display:block;margin-top:2px;font-weight:600;">✓ {selo}</span>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="background:#3A1346;padding:24px 36px;text-align:left;">
+        <span style="display:inline-block;padding:3px 10px;background:rgba(5,150,105,0.3);border:1px solid #10b981;border-radius:4px;color:#a7f3d0;font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:8px;">
+          {faixa}
+        </span>
+        <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">
+          {titulo}
+        </h1>
+        <p style="margin:4px 0 0;color:#e2d9e6;font-size:13px;">
+          Centro Universitário de Brasília — Disciplina de Projeto Integrador
+        </p>
+      </td>
+    </tr>
+
+    <tr>
+      <td align="center" style="padding:32px 36px 12px;background:#ffffff;">
+        <img src="{img_url}" alt="{titulo_pagina}" width="220" height="220"
+             style="display:block;margin:0 auto;width:220px;max-width:100%;height:auto;border:0;outline:none;" />
+      </td>
+    </tr>
+
+    <tr>
+      <td style="padding:10px 36px 28px;">
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#334155;">
+          Prezado(a) <strong style="color:#3A1346;">{username}</strong>,
+        </p>
+{corpo_paragrafos}
+
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0;">
+          <tr>
+            <td align="center">
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="border-radius:8px;background:#3A1346;text-align:center;box-shadow:0 3px 10px rgba(58,19,70,0.25);">
+                    <a href="{botao_link}"
+                       style="display:inline-block;padding:15px 38px;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:0.5px;text-transform:uppercase;font-family:'Segoe UI',Roboto,sans-serif;">
+                      {botao_texto}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <p style="margin:0;font-size:12px;color:#64748b;line-height:1.6;">
+          Caso não consiga utilizar o botão acima, copie e cole o link no seu navegador: <br/>
+          <span style="color:#3A1346;font-family:monospace;word-break:break-all;">{botao_link}</span>
+        </p>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="background:#f8fafc;border-top:1px solid #edf2f7;padding:24px 36px;text-align:center;">
+        <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#3A1346;">
+          Centro Universitário de Brasília – UniCEUB
+        </p>
+        <p style="margin:0 0 10px;font-size:12px;color:#64748b;line-height:1.6;">
+          SEPN 707/907 - Campus Asa Norte, Brasília - DF, CEP 70790-075<br/>
+          Pró-Reitoria de Graduação · Coordenação de Cursos de Tecnologia da Informação
+        </p>
+        <p style="margin:0;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px;">
+          Mensagem institucional automática. Este canal não recebe respostas.
+        </p>
+      </td>
+    </tr>
+
+  </table>
+</body>
+</html>
+"""
+
+
+def email_template_projeto_aprovado(username: str, projeto_titulo: str, orientador: str = None, link: str = '') -> str:
+    """Aviso ao proponente de que a proposta de projeto foi aceita e o projeto já está disponível."""
+    from html import escape
+    paragrafos = [
+        f"Temos a satisfação de comunicar que a sua proposta de projeto <strong>{escape(projeto_titulo or '')}</strong> "
+        "foi <strong>aprovada</strong> pela Coordenação / Administração do SisCPTI · UniCEUB.",
+        "O projeto já foi criado no catálogo e o seu workspace está disponível para organizar tarefas, "
+        "conversar com a equipe e avaliar as candidaturas dos alunos.",
+    ]
+    if orientador:
+        paragrafos.append(f"Professor orientador: <strong>{escape(orientador)}</strong>.")
+    return _email_template_aviso_projeto(
+        'Projeto Aprovado', 'Proposta Aprovada', 'Proposta Aceita · Projeto Criado',
+        'Seu Projeto Foi Aprovado!', escape(username or ''), paragrafos,
+        'Acessar o Projeto', escape(link or '', quote=True)
+    )
+
+
+def email_template_candidatura_aprovada(username: str, projeto_titulo: str, link: str = '') -> str:
+    """Aviso ao aluno de que a candidatura foi aceita e ele já faz parte da equipe do projeto."""
+    from html import escape
+    paragrafos = [
+        f"Temos a satisfação de comunicar que a sua candidatura para o projeto <strong>{escape(projeto_titulo or '')}</strong> "
+        "foi <strong>aprovada</strong> pelo responsável do projeto.",
+        "Você já faz parte da equipe e tem acesso ao workspace do projeto, com o quadro de tarefas e o chat da equipe.",
+    ]
+    return _email_template_aviso_projeto(
+        'Candidatura Aprovada', 'Candidatura Aprovada', 'Candidatura Aceita · Bem-vindo(a) à Equipe',
+        'Você Foi Aceito no Projeto!', escape(username or ''), paragrafos,
+        'Acessar o Workspace', escape(link or '', quote=True)
+    )
+
+
 # Papéis oficiais do sistema (fonte única)
 PAPEIS_VALIDOS = ['aluno', 'lider', 'professor', 'empresa', 'cliente', 'coordenador', 'admin']
 PAPEIS_AUTOCADASTRO = ['aluno', 'professor', 'empresa', 'cliente']

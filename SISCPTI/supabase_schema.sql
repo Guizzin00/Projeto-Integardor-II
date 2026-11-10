@@ -15,6 +15,7 @@ DROP TABLE IF EXISTS password_reset       CASCADE;
 DROP TABLE IF EXISTS activity_log         CASCADE;
 DROP TABLE IF EXISTS notification         CASCADE;
 DROP TABLE IF EXISTS rating               CASCADE;
+DROP TABLE IF EXISTS task_log             CASCADE;
 DROP TABLE IF EXISTS task                 CASCADE;
 DROP TABLE IF EXISTS message              CASCADE;
 DROP TABLE IF EXISTS application          CASCADE;
@@ -58,7 +59,10 @@ CREATE TABLE project (
     owner_username  VARCHAR(50),
     owner_id        INTEGER REFERENCES "user"(id) ON DELETE SET NULL,
     tags            VARCHAR(300) DEFAULT '',
-    concluido_em    TIMESTAMPTZ
+    concluido_em    TIMESTAMPTZ,
+    exclusao_solicitada_por VARCHAR(50),  -- aluno dono que pediu a exclusão ao docente
+    exclusao_motivo         TEXT,
+    exclusao_solicitada_em  TIMESTAMPTZ
 );
 
 -- Tabela de Submissões / Propostas de Desafios e Projetos
@@ -165,6 +169,19 @@ CREATE TABLE task (
     completed_at      TIMESTAMPTZ
 );
 
+-- Histórico das ações no Kanban, consultado pelo professor orientador
+CREATE TABLE task_log (
+    id          SERIAL       PRIMARY KEY,
+    projeto_id  INTEGER      NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+    task_id     INTEGER,     -- sem FK: o histórico permanece após a exclusão da tarefa
+    task_titulo VARCHAR(150) NOT NULL,
+    user_id     INTEGER REFERENCES "user"(id) ON DELETE SET NULL,
+    username    VARCHAR(50)  NOT NULL,
+    acao        VARCHAR(30)  NOT NULL, -- 'criou', 'moveu', 'editou', 'excluiu'
+    detalhes    TEXT,
+    data        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
 -- --------------------------------------------------------
 -- 3. ÍNDICES DE PERFORMANCE E CHAVES ESTRANGEIRAS
 -- --------------------------------------------------------
@@ -195,6 +212,9 @@ CREATE INDEX idx_notification_user_id   ON notification(user_id);
 CREATE INDEX idx_notification_lida      ON notification(lida);
 
 CREATE INDEX idx_rating_projeto         ON rating(projeto_id);
+
+CREATE INDEX idx_task_log_projeto       ON task_log(projeto_id);
+CREATE INDEX idx_task_log_user_id       ON task_log(user_id);
 CREATE INDEX idx_rating_user_id         ON rating(user_id);
 
 CREATE INDEX idx_task_projeto           ON task(projeto_id);

@@ -68,6 +68,10 @@ class Project(db.Model):
     professor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     tags = db.Column(db.String(300), nullable=True, default='')
     concluido_em = db.Column(db.DateTime, nullable=True)
+    # Pedido de exclusão feito pelo aluno dono do projeto, aguardando decisão do docente (#71)
+    exclusao_solicitada_por = db.Column(db.String(50), nullable=True)
+    exclusao_motivo = db.Column(db.Text, nullable=True)
+    exclusao_solicitada_em = db.Column(db.DateTime, nullable=True)
     orientador = db.relationship('User', foreign_keys=[professor_id], lazy='joined', backref=db.backref('projetos_orientados', lazy=True)) 
 
     def to_dict(self):
@@ -169,9 +173,15 @@ class Project(db.Model):
             "detalhes": detalhes_val,
             "links": links_val,
             "owner_username": self.owner_username,
+            "owner_id": self.owner_id,
             "tags": self.tags or "",
             "professor_id": self.professor_id,
             "orientador": orientador_info,
+            "exclusao_solicitada": {
+                "por": self.exclusao_solicitada_por,
+                "motivo": self.exclusao_motivo or "",
+                "em": self.exclusao_solicitada_em.isoformat() if self.exclusao_solicitada_em else None
+            } if self.exclusao_solicitada_por else None,
             "candidaturas_aprovadas": cands_aprovadas,
             "total_integrantes": total_integrantes
         }
@@ -200,6 +210,7 @@ class Submission(db.Model):
             "email": self.email,
             "status": self.status,
             "username": self.username,
+            "user_id": self.user_id,
             "imagem": self.imagem,
             "tags": self.tags or "",
             "projeto_id": self.projeto_id
@@ -328,6 +339,32 @@ class Task(db.Model):
         }
 
 
+class TaskLog(db.Model):
+    """Histórico das ações no Kanban (criar, mover, editar, excluir), consultado pelo professor (#69)."""
+    id = db.Column(db.Integer, primary_key=True)
+    projeto_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False, index=True)
+    task_id = db.Column(db.Integer, nullable=True)  # sem FK: o registro sobrevive à exclusão da tarefa
+    task_titulo = db.Column(db.String(150), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True, index=True)
+    username = db.Column(db.String(50), nullable=False)
+    acao = db.Column(db.String(30), nullable=False)  # criou, moveu, editou, excluiu
+    detalhes = db.Column(db.Text, nullable=True)
+    data = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    projeto = db.relationship('Project', backref=db.backref('task_logs', lazy=True, cascade='all, delete-orphan'))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "task_id": self.task_id,
+            "task_titulo": self.task_titulo,
+            "username": self.username,
+            "acao": self.acao,
+            "detalhes": self.detalhes or "",
+            "data": self.data.isoformat() if self.data else None
+        }
+
+
 # =========================
 # Vínculos por id: preenche o id do usuário sempre que só o nome for informado
 # =========================
@@ -341,6 +378,7 @@ _VINCULOS = {
     'Submission': [('username', 'user_id')],
     'Task': [('assigned_username', 'assigned_user_id')],
     'Project': [('owner_username', 'owner_id')],
+    'TaskLog': [('username', 'user_id')],
 }
 
 
@@ -351,5 +389,5 @@ def _preencher_ids(mapper, connection, target):
             setattr(target, campo_id, connection.execute(select(User.id).where(User.username == nome)).scalar())
 
 
-for _modelo in (Application, Message, Notification, Rating, Submission, Task, Project):
+for _modelo in (Application, Message, Notification, Rating, Submission, Task, Project, TaskLog):
     event.listen(_modelo, 'before_insert', _preencher_ids)

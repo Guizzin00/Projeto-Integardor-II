@@ -13,8 +13,8 @@ from datetime import datetime, timedelta
 import json, os, uuid, io, csv
 
 from app_instance import app
-from models import db, Project, Submission, Application, User, Notification, ActivityLog, get_random_default_cover, Message, Rating, Task, PasswordReset, AccountVerification
-from utils import PAPEIS_VALIDOS, STATUS_PROJETO, normalizar_status_projeto, proteger_celula_csv, validar_senha, log_atividade, upload_file_to_supabase, enviar_email, email_template_conta_aprovada, email_template_conta_recusada, get_frontend_url
+from models import db, Project, Submission, Application, User, Notification, ActivityLog, get_random_default_cover, Message, Rating, Task, TaskLog, PasswordReset, AccountVerification
+from utils import PAPEIS_VALIDOS, STATUS_PROJETO, normalizar_status_projeto, proteger_celula_csv, validar_senha, log_atividade, upload_file_to_supabase, enviar_email, email_template_conta_aprovada, email_template_conta_recusada, email_template_projeto_aprovado, get_frontend_url
 
 # =========================
 # Área administrativa API
@@ -368,6 +368,7 @@ def acao_submissao(sub_id, acao):
         return jsonify({"status": "error", "message": "Submissão não encontrada."}), 404
         
     data = request.get_json(silent=True) or request.form
+    aviso_email = None
     if acao == 'aprovar':
         if subm.status == 'APROVADA':
             return jsonify({"status": "error", "message": "Esta proposta já foi aprovada."}), 409
@@ -383,6 +384,14 @@ def acao_submissao(sub_id, acao):
                     prof_name = prof_user.username
             except (ValueError, TypeError):
                 pass
+
+        # Proposta submetida por um professor: ele mesmo vira o orientador, salvo escolha explícita de outro docente
+        if not prof_user:
+            autor = db.session.get(User, subm.user_id) if subm.user_id else \
+                User.query.filter_by(username=subm.username).first()
+            if autor and autor.role == 'professor':
+                prof_user = autor
+                prof_name = autor.username
 
         novo_proj = Project(
             titulo=subm.nome_projeto,
@@ -410,6 +419,16 @@ def acao_submissao(sub_id, acao):
                 link="/perfil"
             )
             db.session.add(notif)
+
+        autor = db.session.get(User, subm.user_id) if subm.user_id else \
+            User.query.filter_by(username=subm.username).first()
+        destinatario = (autor.email if autor and autor.email else subm.email) or ''
+        if destinatario:
+            base_url = get_frontend_url() or request.host_url.rstrip('/')
+            aviso_email = (destinatario, email_template_projeto_aprovado(
+                autor.username if autor else (subm.proponente or subm.username or ''),
+                subm.nome_projeto, orientador=prof_name or None,
+                link=f"{base_url}/workspace/{novo_proj.id}"))
 
     elif acao == 'rejeitar':
         subm.status = 'REJEITADA'
@@ -440,6 +459,8 @@ def acao_submissao(sub_id, acao):
         return jsonify({"status": "error", "message": "Ação inválida."}), 400
 
     db.session.commit()
+    if aviso_email:
+        enviar_email(aviso_email[0], 'Proposta de Projeto Aprovada – SisCPTI · UniCEUB', aviso_email[1])
     return jsonify({"status": "success", "new_status": subm.status, "message": f"Submissão marcada como {subm.status}."})
 
 # =========================
@@ -476,11 +497,16 @@ def novo_projeto():
                     u = f"https://{u}"
                 links_dict[n] = u
 
+        nome_professor = (data.get('professor') or '').strip()
+        prof_user = User.query.filter(db.func.lower(User.username) == nome_professor.lower(),
+                                      User.role == 'professor').first() if nome_professor else None
+
         novo = Project(
             titulo=data.get('titulo'),
             categoria=data.get('categoria'),
             status=normalizar_status_projeto(data.get('status') or 'DISPONÍVEL') or 'DISPONÍVEL',
-            professor=data.get('professor') or '',
+            professor=prof_user.username if prof_user else nome_professor,
+            professor_id=prof_user.id if prof_user else None,
             descricao_curta=data.get('descricao_curta'),
             detalhes=json.dumps(detalhes_linhas),
             imagem=imagem_path,
@@ -604,6 +630,63 @@ def editar_projeto(projeto_id):
 
     return jsonify({"status": "success", "projeto": projeto_db.to_dict()})
 
+PAPEIS_ALUNO = ('aluno', 'lider', 'user')
+
+
+def papel_na_exclusao(projeto_db):
+    """Quem pode excluir direto (admin, orientador ou professor dono) e quem precisa pedir ao docente (aluno dono)."""
+    role = session.get('role')
+    usuario = (session.get('user') or '').strip().lower()
+    is_admin = role == 'admin'
+    is_orientador = bool(
+        (g.uid and projeto_db.professor_id == g.uid) or
+        (role == 'professor' and projeto_db.professor and projeto_db.professor.strip().lower() == usuario)
+    )
+    is_owner = bool(
+        (g.uid and projeto_db.owner_id == g.uid) or
+        (projeto_db.owner_username and projeto_db.owner_username.strip().lower() == usuario)
+    )
+    return {
+        'is_admin': is_admin,
+        'is_orientador': is_orientador,
+        'is_owner': is_owner,
+        'exclui_direto': is_admin or is_orientador or (is_owner and role == 'professor'),
+        'precisa_solicitar': is_owner and role in PAPEIS_ALUNO,
+        'decide_solicitacao': is_admin or is_orientador,
+    }
+
+
+def _notificar(username, mensagem, link):
+    if not username:
+        return
+    u = User.query.filter_by(username=username).first()
+    db.session.add(Notification(user_id=u.id if u else None, username=username, mensagem=mensagem, link=link))
+
+
+def _apagar_projeto(projeto_db, autor):
+    """Remove o projeto e tudo que pertence a ele, avisando a equipe. Faz o commit."""
+    titulo = projeto_db.titulo
+    avisados = {(autor or '').lower()}
+    interessados = [c.username for c in Application.query.filter(
+        Application.projeto_id == projeto_db.id, Application.status.in_(['APROVADA', 'APROVADO'])).all()]
+    interessados += [projeto_db.owner_username, projeto_db.exclusao_solicitada_por]
+    for nome in interessados:
+        if nome and nome.lower() not in avisados:
+            avisados.add(nome.lower())
+            _notificar(nome, f"🗑️ O projeto '{titulo}' foi excluído por @{autor}.", "/projetos")
+
+    Message.query.filter_by(projeto_id=projeto_db.id).delete(synchronize_session=False)
+    Application.query.filter_by(projeto_id=projeto_db.id).delete(synchronize_session=False)
+    Rating.query.filter_by(projeto_id=projeto_db.id).delete(synchronize_session=False)
+    Task.query.filter_by(projeto_id=projeto_db.id).delete(synchronize_session=False)
+    TaskLog.query.filter_by(projeto_id=projeto_db.id).delete(synchronize_session=False)
+    Submission.query.filter_by(projeto_id=projeto_db.id).update({'projeto_id': None}, synchronize_session=False)
+    db.session.expire(projeto_db)
+    db.session.delete(projeto_db)
+    db.session.commit()
+    log_atividade(autor or 'Sistema', f"Excluiu o projeto '{titulo}'")
+
+
 @app.route('/api/admin/projeto/<int:projeto_id>/excluir', methods=['POST', 'DELETE'])
 @app.route('/api/projeto/<int:projeto_id>/excluir', methods=['POST', 'DELETE'])
 @app.route('/admin/excluir/<int:projeto_id>', methods=['POST', 'DELETE'])
@@ -615,32 +698,99 @@ def excluir_projeto(projeto_id):
     if not projeto_db:
         return jsonify({"status": "error", "message": "Projeto não encontrado."}), 404
 
-    is_admin = (session.get('role') == 'admin')
-    is_owner = bool(g.uid and projeto_db.owner_id == g.uid)
-    if not (is_admin or is_owner):
-        return jsonify({"status": "error", "message": "Acesso restrito a administradores ou ao responsável pelo projeto."}), 403
+    papel = papel_na_exclusao(projeto_db)
+    if papel['precisa_solicitar']:
+        return jsonify({"status": "error", "message": "Alunos não excluem projetos diretamente. Envie uma solicitação de exclusão ao docente do projeto."}), 403
+    if not (papel['exclui_direto'] or papel['is_owner']):
+        return jsonify({"status": "error", "message": "Acesso restrito a administradores, ao professor orientador ou ao responsável pelo projeto."}), 403
 
-    if not is_admin:
+    if not papel['exclui_direto']:
         equipe_ativa = Application.query.filter_by(projeto_id=projeto_db.id, status='APROVADA').count()
         if equipe_ativa > 0:
             return jsonify({"status": "error", "message": "Não é possível excluir um projeto com equipe ativa. Solicite à administração."}), 409
 
     try:
-        titulo = projeto_db.titulo
-        Message.query.filter_by(projeto_id=projeto_db.id).delete(synchronize_session=False)
-        Application.query.filter_by(projeto_id=projeto_db.id).delete(synchronize_session=False)
-        Rating.query.filter_by(projeto_id=projeto_db.id).delete(synchronize_session=False)
-        Task.query.filter_by(projeto_id=projeto_db.id).delete(synchronize_session=False)
-        Submission.query.filter_by(projeto_id=projeto_db.id).update({'projeto_id': None}, synchronize_session=False)
-        db.session.expire(projeto_db)
-        db.session.delete(projeto_db)
-        db.session.commit()
-        log_atividade(session.get('user', 'Sistema'), f"Excluiu o projeto '{titulo}'")
+        _apagar_projeto(projeto_db, session.get('user'))
         return jsonify({"status": "success", "message": "Projeto excluído com sucesso!"})
     except Exception as e:
         db.session.rollback()
         print(f"Erro ao excluir projeto {projeto_id}: {e}")
         return jsonify({"status": "error", "message": "Não foi possível excluir o projeto."}), 500
+
+
+@app.route('/api/projeto/<int:projeto_id>/exclusao/solicitar', methods=['POST'])
+def solicitar_exclusao_projeto(projeto_id):
+    if not session.get('logged_in'):
+        return jsonify({"status": "error", "message": "Não autenticado."}), 401
+    projeto_db = db.session.get(Project, projeto_id)
+    if not projeto_db:
+        return jsonify({"status": "error", "message": "Projeto não encontrado."}), 404
+    if not papel_na_exclusao(projeto_db)['precisa_solicitar']:
+        return jsonify({"status": "error", "message": "Apenas o aluno responsável pelo projeto pode solicitar a exclusão."}), 403
+    if projeto_db.exclusao_solicitada_por:
+        return jsonify({"status": "error", "message": "Já existe uma solicitação de exclusão aguardando o docente."}), 409
+
+    data = request.get_json(silent=True) or request.form
+    motivo = str(data.get('motivo') or '').strip()
+    if not motivo:
+        return jsonify({"status": "error", "message": "Informe o motivo da exclusão."}), 400
+    if len(motivo) > 1000:
+        return jsonify({"status": "error", "message": "O motivo deve ter no máximo 1000 caracteres."}), 400
+
+    projeto_db.exclusao_solicitada_por = session['user']
+    projeto_db.exclusao_motivo = motivo
+    projeto_db.exclusao_solicitada_em = datetime.utcnow()
+
+    mensagem = f"🗑️ @{session['user']} solicitou a exclusão do projeto '{projeto_db.titulo}'. Avalie o pedido."
+    if projeto_db.orientador:
+        _notificar(projeto_db.orientador.username, mensagem, f"/projeto/{projeto_db.id}")
+    else:
+        # Sem orientador: o pedido vai para a administração
+        for adm in User.query.filter_by(role='admin').all():
+            _notificar(adm.username, mensagem, f"/projeto/{projeto_db.id}")
+    db.session.commit()
+    log_atividade(session['user'], 'Solicitou exclusão de projeto', f"Projeto #{projeto_db.id}: {motivo}")
+    return jsonify({"status": "success", "message": "Solicitação de exclusão enviada ao docente do projeto.", "projeto": projeto_db.to_dict()})
+
+
+@app.route('/api/projeto/<int:projeto_id>/exclusao/<acao>', methods=['POST'])
+def decidir_exclusao_projeto(projeto_id, acao):
+    if not session.get('logged_in'):
+        return jsonify({"status": "error", "message": "Não autenticado."}), 401
+    projeto_db = db.session.get(Project, projeto_id)
+    if not projeto_db:
+        return jsonify({"status": "error", "message": "Projeto não encontrado."}), 404
+    if acao not in ('aprovar', 'recusar', 'cancelar'):
+        return jsonify({"status": "error", "message": "Ação inválida."}), 400
+    if not projeto_db.exclusao_solicitada_por:
+        return jsonify({"status": "error", "message": "Não há solicitação de exclusão pendente para este projeto."}), 404
+
+    papel = papel_na_exclusao(projeto_db)
+    solicitante = projeto_db.exclusao_solicitada_por
+
+    if acao == 'cancelar':
+        if not (papel['is_owner'] or papel['is_admin']):
+            return jsonify({"status": "error", "message": "Apenas quem fez a solicitação pode cancelá-la."}), 403
+    elif not papel['decide_solicitacao']:
+        return jsonify({"status": "error", "message": "Apenas o docente orientador ou a administração pode decidir a solicitação."}), 403
+
+    if acao == 'aprovar':
+        try:
+            _apagar_projeto(projeto_db, session.get('user'))
+        except Exception as e:
+            db.session.rollback()
+            print(f"Erro ao excluir projeto {projeto_id}: {e}")
+            return jsonify({"status": "error", "message": "Não foi possível excluir o projeto."}), 500
+        return jsonify({"status": "success", "message": "Solicitação aprovada e projeto excluído."})
+
+    projeto_db.exclusao_solicitada_por = None
+    projeto_db.exclusao_motivo = None
+    projeto_db.exclusao_solicitada_em = None
+    if acao == 'recusar':
+        _notificar(solicitante, f"❌ O docente recusou a solicitação de exclusão do projeto '{projeto_db.titulo}'.", f"/projeto/{projeto_db.id}")
+    db.session.commit()
+    mensagem = "Solicitação de exclusão recusada." if acao == 'recusar' else "Solicitação de exclusão cancelada."
+    return jsonify({"status": "success", "message": mensagem, "projeto": projeto_db.to_dict()})
 
 # =========================
 # Exportar CSV (única rota)

@@ -36,13 +36,30 @@ export interface MessageItem {
   data_envio: string;
 }
 
+interface TaskLogItem {
+  id: number;
+  task_id: number | null;
+  task_titulo: string;
+  username: string;
+  acao: string;
+  detalhes: string;
+  data: string | null;
+}
+
+const CORES_ACAO_LOG: Record<string, string> = {
+  criou: 'bg-emerald-500',
+  moveu: 'bg-blue-500',
+  editou: 'bg-amber-500',
+  excluiu: 'bg-rose-500',
+};
+
 export function Workspace() {
   const { avisar, confirmar } = useUI();
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   
   // Abas de navegação
-  const [activeTab, setActiveTab] = useState<'Kanban' | 'Mensagens' | 'Métricas' | 'Participantes'>('Kanban');
+  const [activeTab, setActiveTab] = useState<'Kanban' | 'Mensagens' | 'Métricas' | 'Participantes' | 'Histórico'>('Kanban');
   
   // Estado dos dados
   const [projeto, setProjeto] = useState<any>(null);
@@ -51,6 +68,14 @@ export function Workspace() {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [candidaturas, setCandidaturas] = useState<any[]>([]);
   const [isOwner, setIsOwner] = useState(false);
+  const [podeGerenciarEquipe, setPodeGerenciarEquipe] = useState(false);
+
+  // Histórico das tarefas (#69)
+  const [podeVerHistorico, setPodeVerHistorico] = useState(false);
+  const [historico, setHistorico] = useState<TaskLogItem[]>([]);
+  const [autoresHistorico, setAutoresHistorico] = useState<string[]>([]);
+  const [filtroHistorico, setFiltroHistorico] = useState('');
+  const [carregandoHistorico, setCarregandoHistorico] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -135,6 +160,8 @@ export function Workspace() {
         setMensagens(res.data.mensagens || []);
         setCandidaturas(res.data.candidaturas || []);
         setIsOwner(Boolean(res.data.is_owner));
+        setPodeGerenciarEquipe(Boolean(res.data.pode_gerenciar_equipe));
+        setPodeVerHistorico(Boolean(res.data.pode_ver_historico));
       } else {
         setError(res.data.message || 'Não foi possível carregar os dados do workspace.');
       }
@@ -154,6 +181,22 @@ export function Workspace() {
       }
     } catch (err: any) {
       avisar(err.response?.data?.message || `Erro ao ${acao} candidatura.`);
+    }
+  };
+
+  // Remover aluno da equipe / convidar de volta (#70)
+  const candidaturaDoMembro = (username: string) =>
+    candidaturas.find(c => c.username?.toLowerCase() === username.toLowerCase() && ['APROVADA', 'APROVADO'].includes(c.status));
+
+  const handleGerenciarMembro = async (candId: number, username: string, acao: 'remover' | 'convidar') => {
+    if (acao === 'remover' && !await confirmar(`Remover @${username} da equipe? Ele perderá o acesso ao workspace, as tarefas dele ficarão sem responsável e ele não poderá se candidatar novamente, a menos que seja convidado de volta.`, { rotulo: 'Remover', perigo: true })) return;
+    try {
+      const res = await api.post(`/projeto/${id}/membros/${candId}/${acao}`);
+      avisar(res.data.message, 'sucesso');
+      carregarWorkspace();
+      if (acao === 'remover') carregarTasks();
+    } catch (err: any) {
+      avisar(err.response?.data?.message || 'Erro ao atualizar a equipe.');
     }
   };
 
@@ -189,6 +232,21 @@ export function Workspace() {
       chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [mensagens, activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'Histórico' || !podeVerHistorico) return;
+    let ativo = true;
+    setCarregandoHistorico(true);
+    api.get(`/projeto/${id}/tasks/log`, { params: filtroHistorico ? { usuario: filtroHistorico } : {} })
+      .then(res => {
+        if (!ativo) return;
+        setHistorico(res.data.logs || []);
+        setAutoresHistorico(res.data.usuarios || []);
+      })
+      .catch(err => { if (ativo) avisar(err.response?.data?.message || 'Erro ao carregar o histórico de tarefas.'); })
+      .finally(() => { if (ativo) setCarregandoHistorico(false); });
+    return () => { ativo = false; };
+  }, [activeTab, filtroHistorico, podeVerHistorico, id, tasks]);
 
   // Enviar mensagem no chat
   const handleEnviarMensagem = async (e: React.FormEvent) => {
@@ -544,6 +602,23 @@ export function Workspace() {
               </svg>
               <span className="hidden lg:inline">Equipe</span>
             </button>
+
+            {podeVerHistorico && (
+              <button
+                onClick={() => setActiveTab('Histórico')}
+                title="Histórico de ações nas tarefas"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'Histórico'
+                    ? 'bg-[#002B49] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 bg-transparent'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="hidden lg:inline">Histórico</span>
+              </button>
+            )}
           </nav>
 
           {/* Direita: Ações Rápidas (Nova Tarefa + Painéis Laterais) */}
@@ -894,6 +969,59 @@ export function Workspace() {
           </div>
         )}
 
+        {/* ==================== ABA: HISTÓRICO DE TAREFAS ==================== */}
+        {activeTab === 'Histórico' && podeVerHistorico && (
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold text-[#002B49] m-0">Histórico de Tarefas</h2>
+                <p className="text-xs text-slate-600 m-0 mt-0.5">Registro de quem criou, moveu, editou ou excluiu cada tarefa do Kanban.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <label htmlFor="filtro-historico" className="text-xs font-semibold text-slate-600">Integrante:</label>
+                <select
+                  id="filtro-historico"
+                  value={filtroHistorico}
+                  onChange={(e) => setFiltroHistorico(e.target.value)}
+                  className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-[#002B49]"
+                >
+                  <option value="">Todos</option>
+                  {autoresHistorico.map(u => (
+                    <option key={u} value={u}>@{u}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {carregandoHistorico && historico.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-500">Carregando histórico...</div>
+            ) : historico.length === 0 ? (
+              <div className="p-6 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs text-slate-500 text-center">
+                Nenhuma ação registrada nas tarefas{filtroHistorico ? ` por @${filtroHistorico}` : ''} até o momento.
+              </div>
+            ) : (
+              <ol className="relative border-l-2 border-slate-200 ml-2 space-y-4 list-none p-0 m-0">
+                {historico.map(log => (
+                  <li key={log.id} className="ml-5 relative">
+                    <span className={`absolute -left-[29px] top-1 w-3.5 h-3.5 rounded-full border-2 border-white ${CORES_ACAO_LOG[log.acao] || 'bg-slate-400'}`} />
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-800">
+                        <span className="font-bold">@{log.username}</span>
+                        <span className="text-slate-600">{log.acao}</span>
+                        <span className="font-semibold text-[#002B49]">"{log.task_titulo}"</span>
+                        <span className="ml-auto text-[10px] text-slate-500">
+                          {log.data ? new Date(log.data.endsWith('Z') ? log.data : log.data + 'Z').toLocaleString('pt-BR') : ''}
+                        </span>
+                      </div>
+                      {log.detalhes && <p className="text-[11px] text-slate-600 m-0 mt-1 break-words">{log.detalhes}</p>}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        )}
+
         {/* ==================== ABA: PARTICIPANTES ==================== */}
         {activeTab === 'Participantes' && (
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
@@ -933,10 +1061,19 @@ export function Workspace() {
                   <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
                     {m.substring(0, 2).toUpperCase()}
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <h4 className="text-xs font-bold text-slate-800 m-0 truncate">{m}</h4>
                     <span className="text-[10px] text-slate-600 font-semibold block mt-0.5">Aluno Pesquisador</span>
                   </div>
+                  {podeGerenciarEquipe && candidaturaDoMembro(m) && (
+                    <button
+                      onClick={() => handleGerenciarMembro(candidaturaDoMembro(m)!.id, m, 'remover')}
+                      className="shrink-0 px-2 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded text-[10px] font-semibold cursor-pointer border border-rose-200"
+                      title={`Remover ${m} da equipe`}
+                    >
+                      Remover
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -991,8 +1128,10 @@ export function Workspace() {
                               <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                                 cand.status === 'APROVADA'
                                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  : cand.status === 'REJEITADA'
+                                  : cand.status === 'REJEITADA' || cand.status === 'REMOVIDA'
                                   ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                  : cand.status === 'CONVIDADO'
+                                  ? 'bg-sky-50 text-sky-700 border border-sky-200'
                                   : 'bg-amber-50 text-amber-700 border border-amber-200'
                               }`}>
                                 {cand.status}
@@ -1014,9 +1153,16 @@ export function Workspace() {
                                     Rejeitar
                                   </button>
                                 </div>
+                              ) : cand.status === 'REMOVIDA' && podeGerenciarEquipe ? (
+                                <button
+                                  onClick={() => handleGerenciarMembro(cand.id, cand.username, 'convidar')}
+                                  className="px-2.5 py-1 bg-sky-50 text-sky-700 hover:bg-sky-100 rounded text-[11px] font-semibold cursor-pointer border border-sky-200"
+                                >
+                                  Convidar novamente
+                                </button>
                               ) : (
                                 <span className="text-[11px] text-slate-400 italic">
-                                  {cand.status === 'PENDENTE' ? 'Pendente' : 'Avaliado'}
+                                  {cand.status === 'PENDENTE' ? 'Pendente' : cand.status === 'CONVIDADO' ? 'Convite enviado' : cand.status === 'REMOVIDA' ? 'Removido' : 'Avaliado'}
                                 </span>
                               )}
                             </td>

@@ -126,6 +126,33 @@ export function Perfil() {
     }
   };
 
+  // Remover aluno da equipe / convidar de volta (#70)
+  const handleGerenciarMembro = async (cand: any, acao: 'remover' | 'convidar', projId: number) => {
+    if (acao === 'remover' && !await confirmar(`Remover @${cand.username} da equipe? Ele perderá o acesso ao workspace e não poderá se candidatar novamente, a menos que você o convide de volta.`, { rotulo: 'Remover', perigo: true })) return;
+    try {
+      const res = await api.post(`/projeto/${projId}/membros/${cand.id}/${acao}`);
+      avisar(res.data.message, 'sucesso');
+      setMeusProjetos(prev => prev.map(p => {
+        if (p.id !== projId) return p;
+        const newCands = (p.candidaturas || []).map((c: any) => c.id === cand.id ? { ...c, status: res.data.new_status } : c);
+        return { ...p, candidaturas: newCands };
+      }));
+    } catch (err: any) {
+      avisar(err.response?.data?.message || 'Erro ao atualizar a equipe.');
+    }
+  };
+
+  // Resposta do aluno a um convite para voltar à equipe (#70)
+  const handleResponderConvite = async (candId: number, acao: 'aceitar' | 'recusar') => {
+    try {
+      const res = await api.post(`/candidatura/${candId}/convite/${acao}`);
+      avisar(res.data.message, 'sucesso');
+      setMinhasCandidaturas(prev => prev.map(c => c.id === candId ? { ...c, status: res.data.new_status } : c));
+    } catch (err: any) {
+      avisar(err.response?.data?.message || 'Erro ao responder o convite.');
+    }
+  };
+
   // Projetos ativos em que o aluno foi aprovado (com acesso direto a Workspace)
   const projetosAtivosAluno = useMemo(() => {
     return minhasCandidaturas.filter(c => c.status === 'APROVADA');
@@ -676,6 +703,8 @@ export function Perfil() {
                   <option value="APROVADA">Aprovadas</option>
                   <option value="PENDENTE">Pendentes</option>
                   <option value="REJEITADA">Rejeitadas</option>
+                  <option value="CONVIDADO">Convites</option>
+                  <option value="REMOVIDA">Removido da equipe</option>
                 </select>
               </div>
             </div>
@@ -710,8 +739,10 @@ export function Perfil() {
                           <span className={`inline-block px-2.5 py-0.5 rounded-full text-[0.7rem] font-bold uppercase tracking-wider ${
                             cand.status === 'APROVADA'
                               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                              : cand.status === 'REJEITADA'
+                              : cand.status === 'REJEITADA' || cand.status === 'REMOVIDA'
                               ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                              : cand.status === 'CONVIDADO'
+                              ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20'
                               : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
                           }`}>
                             {cand.status}
@@ -725,6 +756,22 @@ export function Perfil() {
                             >
                               Cancelar
                             </button>
+                          )}
+                          {cand.status === 'CONVIDADO' && (
+                            <div className="flex justify-end gap-1.5">
+                              <button
+                                onClick={() => handleResponderConvite(cand.id, 'aceitar')}
+                                className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold cursor-pointer border-none transition-colors"
+                              >
+                                Aceitar convite
+                              </button>
+                              <button
+                                onClick={() => handleResponderConvite(cand.id, 'recusar')}
+                                className="px-2.5 py-1 rounded bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 text-xs font-semibold cursor-pointer border border-rose-500/20 transition-colors"
+                              >
+                                Recusar
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -828,8 +875,10 @@ export function Perfil() {
                                   <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                                     cand.status === 'APROVADA'
                                       ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                                      : cand.status === 'REJEITADA'
+                                      : cand.status === 'REJEITADA' || cand.status === 'REMOVIDA'
                                       ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                                      : cand.status === 'CONVIDADO'
+                                      ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20'
                                       : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
                                   }`}>
                                     {cand.status}
@@ -854,7 +903,28 @@ export function Perfil() {
                                       </button>
                                     </div>
                                   )}
-                                  {cand.status !== 'PENDENTE' && (
+                                  {cand.status === 'APROVADA' && (
+                                    <button
+                                      onClick={() => handleGerenciarMembro(cand, 'remover', proj.id)}
+                                      className="px-2.5 py-1 bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 rounded text-[11px] font-semibold cursor-pointer border border-rose-500/20 transition-colors"
+                                      title="Remover aluno da equipe"
+                                    >
+                                      Remover da equipe
+                                    </button>
+                                  )}
+                                  {cand.status === 'REMOVIDA' && (
+                                    <button
+                                      onClick={() => handleGerenciarMembro(cand, 'convidar', proj.id)}
+                                      className="px-2.5 py-1 bg-sky-500/10 text-sky-600 hover:bg-sky-500/20 rounded text-[11px] font-semibold cursor-pointer border border-sky-500/20 transition-colors"
+                                      title="Convidar o aluno para voltar à equipe"
+                                    >
+                                      Convidar novamente
+                                    </button>
+                                  )}
+                                  {cand.status === 'CONVIDADO' && (
+                                    <span className="text-[11px] text-text-secondary italic">Convite enviado</span>
+                                  )}
+                                  {cand.status === 'REJEITADA' && (
                                     <span className="text-[11px] text-text-secondary italic">Avaliado</span>
                                   )}
                                 </td>

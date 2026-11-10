@@ -654,13 +654,13 @@ export function CoordenadorDashboard() {
                           </label>
                           <select aria-label="Professor orientador da proposta" 
                             id={`prof-subm-${subm.id}`}
-                            value={selectedSubmProf[subm.id] || ''}
+                            value={selectedSubmProf[subm.id] ?? (professores.some(p => p.id === subm.user_id) ? String(subm.user_id) : '')}
                             onChange={(e) => setSelectedSubmProf({ ...selectedSubmProf, [subm.id]: e.target.value })}
                             className="px-2.5 py-1 bg-bg-surface border border-border-color rounded text-xs text-text-primary focus:outline-none focus:border-purple-primary"
                           >
                             <option value="">-- Opcional: Selecione Docente --</option>
                             {professores.map(p => (
-                              <option key={p.id} value={p.id}>Prof. {p.username}</option>
+                              <option key={p.id} value={p.id}>Prof. {p.username}{p.id === subm.user_id ? ' (autor da proposta)' : ''}</option>
                             ))}
                           </select>
                         </div>

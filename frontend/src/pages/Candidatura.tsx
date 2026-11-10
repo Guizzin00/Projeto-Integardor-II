@@ -40,6 +40,9 @@ export function Candidatura() {
           )) {
             avisar("⚠️ Você é o líder/autor deste projeto e já faz parte da equipe. Não é permitido se candidatar ao próprio projeto.", "info");
             navigate(`/projeto/${id}`, { replace: true });
+          } else if (proj.minha_candidatura) {
+            avisar("ℹ️ Você já possui uma candidatura ou participação neste projeto.", "info");
+            navigate(`/projeto/${id}`, { replace: true });
           }
         }
       } catch (err) {

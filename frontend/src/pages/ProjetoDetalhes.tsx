@@ -62,6 +62,11 @@ export function ProjetoDetalhes() {
   const [enviandoAvaliacao, setEnviandoAvaliacao] = useState(false);
   const [msgAvaliacao, setMsgAvaliacao] = useState('');
 
+  // Solicitação de exclusão (aluno dono → docente)
+  const [mostrarFormExclusao, setMostrarFormExclusao] = useState(false);
+  const [motivoExclusao, setMotivoExclusao] = useState('');
+  const [enviandoExclusao, setEnviandoExclusao] = useState(false);
+
   const fetchDados = async () => {
     try {
       const [resProj, resAv] = await Promise.all([
@@ -143,7 +148,20 @@ export function ProjetoDetalhes() {
     (user.role === 'professor' && (projeto.professor === user.username || projeto.orientador?.username === user.username))
   );
 
-  const podeExcluir = !!user && (user.role === 'admin' || projeto.owner_username === user.username);
+  const ehAluno = !!user && ['aluno', 'lider', 'user'].includes(user.role);
+  const isDono = !!user && (
+    projeto.owner_username?.toLowerCase() === user.username?.toLowerCase() ||
+    (!!projeto.owner_id && projeto.owner_id === user.id)
+  );
+  const isOrientadorDoProjeto = !!user && (
+    (!!projeto.professor_id && projeto.professor_id === user.id) ||
+    (user.role === 'professor' && projeto.professor?.toLowerCase() === user.username?.toLowerCase())
+  );
+  // Aluno dono não exclui direto: envia uma solicitação ao docente do projeto
+  const podeExcluir = !!user && (user.role === 'admin' || isOrientadorDoProjeto || (isDono && !ehAluno));
+  const podeSolicitarExclusao = isDono && ehAluno;
+  const pedidoExclusao: { por: string; motivo: string; em: string | null } | null = projeto.exclusao_solicitada || null;
+  const podeDecidirExclusao = !!user && (user.role === 'admin' || isOrientadorDoProjeto);
 
   const isDonoOuOrientador = !!user && (
     projeto.owner_username?.toLowerCase() === user.username?.toLowerCase() ||
@@ -154,6 +172,10 @@ export function ProjetoDetalhes() {
   );
 
   const isAlunoCandidato = !!user && ['aluno', 'lider', 'user'].includes(user.role) && !isDonoOuOrientador;
+
+  const statusMinhaCandidatura: string = (projeto.minha_candidatura?.status || '').toUpperCase();
+  const recebeCandidaturas = ['DISPONÍVEL', 'EM EXECUÇÃO'].includes(projeto.status);
+  const podeCandidatar = isAlunoCandidato && !statusMinhaCandidatura && recebeCandidaturas;
 
   const totalIntegrantes = projeto?.total_integrantes ?? (
     (projeto?.candidaturas_aprovadas || 0) + (projeto?.owner_username ? 1 : 0) || 1
@@ -174,6 +196,51 @@ export function ProjetoDetalhes() {
       }
     } catch (err: any) {
       avisar(err.response?.data?.message || 'Erro ao tentar excluir o projeto.', 'erro');
+    }
+  };
+
+  const handleResponderConvite = async (acao: 'aceitar' | 'recusar') => {
+    try {
+      const res = await api.post(`/candidatura/${projeto.minha_candidatura.id}/convite/${acao}`);
+      avisar('✅ ' + res.data.message);
+      fetchDados();
+    } catch (err: any) {
+      avisar(err.response?.data?.message || 'Erro ao responder o convite.', 'erro');
+    }
+  };
+
+  const handleSolicitarExclusao = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!motivoExclusao.trim()) {
+      avisar('Informe o motivo da exclusão.', 'erro');
+      return;
+    }
+    setEnviandoExclusao(true);
+    try {
+      const res = await api.post(`/projeto/${projeto.id}/exclusao/solicitar`, { motivo: motivoExclusao.trim() });
+      avisar('✅ ' + res.data.message);
+      setMostrarFormExclusao(false);
+      setMotivoExclusao('');
+      fetchDados();
+    } catch (err: any) {
+      avisar(err.response?.data?.message || 'Erro ao solicitar a exclusão.', 'erro');
+    } finally {
+      setEnviandoExclusao(false);
+    }
+  };
+
+  const handleDecidirExclusao = async (acao: 'aprovar' | 'recusar' | 'cancelar') => {
+    if (acao === 'aprovar' && !await confirmar(`Aprovar a solicitação e excluir o projeto "${projeto.titulo}"? Esta ação apagará tarefas, mensagens e candidaturas vinculadas.`, { rotulo: 'Excluir projeto', perigo: true })) return;
+    try {
+      const res = await api.post(`/projeto/${projeto.id}/exclusao/${acao}`);
+      avisar('✅ ' + res.data.message);
+      if (acao === 'aprovar') {
+        navigate(user?.role === 'admin' ? '/admin' : '/projetos');
+      } else {
+        fetchDados();
+      }
+    } catch (err: any) {
+      avisar(err.response?.data?.message || 'Erro ao processar a solicitação de exclusão.', 'erro');
     }
   };
 
@@ -403,8 +470,55 @@ export function ProjetoDetalhes() {
               </h3>
               {user ? (
                 <div className="flex flex-col gap-2.5">
-                  {isAlunoCandidato && (
-                    <Link 
+                  {isAlunoCandidato && ['APROVADA', 'APROVADO'].includes(statusMinhaCandidatura) && (
+                    <div className="w-full text-center py-2.5 px-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-bold text-[0.88rem]">
+                      ✅ Você faz parte da equipe deste projeto
+                    </div>
+                  )}
+                  {isAlunoCandidato && statusMinhaCandidatura === 'PENDENTE' && (
+                    <div className="w-full text-center py-2.5 px-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 font-bold text-[0.88rem]">
+                      ⏳ Sua candidatura está em análise
+                      <Link to="/perfil?tab=inscricoes" className="block mt-1 text-[0.8rem] font-semibold text-purple-primary no-underline hover:underline">
+                        Ver minhas candidaturas
+                      </Link>
+                    </div>
+                  )}
+                  {isAlunoCandidato && statusMinhaCandidatura === 'REJEITADA' && (
+                    <div className="w-full text-center py-2.5 px-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-semibold text-[0.85rem]">
+                      Sua candidatura para este projeto não foi aprovada.
+                    </div>
+                  )}
+                  {isAlunoCandidato && statusMinhaCandidatura === 'REMOVIDA' && (
+                    <div className="w-full text-center py-2.5 px-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-semibold text-[0.85rem]">
+                      Você foi removido da equipe deste projeto. Somente o responsável pode convidá-lo de volta.
+                    </div>
+                  )}
+                  {isAlunoCandidato && statusMinhaCandidatura === 'CONVIDADO' && (
+                    <div className="w-full text-center p-3 rounded-xl bg-sky-500/10 border border-sky-500/30 text-[0.85rem]">
+                      <p className="m-0 font-bold text-sky-700 dark:text-sky-400">💌 Você foi convidado a voltar para a equipe</p>
+                      <div className="flex gap-2 mt-2.5">
+                        <button
+                          type="button"
+                          onClick={() => handleResponderConvite('aceitar')}
+                          className="flex-1 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[0.8rem] border-none cursor-pointer transition-colors"
+                        >
+                          Aceitar convite
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleResponderConvite('recusar')}
+                          className="flex-1 py-2 rounded-full bg-transparent border border-border-color text-text-primary font-bold text-[0.8rem] cursor-pointer hover:bg-bg-primary transition-colors"
+                        >
+                          Recusar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {isAlunoCandidato && !statusMinhaCandidatura && !recebeCandidaturas && (
+                    <p className="text-text-secondary text-[0.85rem] text-center m-0">Este projeto não está recebendo candidaturas.</p>
+                  )}
+                  {podeCandidatar && (
+                    <Link
                       to={`/projeto/${projeto.id}/candidatar`} 
                       className="block w-full text-center py-3 px-4 rounded-full bg-gradient-to-br from-purple-primary to-purple-hover text-white font-bold no-underline text-[0.95rem] shadow-[0_4px_16px_rgba(122,27,181,0.3)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(122,27,181,0.45)] hover:brightness-110 transition-all"
                     >
@@ -433,6 +547,83 @@ export function ProjetoDetalhes() {
                     >
                       🗑️ Excluir Projeto
                     </button>
+                  )}
+                  {podeDecidirExclusao && pedidoExclusao && (
+                    <div className="w-full p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-[0.85rem]">
+                      <p className="m-0 font-bold text-rose-600 dark:text-rose-400">🗑️ Solicitação de exclusão</p>
+                      <p className="m-0 mt-1 text-text-secondary">
+                        <span className="font-semibold text-text-primary">@{pedidoExclusao.por}</span> pediu a exclusão deste projeto:
+                      </p>
+                      <p className="m-0 mt-1 italic text-text-primary break-words">"{pedidoExclusao.motivo}"</p>
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          type="button"
+                          onClick={() => handleDecidirExclusao('aprovar')}
+                          className="flex-1 py-2 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-[0.8rem] border-none cursor-pointer transition-colors"
+                        >
+                          Aprovar exclusão
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDecidirExclusao('recusar')}
+                          className="flex-1 py-2 rounded-full bg-transparent border border-border-color text-text-primary font-bold text-[0.8rem] cursor-pointer hover:bg-bg-primary transition-colors"
+                        >
+                          Recusar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {podeSolicitarExclusao && pedidoExclusao && (
+                    <div className="w-full text-center p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[0.85rem]">
+                      <p className="m-0 font-bold">⏳ Exclusão solicitada ao docente</p>
+                      <button
+                        type="button"
+                        onClick={() => handleDecidirExclusao('cancelar')}
+                        className="mt-2 bg-transparent border-none text-purple-primary font-semibold text-[0.8rem] cursor-pointer hover:underline"
+                      >
+                        Cancelar solicitação
+                      </button>
+                    </div>
+                  )}
+                  {podeSolicitarExclusao && !pedidoExclusao && !mostrarFormExclusao && (
+                    <button
+                      type="button"
+                      onClick={() => setMostrarFormExclusao(true)}
+                      className="block w-full text-center py-2.5 px-4 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-bold text-[0.88rem] hover:bg-rose-500/20 transition-all cursor-pointer"
+                    >
+                      🗑️ Solicitar Exclusão
+                    </button>
+                  )}
+                  {podeSolicitarExclusao && !pedidoExclusao && mostrarFormExclusao && (
+                    <form onSubmit={handleSolicitarExclusao} className="flex flex-col gap-2 p-3 rounded-xl border border-rose-500/30 bg-rose-500/5">
+                      <label htmlFor="motivo-exclusao" className="text-[0.8rem] font-semibold text-text-primary">
+                        Motivo da exclusão (será enviado ao docente do projeto)
+                      </label>
+                      <textarea
+                        id="motivo-exclusao"
+                        value={motivoExclusao}
+                        onChange={(e) => setMotivoExclusao(e.target.value)}
+                        maxLength={1000}
+                        rows={3}
+                        className="w-full px-3 py-2 rounded-lg border border-border-color bg-bg-primary text-text-primary text-sm resize-y focus:outline-none focus:border-purple-primary"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          disabled={enviandoExclusao}
+                          className="flex-1 py-2 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-[0.8rem] border-none cursor-pointer transition-colors disabled:opacity-60"
+                        >
+                          {enviandoExclusao ? 'Enviando...' : 'Enviar solicitação'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setMostrarFormExclusao(false); setMotivoExclusao(''); }}
+                          className="flex-1 py-2 rounded-full bg-transparent border border-border-color text-text-primary font-bold text-[0.8rem] cursor-pointer hover:bg-bg-primary transition-colors"
+                        >
+                          Voltar
+                        </button>
+                      </div>
+                    </form>
                   )}
                 </div>
               ) : (

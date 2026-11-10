@@ -355,3 +355,212 @@ def test_contagem_integrantes_time(cenario):
     dados = r.get_json()['projeto']
     assert dados['total_integrantes'] == 2  # 1 líder + 1 membro aprovado
     assert dados['candidaturas_aprovadas'] == 1
+
+
+# ---------- #68: detalhe do projeto informa a candidatura do usuário logado
+def test_detalhe_informa_minha_candidatura(cenario):
+    url = f'/api/projeto/{cenario.id}'
+    assert flask_app.test_client().get(url).get_json()['projeto']['minha_candidatura'] is None
+    assert logar('fora').get(url).get_json()['projeto']['minha_candidatura'] is None
+    membro = logar('membro').get(url).get_json()['projeto']['minha_candidatura']
+    assert membro['status'] == 'APROVADA'
+    aluno = logar('fora')
+    aluno.post(f'/api/projeto/{cenario.id}/candidatar', json={'motivo': 'm', 'experiencia': 'e'})
+    assert aluno.get(url).get_json()['projeto']['minha_candidatura']['status'] == 'PENDENTE'
+
+
+# ---------- #66: projeto criado por professor é atribuído a ele como orientador
+def test_proposta_de_professor_vira_orientador(cenario):
+    autor = criar_usuario('prof.autor', 'professor')
+    s = Submission(nome_projeto='Do Prof', categoria='c', descricao='d', proponente='P', email='p@p.com',
+                   username='prof.autor', user_id=autor.id)
+    db.session.add(s)
+    db.session.commit()
+    assert logar('coord').post(f'/api/admin/submissao/{s.id}/aprovar', json={}).status_code == 200
+    proj = Project.query.filter_by(titulo='Do Prof').first()
+    assert proj.professor_id == autor.id and proj.professor == 'prof.autor'
+    # o criador enxerga o projeto e pode gerenciá-lo como orientador
+    assert logar('prof.autor').get(f'/api/projeto/{proj.id}/workspace').get_json()['is_owner'] is True
+    # escolha explícita de outro docente prevalece
+    s2 = Submission(nome_projeto='Outro', categoria='c', descricao='d', proponente='P', email='p@p.com',
+                    username='prof.autor', user_id=autor.id)
+    db.session.add(s2)
+    db.session.commit()
+    outro = User.query.filter_by(username='prof').first()
+    logar('coord').post(f'/api/admin/submissao/{s2.id}/aprovar', json={'professor_id': outro.id})
+    assert Project.query.filter_by(titulo='Outro').first().professor_id == outro.id
+
+
+def test_migracao_atribui_orientador_ao_professor_criador(app_ctx):
+    import app as app_mod
+    autor = criar_usuario('prof.antigo', 'professor')
+    p = criar_projeto(owner='prof.antigo')
+    assert p.professor_id is None
+    app_mod.run_db_migrations(force=True)
+    db.session.rollback()
+    db.session.expire_all()
+    assert db.session.get(Project, p.id).professor_id == autor.id
+
+
+# ---------- #67: e-mail ao aprovar proposta de projeto e candidatura
+def _capturar_emails(monkeypatch):
+    import routes_admin, routes_project
+    enviados = []
+    captura = lambda dest, assunto, corpo, texto_puro=None: enviados.append((dest, assunto, corpo)) or True
+    monkeypatch.setattr(routes_admin, 'enviar_email', captura)
+    monkeypatch.setattr(routes_project, 'enviar_email', captura)
+    return enviados
+
+
+def test_email_ao_aprovar_proposta(cenario, monkeypatch):
+    enviados = _capturar_emails(monkeypatch)
+    dono = User.query.filter_by(username='dono').first()
+    s = Submission(nome_projeto='Projeto <Aceito>', categoria='c', descricao='d', proponente='E', email='contato@e.com',
+                   username='dono', user_id=dono.id)
+    db.session.add(s)
+    db.session.commit()
+    assert logar('admin').post(f'/api/admin/submissao/{s.id}/rejeitar').status_code == 200
+    assert enviados == []
+    db.session.get(Submission, s.id).status = 'EM ANÁLISE'
+    db.session.commit()
+    assert logar('admin').post(f'/api/admin/submissao/{s.id}/aprovar').status_code == 200
+    assert len(enviados) == 1
+    dest, assunto, corpo = enviados[0]
+    pid = db.session.get(Submission, s.id).projeto_id
+    assert dest == 'dono@ceub.br' and 'Aprovada' in assunto
+    assert 'Projeto &lt;Aceito&gt;' in corpo and f'/workspace/{pid}' in corpo
+
+
+def test_email_ao_aprovar_candidatura(cenario, monkeypatch):
+    enviados = _capturar_emails(monkeypatch)
+    logar('fora').post(f'/api/projeto/{cenario.id}/candidatar', json={'motivo': 'm', 'experiencia': 'e'})
+    cand = Application.query.filter_by(username='fora').first()
+    assert logar('dono').post(f'/api/candidatura/{cand.id}/rejeitar').status_code == 200
+    assert enviados == []
+    assert logar('dono').post(f'/api/candidatura/{cand.id}/aprovar').status_code == 200
+    assert len(enviados) == 1 and enviados[0][0] == 'fora@ceub.br'
+    assert f'/workspace/{cenario.id}' in enviados[0][2]
+    # aprovar de novo não repete o e-mail
+    logar('dono').post(f'/api/candidatura/{cand.id}/aprovar')
+    assert len(enviados) == 1
+
+
+# ---------- #71: professor exclui o projeto; aluno dono solicita a exclusão ao docente
+def test_orientador_exclui_projeto_com_equipe(cenario):
+    from models import Notification
+    assert logar('fora').post(f'/api/projeto/{cenario.id}/excluir').status_code == 403
+    assert logar('prof').post(f'/api/projeto/{cenario.id}/excluir').status_code == 200
+    assert db.session.get(Project, cenario.id) is None
+    assert Notification.query.filter_by(username='membro').filter(Notification.mensagem.contains('excluído')).count() == 1
+
+
+def test_aluno_dono_solicita_exclusao_ao_docente(app_ctx):
+    from models import Notification
+    prof = criar_usuario('prof', 'professor')
+    criar_usuario('aluno.dono', 'aluno')
+    criar_usuario('admin', 'admin')
+    p = criar_projeto(owner='aluno.dono', professor_id=prof.id)
+    aluno = logar('aluno.dono')
+    # não exclui direto
+    assert aluno.post(f'/api/projeto/{p.id}/excluir').status_code == 403
+    assert aluno.post(f'/api/projeto/{p.id}/exclusao/solicitar', json={}).status_code == 400
+    r = aluno.post(f'/api/projeto/{p.id}/exclusao/solicitar', json={'motivo': 'Projeto encerrado'})
+    assert r.status_code == 200
+    assert r.get_json()['projeto']['exclusao_solicitada']['por'] == 'aluno.dono'
+    assert aluno.post(f'/api/projeto/{p.id}/exclusao/solicitar', json={'motivo': 'x'}).status_code == 409
+    assert Notification.query.filter_by(username='prof').count() == 1
+    # o aluno não decide o próprio pedido
+    assert aluno.post(f'/api/projeto/{p.id}/exclusao/aprovar').status_code == 403
+    # docente recusa: pedido some e o aluno é avisado
+    assert logar('prof').post(f'/api/projeto/{p.id}/exclusao/recusar').status_code == 200
+    assert db.session.get(Project, p.id).exclusao_solicitada_por is None
+    assert Notification.query.filter_by(username='aluno.dono').count() == 1
+    # novo pedido aprovado: projeto excluído
+    aluno.post(f'/api/projeto/{p.id}/exclusao/solicitar', json={'motivo': 'De novo'})
+    assert logar('prof').post(f'/api/projeto/{p.id}/exclusao/aprovar').status_code == 200
+    assert db.session.get(Project, p.id) is None
+
+
+def test_pedido_de_exclusao_sem_orientador_vai_para_admin(app_ctx):
+    from models import Notification
+    criar_usuario('aluno.dono', 'aluno')
+    criar_usuario('admin', 'admin')
+    p = criar_projeto(owner='aluno.dono')
+    c = logar('aluno.dono')
+    c.post(f'/api/projeto/{p.id}/exclusao/solicitar', json={'motivo': 'm'})
+    assert Notification.query.filter_by(username='admin').count() == 1
+    assert c.post(f'/api/projeto/{p.id}/exclusao/cancelar').status_code == 200
+    assert db.session.get(Project, p.id).exclusao_solicitada_por is None
+
+
+# ---------- #70: remover aluno do projeto e convidá-lo de volta
+def test_remover_membro_e_convidar_de_volta(cenario):
+    from models import Notification
+    cand = Application.query.filter_by(username='membro').first()
+    dono = logar('dono')
+    tid = dono.post(f'/api/projeto/{cenario.id}/tasks/criar', json={'titulo': 'T', 'assigned_username': 'membro'}).get_json()['task']['id']
+    url = f'/api/projeto/{cenario.id}/membros/{cand.id}'
+    # só o responsável, o orientador ou o admin gerenciam a equipe
+    assert logar('membro').post(f'{url}/remover').status_code == 403
+    assert logar('coord').post(f'{url}/remover').status_code == 403
+    assert dono.post(f'{url}/remover', json={'motivo': 'Inativo'}).status_code == 200
+    assert db.session.get(Application, cand.id).status == 'REMOVIDA'
+    assert db.session.get(Task, tid).assigned_username is None
+    assert Notification.query.filter_by(username='membro').filter(Notification.mensagem.contains('removido')).count() == 1
+    # perde o acesso e não pode se candidatar de novo
+    membro = logar('membro')
+    assert membro.get(f'/api/projeto/{cenario.id}/workspace').status_code == 403
+    r = membro.post(f'/api/projeto/{cenario.id}/candidatar', json={'motivo': 'm', 'experiencia': 'e'})
+    assert r.status_code == 409 and 'removido' in r.get_json()['message']
+    # aprovar pela lista de candidaturas não contorna o convite
+    assert dono.post(f'/api/candidatura/{cand.id}/aprovar').status_code == 409
+    # o responsável convida de volta e o aluno aceita
+    assert logar('prof').post(f'{url}/convidar').status_code == 200
+    assert db.session.get(Application, cand.id).status == 'CONVIDADO'
+    assert logar('fora').post(f'/api/candidatura/{cand.id}/convite/aceitar').status_code == 403
+    assert membro.post(f'/api/candidatura/{cand.id}/convite/aceitar').status_code == 200
+    assert db.session.get(Application, cand.id).status == 'APROVADA'
+    assert membro.get(f'/api/projeto/{cenario.id}/workspace').status_code == 200
+
+
+def test_recusar_convite_mantem_bloqueio(cenario):
+    cand = Application.query.filter_by(username='membro').first()
+    dono = logar('dono')
+    url = f'/api/projeto/{cenario.id}/membros/{cand.id}'
+    dono.post(f'{url}/remover')
+    assert dono.post(f'{url}/convidar').status_code == 200
+    assert dono.post(f'{url}/convidar').status_code == 400
+    assert logar('membro').post(f'/api/candidatura/{cand.id}/convite/recusar').status_code == 200
+    assert db.session.get(Application, cand.id).status == 'REMOVIDA'
+    # pode ser convidado de novo depois
+    assert dono.post(f'{url}/convidar').status_code == 200
+
+
+# ---------- #69: histórico das tarefas para o professor
+def test_historico_de_tarefas(cenario):
+    membro = logar('membro')
+    tid = membro.post(f'/api/projeto/{cenario.id}/tasks/criar', json={'titulo': 'Tela', 'assigned_username': 'membro'}).get_json()['task']['id']
+    membro.post(f'/api/projeto/{cenario.id}/tasks/{tid}/mover', json={'status': 'doing'})
+    membro.post(f'/api/projeto/{cenario.id}/tasks/{tid}/editar', json={'titulo': 'Tela de login', 'deadline': '2026-12-01',
+                                                                      'checklist': [{'text': 'a', 'done': True}, {'text': 'b', 'done': False}]})
+    membro.post(f'/api/projeto/{cenario.id}/tasks/{tid}/editar', json={'titulo': 'Tela de login'})  # sem mudanças: não registra
+    logar('dono').post(f'/api/projeto/{cenario.id}/tasks/{tid}/excluir')
+
+    url = f'/api/projeto/{cenario.id}/tasks/log'
+    assert logar('membro').get(url).status_code == 403
+    assert logar('fora').get(url).status_code == 403
+    r = logar('prof').get(url)
+    assert r.status_code == 200
+    logs = r.get_json()['logs']
+    assert [l['acao'] for l in logs] == ['excluiu', 'editou', 'moveu', 'criou']
+    assert logs[2]['detalhes'] == 'A Fazer → Em Andamento'
+    assert 'prazo' in logs[1]['detalhes'] and '1/2' in logs[1]['detalhes']
+    assert logs[0]['task_titulo'] == 'Tela de login' and logs[0]['username'] == 'dono'
+    assert set(r.get_json()['usuarios']) == {'membro', 'dono'}
+    # filtros por aluno e por tarefa
+    assert len(logar('prof').get(f'{url}?usuario=membro').get_json()['logs']) == 3
+    assert len(logar('coord').get(f'{url}?task_id={tid}').get_json()['logs']) == 4
+    # o histórico some junto com o projeto
+    from models import TaskLog
+    logar('admin').post(f'/api/projeto/{cenario.id}/excluir')
+    assert TaskLog.query.count() == 0
