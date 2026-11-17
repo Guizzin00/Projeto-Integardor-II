@@ -142,25 +142,25 @@ export function Header() {
 
   return (
     <header className="bg-bg-surface pt-3 pb-1 relative z-50 transition-colors border-b border-border-color">
-      <div className="w-[90%] max-w-[1200px] mx-auto flex items-center justify-between">
+      <div className="w-[92%] sm:w-[90%] max-w-[1200px] mx-auto flex items-center justify-between">
         
-        <Link to="/">
+        <Link to="/" className="shrink-0">
           <img 
             src="/static/logoCEUB.png?v=2" 
             alt="Logo CEUB" 
-            className="ceub-logo w-[170px] h-auto"
+            className="ceub-logo !w-[96px] sm:!w-[170px] h-auto shrink-0"
             onError={(e) => { e.currentTarget.src = 'https://www.uniceub.br/imagens/logoCEUB2021.png'; }}
           />
         </Link>
 
-        <nav className="flex-1 flex items-center justify-between ml-10">
-          <ul className="flex items-center gap-6 m-0 p-0 list-none">
-            <li><Link to="/" className="text-purple-primary font-semibold hover:text-purple-hover transition-colors">Início</Link></li>
+        <nav className="flex-1 min-w-0 flex items-center justify-between ml-3 sm:ml-10">
+          <ul className="flex items-center gap-3 sm:gap-6 m-0 p-0 list-none text-sm sm:text-base">
+            <li className="hidden sm:list-item"><Link to="/" className="text-purple-primary font-semibold hover:text-purple-hover transition-colors">Início</Link></li>
             <li><Link to="/projetos" className="text-purple-primary font-semibold hover:text-purple-hover transition-colors">Projetos</Link></li>
             <li><Link to="/sobre" className="text-purple-primary font-semibold hover:text-purple-hover transition-colors">Sobre</Link></li>
           </ul>
 
-          <ul className="flex items-center gap-5 m-0 p-0 list-none">
+          <ul className="flex items-center gap-0.5 sm:gap-5 m-0 p-0 list-none">
             {/* THEME TOGGLE */}
             <li>
               <button 
@@ -193,7 +193,7 @@ export function Header() {
                   </button>
 
                   {notifOpen && (
-                    <div className="absolute right-0 mt-2 w-80 bg-bg-surface rounded-xl shadow-hover py-3 z-50 border border-border-color animate-[fadeIn_0.2s_ease-out]">
+                    <div className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-auto mt-2 sm:w-80 bg-bg-surface rounded-xl shadow-hover py-3 z-50 border border-border-color animate-[fadeIn_0.2s_ease-out]">
                       <div className="flex justify-between items-center px-4 pb-2 border-b border-border-color">
                         <span className="font-bold text-sm text-text-primary">Notificações</span>
                         {notificacoes.length > 0 && (
@@ -254,7 +254,7 @@ export function Header() {
                     aria-expanded={menuOpen}
                     className="flex items-center gap-1 text-purple-primary font-semibold hover:text-purple-hover bg-transparent border-none cursor-pointer text-base"
                   >
-                    <span>👤 {user.username}</span>
+                    <span>👤<span className="hidden sm:inline"> {user.username}</span></span>
                     <span className="text-xs">▼</span>
                   </button>
                   

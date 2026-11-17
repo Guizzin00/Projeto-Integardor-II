@@ -643,3 +643,12 @@ def test_excluir_conta_bloqueios(cenario):
     criar_usuario('admin2', 'admin')
     assert logar('admin').post(url, json=dados).status_code == 200
     assert flask_app.test_client().post(url, json=dados).status_code == 401
+
+
+# ---------- Páginas do site abertas direto (F5 ou link) carregam o React, não JSON da API
+def test_rotas_do_site_nao_conflitam_com_api(cenario):
+    c = logar('admin')
+    for caminho in ('/submissao', '/admin/logs', f'/projeto/{cenario.id}/editar', f'/projeto/{cenario.id}/workspace'):
+        r = c.get(caminho)
+        assert r.status_code == 200, caminho
+        assert r.mimetype == 'text/html', caminho

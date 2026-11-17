@@ -554,7 +554,6 @@ def responder_convite(cand_id, acao):
 # Workspace e Chat
 # =========================
 @app.route('/api/projeto/<int:projeto_id>/workspace')
-@app.route('/projeto/<int:projeto_id>/workspace')
 def workspace(projeto_id):
     if not session.get('logged_in'):
         return jsonify({"status": "error", "message": "Acesso negado. Faça login."}), 401
@@ -775,7 +774,6 @@ def api_avaliacoes(projeto_id):
 # Submissão de projetos
 # =========================
 @app.route('/api/submissao', methods=['POST'])
-@app.route('/submissao', methods=['GET', 'POST'])
 def submissao():
     if not session.get('logged_in'):
         return jsonify({"status": "error", "message": "Você precisa estar logado para acessar a submissão de projetos."}), 401

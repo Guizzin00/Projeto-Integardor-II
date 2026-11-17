@@ -514,7 +514,6 @@ def novo_projeto():
 
 @app.route('/api/admin/projeto/<int:projeto_id>/editar', methods=['POST', 'PUT'])
 @app.route('/api/projeto/<int:projeto_id>/editar', methods=['POST', 'PUT'])
-@app.route('/projeto/<int:projeto_id>/editar', methods=['GET', 'POST'])
 def editar_projeto(projeto_id):
     if not session.get('logged_in'):
         return jsonify({"status": "error", "message": "Você precisa estar logado."}), 401
@@ -864,7 +863,6 @@ def exportar_csv(tipo):
 # Logs de Atividade (Admin)
 # =========================
 @app.route('/api/admin/logs')
-@app.route('/admin/logs')
 def admin_logs():
     if not session.get('logged_in') or session.get('role') != 'admin':
         return jsonify({"status": "error", "message": "Acesso não autorizado."}), 403

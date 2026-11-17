@@ -32,6 +32,7 @@ export function AdminForm() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [semPermissao, setSemPermissao] = useState(false);
 
   useEffect(() => {
     const carregarProjeto = async () => {
@@ -40,6 +41,22 @@ export function AdminForm() {
         const res = await api.get(`/projeto/${id}`);
         const p = res.data.projeto || res.data;
         if (p && p.titulo) {
+          // Mesma regra do servidor: admin, dono do projeto ou professor orientador
+          const nome = user?.username?.toLowerCase();
+          const podeEditar = !!user && (
+            user.role === 'admin' ||
+            p.owner_username?.toLowerCase() === nome ||
+            (!!p.owner_id && p.owner_id === user.id) ||
+            (user.role === 'professor' && (
+              (!!p.professor_id && p.professor_id === user.id) ||
+              p.professor?.toLowerCase() === nome ||
+              p.orientador?.username?.toLowerCase() === nome
+            ))
+          );
+          if (!podeEditar) {
+            setSemPermissao(true);
+            return;
+          }
           let detalhesText = '';
           setTitulosOriginais(Array.isArray(p.detalhes) ? p.detalhes.filter((i: any) => i && typeof i === 'object' && i.titulo).map((i: any) => String(i.titulo)) : []);
           if (Array.isArray(p.detalhes)) {
@@ -162,8 +179,20 @@ export function AdminForm() {
 
   if (loading) return <div className="p-10 text-center">Carregando...</div>;
 
+  if (semPermissao) {
+    return (
+      <div className="w-[92%] max-w-[560px] mx-auto my-12 bg-bg-surface p-6 sm:p-10 rounded-xl shadow-light text-center">
+        <h1 className="text-purple-primary text-[1.5rem] font-title font-bold m-0 mb-3">Acesso restrito</h1>
+        <p className="text-text-secondary m-0 mb-6">Apenas o responsável pelo projeto, o professor orientador ou a administração podem editar este projeto.</p>
+        <Link to={`/projeto/${id}`} className="inline-block px-5 py-2.5 rounded-full bg-purple-primary text-white font-bold no-underline hover:bg-purple-hover transition-colors">
+          Voltar ao projeto
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-[700px] mx-auto my-12 bg-bg-surface p-10 rounded-xl shadow-light transition-all">
+    <div className="w-[92%] max-w-[700px] mx-auto my-8 sm:my-12 bg-bg-surface p-5 sm:p-10 rounded-xl shadow-light transition-all">
       <h1 className="text-purple-primary text-[1.8rem] text-center mb-6 font-title font-bold m-0">
         {id ? 'Editar' : 'Novo'} Projeto
       </h1>
@@ -274,16 +303,16 @@ export function AdminForm() {
                 <input 
                   type="text" placeholder="Nome (ex: GitHub)" required 
                   value={link.nome} onChange={(e) => handleLinkChange(index, 'nome', e.target.value)}
-                  className="flex-1 p-2.5 border border-border-color rounded-lg text-base bg-bg-primary text-text-primary transition-all focus:border-purple-primary focus:outline-none"
+                  className="flex-1 min-w-0 p-2.5 border border-border-color rounded-lg text-base bg-bg-primary text-text-primary transition-all focus:border-purple-primary focus:outline-none"
                 />
                 <input 
                   type="url" placeholder="URL completa (ex: https://...)" required 
                   value={link.url} onChange={(e) => handleLinkChange(index, 'url', e.target.value)}
-                  className="flex-[2] p-2.5 border border-border-color rounded-lg text-base bg-bg-primary text-text-primary transition-all focus:border-purple-primary focus:outline-none"
+                  className="flex-[2] min-w-0 p-2.5 border border-border-color rounded-lg text-base bg-bg-primary text-text-primary transition-all focus:border-purple-primary focus:outline-none"
                 />
                 <button 
                   type="button" onClick={() => removeLink(index)} title="Remover Link"
-                  className="bg-[#ef4444] text-white border-none rounded-lg w-[38px] h-[38px] cursor-pointer flex items-center justify-center shrink-0 hover:bg-[#dc2626] transition-colors"
+                  className="shrink-0 bg-[#ef4444] text-white border-none rounded-lg w-[38px] h-[38px] cursor-pointer flex items-center justify-center shrink-0 hover:bg-[#dc2626] transition-colors"
                 >
                   🗑️
                 </button>
