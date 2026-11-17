@@ -30,6 +30,12 @@ from models import User, Project, Submission
 # =========================
 _db_migrated = False
 
+# Propostas gravadas com o status no masculino (dados antigos de exemplo) seguem o padrão do sistema
+SQL_NORMALIZA_STATUS_PROPOSTA = [
+    "UPDATE \"submission\" SET status = 'APROVADA' WHERE status = 'APROVADO'",
+    "UPDATE \"submission\" SET status = 'REJEITADA' WHERE status = 'REJEITADO'",
+]
+
 # Projetos criados por um professor e ainda sem orientador passam a ser orientados pelo próprio criador (#66)
 SQL_PROFESSOR_CRIADOR_ORIENTA = (
     'UPDATE "project" SET professor_id = owner_id, professor = owner_username '
@@ -97,6 +103,7 @@ def run_db_migrations(force=False):
                     ]
                     pg_statements.append('CREATE UNIQUE INDEX IF NOT EXISTS uq_application_projeto_username ON "application" (projeto_id, username)')
                     pg_statements.append(SQL_PROFESSOR_CRIADOR_ORIENTA)
+                    pg_statements += SQL_NORMALIZA_STATUS_PROPOSTA
                     pg_statements += [
                         'ALTER TABLE "project" ADD COLUMN IF NOT EXISTS exclusao_solicitada_por VARCHAR(50)',
                         'ALTER TABLE "project" ADD COLUMN IF NOT EXISTS exclusao_motivo TEXT',
@@ -216,6 +223,8 @@ def run_db_migrations(force=False):
                         print(f"[DB MIGRATION NOTICE] índice único de candidatura: {idx_err}")
                     conn.commit()
                     conn.execute(text(SQL_PROFESSOR_CRIADOR_ORIENTA))
+                    for stmt in SQL_NORMALIZA_STATUS_PROPOSTA:
+                        conn.execute(text(stmt))
                     conn.commit()
 
             print("[DB MIGRATION] Migração do banco concluída com sucesso.")

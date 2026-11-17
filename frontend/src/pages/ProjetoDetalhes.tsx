@@ -176,6 +176,8 @@ export function ProjetoDetalhes() {
   const statusMinhaCandidatura: string = (projeto.minha_candidatura?.status || '').toUpperCase();
   const recebeCandidaturas = ['DISPONÍVEL', 'EM EXECUÇÃO'].includes(projeto.status);
   const podeCandidatar = isAlunoCandidato && !statusMinhaCandidatura && recebeCandidaturas;
+  // Mesma regra do servidor: avaliam os alunos aprovados na equipe e o aluno dono
+  const podeAvaliar = ehAluno && (isDono || ['APROVADA', 'APROVADO'].includes(statusMinhaCandidatura));
 
   const totalIntegrantes = projeto?.total_integrantes ?? (
     (projeto?.candidaturas_aprovadas || 0) + (projeto?.owner_username ? 1 : 0) || 1
@@ -414,7 +416,11 @@ export function ProjetoDetalhes() {
 
               {/* Formulário de Envio de Avaliação */}
               {user ? (
-                user.role === 'admin' ? null : (
+                !podeAvaliar ? (
+                  <p className="text-text-secondary italic text-sm m-0 pt-3 border-t border-border-color">
+                    Apenas os alunos da equipe deste projeto podem avaliá-lo.
+                  </p>
+                ) : (
                 <form onSubmit={handleEnviarAvaliacao} className="pt-4 border-t border-border-color flex flex-col gap-3">
                   <h3 className="m-0 font-title text-sm font-bold text-purple-primary">Deixe sua avaliação</h3>
                   {msgAvaliacao && (

@@ -72,6 +72,8 @@ export function Workspace() {
 
   // Histórico das tarefas (#69)
   const [podeVerHistorico, setPodeVerHistorico] = useState(false);
+  const [podeBaixarCertificado, setPodeBaixarCertificado] = useState(false);
+  const [somenteLeitura, setSomenteLeitura] = useState(false);
   const [historico, setHistorico] = useState<TaskLogItem[]>([]);
   const [autoresHistorico, setAutoresHistorico] = useState<string[]>([]);
   const [filtroHistorico, setFiltroHistorico] = useState('');
@@ -162,6 +164,8 @@ export function Workspace() {
         setIsOwner(Boolean(res.data.is_owner));
         setPodeGerenciarEquipe(Boolean(res.data.pode_gerenciar_equipe));
         setPodeVerHistorico(Boolean(res.data.pode_ver_historico));
+        setPodeBaixarCertificado(Boolean(res.data.pode_baixar_certificado));
+        setSomenteLeitura(Boolean(res.data.somente_leitura));
       } else {
         setError(res.data.message || 'Não foi possível carregar os dados do workspace.');
       }
@@ -625,6 +629,7 @@ export function Workspace() {
           <div className="flex items-center gap-2 shrink-0">
             <button 
               onClick={() => setShowNewTaskModal(true)}
+              hidden={somenteLeitura}
               className="flex items-center gap-1.5 bg-[#002B49] text-white hover:bg-[#003B64] px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
               title="Criar nova tarefa no Kanban"
             >
@@ -667,7 +672,12 @@ export function Workspace() {
         {/* ==================== ABA: KANBAN COM SUBTAREFAS ==================== */}
         {activeTab === 'Kanban' && (
           <div className="flex-1 min-h-0 min-w-0 flex flex-col p-3 sm:p-4 overflow-hidden">
-            
+            {somenteLeitura && (
+              <div className="mb-3 shrink-0 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800">
+                ✅ Projeto concluído: o quadro de tarefas está disponível apenas para consulta.
+              </div>
+            )}
+
             {/* Toolbar do Kanban: Busca e Filtro de Responsável */}
             <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3 shrink-0 bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200/80 shadow-2xs">
               
@@ -750,6 +760,7 @@ export function Workspace() {
                     </span>
                     <button 
                       onClick={() => setShowNewTaskModal(true)}
+              hidden={somenteLeitura}
                       title="Adicionar tarefa nesta coluna"
                       className="w-6 h-6 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-600 hover:text-slate-900 transition-colors font-bold cursor-pointer"
                     >
@@ -901,6 +912,11 @@ export function Workspace() {
             </div>
 
             {/* Input do Chat */}
+            {somenteLeitura ? (
+              <div className="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 text-center shrink-0">
+                Projeto concluído: o chat está disponível apenas para leitura.
+              </div>
+            ) : (
             <form onSubmit={handleEnviarMensagem} className="p-3 sm:p-4 bg-white border-t border-slate-200 flex items-center gap-2 shrink-0">
               <input 
                 type="text"
@@ -917,6 +933,7 @@ export function Workspace() {
                 {enviando ? 'Enviando...' : 'Enviar'}
               </button>
             </form>
+            )}
           </div>
         )}
 
@@ -1326,7 +1343,7 @@ export function Workspace() {
               <span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 {projeto.status}
               </span>
-              {projeto.status === 'CONCLUÍDO' && user?.role !== 'coordenador' && (
+              {podeBaixarCertificado && (
                 <a
                   href={`/api/projeto/${id}/certificado`}
                   className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-bold bg-[#7A1BB5] text-white no-underline"
@@ -1628,6 +1645,7 @@ export function Workspace() {
               <div className="flex justify-between items-center pt-3 border-t border-slate-100 shrink-0">
                 <button 
                   type="button"
+                  hidden={somenteLeitura}
                   onClick={() => handleExcluirTask(editingTask.id)}
                   className="text-rose-600 hover:text-rose-800 text-xs font-bold hover:underline cursor-pointer"
                 >
@@ -1644,6 +1662,7 @@ export function Workspace() {
                   </button>
                   <button 
                     type="submit"
+                    hidden={somenteLeitura}
                     disabled={savingEdit}
                     className="bg-[#002B49] hover:bg-[#003B64] text-white font-bold px-4 py-1.5 rounded-xl text-xs transition-colors shadow-xs cursor-pointer disabled:opacity-50"
                   >
@@ -1672,7 +1691,7 @@ export function Workspace() {
     return (
       <div 
         key={task.id}
-        draggable
+        draggable={!somenteLeitura}
         onDragStart={() => setDraggedTaskId(task.id)}
         onDragEnd={() => setDraggedTaskId(null)}
         onClick={() => handleOpenEditTask(task)}

@@ -84,7 +84,7 @@ export function AdminUserForm() {
   const isSelf = currentUser?.username === formData.username;
 
   return (
-    <div className="max-w-[800px] mx-auto my-8 bg-bg-surface p-10 rounded-xl shadow-light transition-all flex flex-col gap-5">
+    <div className="w-[92%] max-w-[800px] mx-auto my-8 bg-bg-surface p-5 sm:p-10 rounded-xl shadow-light transition-all flex flex-col gap-5">
       <h1 className="text-purple-primary m-0 mb-1.5 border-l-[5px] border-purple-primary pl-2.5 font-title text-2xl font-bold">
         {id ? 'Editar' : 'Criar Novo'} Usuário
       </h1>

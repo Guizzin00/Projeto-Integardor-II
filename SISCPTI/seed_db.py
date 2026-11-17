@@ -140,8 +140,8 @@ def seed():
     print("Criando submissões...")
     subs = [
         Submission(nome_projeto="App de Controle de Frequência via QR Code", categoria="Mobile", descricao="Aplicativo para chamada digital nas salas de aula através da leitura de QR Code dinâmico.", proponente="Coordenação de Engenharia", email="eng.coord@ceub.br", status="EM ANÁLISE", username="admin", tags="React Native, Node.js"),
-        Submission(nome_projeto="Plataforma de Mentorias Aluno-a-Aluno", categoria="Web", descricao="Rede social para veteranos oferecerem mentorias acadêmicas a calouros com gamificação.", proponente="Diretório Acadêmico", email="da@ceub.br", status="APROVADO", username="coord1", tags="Vue.js, Express, MongoDB"),
-        Submission(nome_projeto="Dashboard Integrado de Recursos de TI", categoria="Web", descricao="Dashboard administrativo para visualização em tempo real do status dos laboratórios e servidores.", proponente="Departamento de Infraestrutura", email="infra@ceub.br", status="REJEITADO", username="admin", tags="Django, Grafana, Zabbix")
+        Submission(nome_projeto="Plataforma de Mentorias Aluno-a-Aluno", categoria="Web", descricao="Rede social para veteranos oferecerem mentorias acadêmicas a calouros com gamificação.", proponente="Diretório Acadêmico", email="da@ceub.br", status="APROVADA", username="coord1", tags="Vue.js, Express, MongoDB"),
+        Submission(nome_projeto="Dashboard Integrado de Recursos de TI", categoria="Web", descricao="Dashboard administrativo para visualização em tempo real do status dos laboratórios e servidores.", proponente="Departamento de Infraestrutura", email="infra@ceub.br", status="REJEITADA", username="admin", tags="Django, Grafana, Zabbix")
     ]
     db.session.add_all(subs)
     db.session.commit()

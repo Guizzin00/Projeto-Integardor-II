@@ -652,3 +652,68 @@ def test_rotas_do_site_nao_conflitam_com_api(cenario):
         r = c.get(caminho)
         assert r.status_code == 200, caminho
         assert r.mimetype == 'text/html', caminho
+
+
+# ---------- Revisão de entrega: certificado, avaliação, somente leitura e candidatura
+def _projeto_aluno_dono(status='CONCLUÍDO'):
+    prof = criar_usuario('prof.c', 'professor')
+    criar_usuario('aluna.dona', 'aluno')
+    criar_usuario('aluno.membro', 'aluno')
+    p = criar_projeto(owner='aluna.dona', status=status, professor_id=prof.id)
+    aprovar(p, 'aluno.membro')
+    return p
+
+
+def test_certificado_para_aluno_dono_e_nao_para_professor(app_ctx):
+    p = _projeto_aluno_dono()
+    url = f'/api/projeto/{p.id}/certificado'
+    assert logar('aluna.dona').get(url).status_code == 200
+    assert logar('aluno.membro').get(url).status_code == 200
+    assert logar('prof.c').get(url).status_code == 403
+    ws = logar('aluna.dona').get(f'/api/projeto/{p.id}/workspace').get_json()
+    assert ws['pode_baixar_certificado'] is True
+    assert logar('prof.c').get(f'/api/projeto/{p.id}/workspace').get_json()['pode_baixar_certificado'] is False
+
+
+def test_somente_alunos_da_equipe_avaliam(app_ctx):
+    p = _projeto_aluno_dono(status='EM EXECUÇÃO')
+    url = f'/api/projeto/{p.id}/avaliar'
+    assert logar('prof.c').post(url, json={'nota': 5}).status_code == 403
+    assert logar('aluno.membro').post(url, json={'nota': 5}).status_code == 200
+    assert logar('aluna.dona').post(url, json={'nota': 4}).status_code == 200
+
+
+def test_projeto_concluido_fica_somente_leitura(app_ctx):
+    p = _projeto_aluno_dono(status='EM EXECUÇÃO')
+    membro = logar('aluno.membro')
+    tid = membro.post(f'/api/projeto/{p.id}/tasks/criar', json={'titulo': 'T'}).get_json()['task']['id']
+    db.session.get(Project, p.id).status = 'CONCLUÍDO'
+    db.session.commit()
+    assert membro.post(f'/api/projeto/{p.id}/tasks/criar', json={'titulo': 'x'}).status_code == 409
+    assert membro.post(f'/api/projeto/{p.id}/tasks/{tid}/mover', json={'status': 'done'}).status_code == 409
+    assert membro.post(f'/api/projeto/{p.id}/tasks/{tid}/editar', json={'titulo': 'y'}).status_code == 409
+    assert logar('prof.c').post(f'/api/projeto/{p.id}/tasks/{tid}/excluir').status_code == 409
+    assert membro.post(f'/api/projeto/{p.id}/workspace/enviar', json={'texto': 'oi'}).status_code == 409
+    # leitura continua liberada
+    assert membro.get(f'/api/projeto/{p.id}/tasks').status_code == 200
+    assert membro.get(f'/api/projeto/{p.id}/workspace').get_json()['somente_leitura'] is True
+
+
+def test_orientador_e_coordenador_veem_detalhe_da_candidatura(cenario):
+    criar_usuario('outro.aluno', 'aluno')
+    cand = Application.query.filter_by(username='membro').first()
+    url = f'/api/candidatura/{cand.id}'
+    for u in ('membro', 'prof', 'coord', 'dono', 'admin'):
+        assert logar(u).get(url).status_code == 200, u
+    assert logar('outro.aluno').get(url).status_code == 403
+
+
+def test_migracao_normaliza_status_das_propostas(app_ctx):
+    import app as app_mod
+    s = Submission(nome_projeto='Antiga', categoria='c', descricao='d', proponente='p', email='e@e.com', status='APROVADO')
+    db.session.add(s)
+    db.session.commit()
+    app_mod.run_db_migrations(force=True)
+    db.session.rollback()
+    db.session.expire_all()
+    assert db.session.get(Submission, s.id).status == 'APROVADA'

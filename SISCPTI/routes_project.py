@@ -15,6 +15,14 @@ from io import BytesIO
 
 from app_instance import app
 from models import db, Project, Application, Submission, Message, Notification, Rating, Task, TaskLog, User
+PAPEIS_ALUNO = ('aluno', 'lider', 'user')
+MSG_SOMENTE_LEITURA = "Projeto concluído: o workspace está em modo somente leitura."
+
+
+def projeto_somente_leitura(projeto):
+    return (projeto.status or '').upper() == 'CONCLUÍDO'
+
+
 STATUS_REMOVIDA = 'REMOVIDA'   # aluno retirado da equipe; não pode se candidatar de novo
 STATUS_CONVIDADO = 'CONVIDADO'  # aluno removido convidado de volta pelo responsável
 
@@ -375,7 +383,9 @@ def api_obter_candidatura(cand_id):
     cand = Application.query.get(cand_id)
     if not cand:
         return jsonify({"status": "error", "message": "Candidatura não encontrada."}), 404
-    if cand.user_id != g.uid and session.get('role') != 'admin' and cand.projeto.owner_id != g.uid:
+    ac = acesso_projeto(cand.projeto)
+    eh_candidato = (cand.user_id and cand.user_id == g.uid) or (cand.username or '').lower() == (session.get('user') or '').lower()
+    if not (eh_candidato or ac['is_owner'] or ac['is_admin'] or ac['is_coord']):
         return jsonify({"status": "error", "message": "Acesso negado."}), 403
     return jsonify({
         "status": "success",
@@ -580,6 +590,8 @@ def workspace(projeto_id):
         "is_owner": ac['is_owner'],
         "pode_gerenciar_equipe": ac['is_owner'] or ac['is_admin'],
         "pode_ver_historico": ac['is_owner'] or ac['is_admin'] or ac['is_coord'],
+        "pode_baixar_certificado": ac['pode_certificado'] and projeto_db.status == 'CONCLUÍDO',
+        "somente_leitura": projeto_somente_leitura(projeto_db),
         "membros": membros,
         "candidaturas": candidaturas,
         "mensagens": [{
@@ -632,6 +644,8 @@ def enviar_mensagem_ajax(projeto_id):
     if not acesso_projeto(projeto_db)['pode_ver']:
         return jsonify({"status": "error", "message": "Acesso negado"}), 403
 
+    if projeto_somente_leitura(projeto_db):
+        return jsonify({"status": "error", "message": MSG_SOMENTE_LEITURA}), 409
     membros = [c.username for c in Application.query.filter(Application.projeto_id == projeto_id, Application.status.in_(['APROVADA', 'APROVADO'])).all()]
     data = request.get_json(silent=True) or request.form
     texto = data.get('texto')
@@ -702,8 +716,8 @@ def avaliar_projeto(projeto_id):
         return jsonify({'status': 'error', 'message': 'Projeto não encontrado'}), 404
 
     ac = acesso_projeto(proj)
-    if not (ac['is_member'] or ac['is_owner']):
-        return jsonify({'status': 'error', 'message': 'Apenas integrantes do projeto podem avaliá-lo.'}), 403
+    if not ac['pode_avaliar']:
+        return jsonify({'status': 'error', 'message': 'Apenas os alunos da equipe podem avaliar o projeto.'}), 403
 
     data = request.get_json(silent=True) or request.form
 
@@ -1015,7 +1029,7 @@ def download_certificado(projeto_id):
 
     username = session['user']
     ac = acesso_projeto(projeto)
-    if not (ac['is_member'] or ac['is_admin']):
+    if not (ac['pode_certificado'] or ac['is_admin']):
         return jsonify({"status": "error", "message": "Você não tem permissão para acessar este certificado."}), 403
 
     if projeto.status != 'CONCLUÍDO':
@@ -1050,10 +1064,11 @@ def acesso_projeto(projeto):
         (projeto.professor and projeto.professor.strip().lower() == username) or
         (projeto.orientador and projeto.orientador.username.strip().lower() == username)
     )
-    is_owner = bool(
+    is_dono = bool(
         (uid and projeto.owner_id and projeto.owner_id == uid) or
         (projeto.owner_username and projeto.owner_username.strip().lower() == username)
-    ) or is_orientador
+    )
+    is_owner = is_dono or is_orientador
     is_admin = (role == 'admin')
     is_coord = (role == 'coordenador')
     is_member = False
@@ -1078,6 +1093,10 @@ def acesso_projeto(projeto):
         'is_lider': is_member and role == 'lider',
         'pode_ver': is_owner or is_admin or is_coord or is_member,
         'pode_editar': is_owner or is_admin or is_member,
+        # Aluno que criou/lidera o projeto: participa como integrante (certificado e avaliação)
+        'is_dono_aluno': is_dono and role in PAPEIS_ALUNO,
+        'pode_certificado': is_member or (is_dono and role in PAPEIS_ALUNO),
+        'pode_avaliar': is_member or (is_dono and role in PAPEIS_ALUNO),
     }
 
 # ==========================================
@@ -1188,6 +1207,8 @@ def api_criar_task(projeto_id):
     if not acesso_projeto(projeto)['pode_editar']:
         return jsonify({"status": "error", "message": "Apenas integrantes da equipe, administradores ou orientadores podem criar tarefas."}), 403
         
+    if projeto_somente_leitura(projeto):
+        return jsonify({"status": "error", "message": MSG_SOMENTE_LEITURA}), 409
     data = request.get_json(silent=True) or request.form
     titulo = data.get('titulo')
     descricao = data.get('descricao')
@@ -1261,6 +1282,8 @@ def api_mover_task(projeto_id, task_id):
     if not acesso_projeto(projeto)['pode_editar']:
         return jsonify({"status": "error", "message": "Acesso negado."}), 403
 
+    if projeto_somente_leitura(projeto):
+        return jsonify({"status": "error", "message": MSG_SOMENTE_LEITURA}), 409
     data = request.get_json(silent=True) or request.form
     novo_status = data.get('status')
     if novo_status not in ['todo', 'doing', 'done']:
@@ -1294,6 +1317,8 @@ def api_editar_task(projeto_id, task_id):
     if not acesso_projeto(projeto)['pode_editar']:
         return jsonify({"status": "error", "message": "Apenas integrantes do projeto, administradores ou orientadores podem editar tarefas."}), 403
         
+    if projeto_somente_leitura(projeto):
+        return jsonify({"status": "error", "message": MSG_SOMENTE_LEITURA}), 409
     data = request.get_json(silent=True) or request.form
     titulo = data.get('titulo')
     descricao = data.get('descricao')
@@ -1360,6 +1385,8 @@ def api_excluir_task(projeto_id, task_id):
     if not (ac['is_owner'] or ac['is_admin'] or ac['is_lider']):
         return jsonify({"status": "error", "message": "Apenas Líderes da equipe, Administradores ou Orientadores podem excluir tarefas."}), 403
         
+    if projeto_somente_leitura(projeto):
+        return jsonify({"status": "error", "message": MSG_SOMENTE_LEITURA}), 409
     registrar_log_tarefa(task, 'excluiu', f"estava em {NOMES_STATUS_TAREFA.get(task.status, task.status)}")
     db.session.delete(task)
     db.session.commit()
