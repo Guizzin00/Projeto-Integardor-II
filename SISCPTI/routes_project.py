@@ -79,6 +79,35 @@ def candidatura_do_usuario(projeto_id):
     return Application.query.filter(Application.projeto_id == projeto_id, db.or_(*filtros)).first()
 
 
+# Tecnologias comuns oferecidas como sugestão mesmo antes de existirem em algum projeto
+TAGS_BASE = [
+    'Python', 'Flask', 'Django', 'FastAPI', 'JavaScript', 'TypeScript', 'React', 'React Native', 'Vue.js', 'Angular',
+    'Node.js', 'Express', 'Java', 'Spring Boot', 'C#', '.NET', 'PHP', 'Laravel', 'Kotlin', 'Swift', 'Flutter',
+    'HTML', 'CSS', 'Tailwind CSS', 'SQL', 'PostgreSQL', 'MySQL', 'MongoDB', 'Firebase', 'Supabase', 'Docker',
+    'Kubernetes', 'AWS', 'Azure', 'Google Cloud', 'Git', 'Linux', 'Inteligência Artificial', 'Machine Learning',
+    'Ciência de Dados', 'Power BI', 'UX/UI Design', 'Figma', 'Mobile', 'Web', 'IoT', 'Segurança da Informação',
+    'Redes', 'Scrum', 'Testes Automatizados',
+]
+
+
+@app.route('/api/tags', methods=['GET'])
+def api_tags():
+    """Tags já usadas nos projetos (mais usadas primeiro) seguidas das tecnologias comuns."""
+    contagem, grafia = {}, {}
+    for (tags_col,) in db.session.query(Project.tags).filter(Project.tags.isnot(None)).all():
+        for t in (tags_col or '').split(','):
+            nome = t.strip()
+            if nome:
+                chave = nome.lower()
+                contagem[chave] = contagem.get(chave, 0) + 1
+                grafia.setdefault(chave, nome)
+    tags = [{"nome": grafia[k], "projetos": n} for k, n in sorted(contagem.items(), key=lambda x: (-x[1], x[0]))]
+    for nome in TAGS_BASE:
+        if nome.lower() not in contagem:
+            tags.append({"nome": nome, "projetos": 0})
+    return jsonify({"status": "success", "tags": tags})
+
+
 @app.route('/api/projeto/<int:projeto_id>', methods=['GET'])
 def api_projeto_detalhes(projeto_id):
     try:
@@ -100,18 +129,15 @@ def api_projeto_detalhes(projeto_id):
 # =========================
 # Candidaturas de Alunos
 # =========================
-MOTIVO_MIN = 20
 CANDIDATURA_MAX = 2000
 
 
 def validar_candidatura(data):
-    """Motivação obrigatória (mín. 20 caracteres); experiência opcional. Retorna (motivo, experiencia, erro)."""
+    """Motivação obrigatória (sem tamanho mínimo); experiência opcional. Retorna (motivo, experiencia, erro)."""
     motivo = str(data.get('motivo') or '').strip()
     experiencia = str(data.get('experiencia') or '').strip()
     if not motivo:
         return motivo, experiencia, "Conte por que você quer participar do projeto."
-    if len(motivo) < MOTIVO_MIN:
-        return motivo, experiencia, f"A motivação precisa ter pelo menos {MOTIVO_MIN} caracteres."
     if len(motivo) > CANDIDATURA_MAX or len(experiencia) > CANDIDATURA_MAX:
         return motivo, experiencia, f"Cada campo aceita no máximo {CANDIDATURA_MAX} caracteres."
     return motivo, experiencia, None

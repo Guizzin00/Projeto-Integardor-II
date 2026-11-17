@@ -8,6 +8,7 @@ import { api } from '../services/api';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useUI } from '../components/UIProvider';
+import { CampoTags } from '../components/CampoTags';
 
 export function AdminForm() {
   const { avisar, confirmar } = useUI();
@@ -267,13 +268,13 @@ export function AdminForm() {
 
         <div className="flex flex-col">
           <label htmlFor="tags" className="font-semibold text-purple-primary mb-1.5">
-            Tags / Tecnologias <small className="font-normal text-text-secondary">(separadas por vírgula; usadas nas recomendações aos alunos)</small>:
+            Tags / Tecnologias <small className="font-normal text-text-secondary">(usadas nas recomendações aos alunos)</small>:
           </label>
-          <input 
-            type="text" id="tags" name="tags" 
+          <CampoTags
+            id="tags"
+            valor={formData.tags}
+            onChange={(v) => setFormData(prev => ({ ...prev, tags: v }))}
             placeholder="Ex: React, Python, Mobile"
-            value={formData.tags} onChange={handleChange}
-            className="p-2.5 border border-border-color rounded-lg text-base bg-bg-primary text-text-primary transition-all focus:border-purple-primary focus:shadow-[0_0_0_2px_rgba(168,85,247,0.2)] focus:outline-none"
           />
         </div>
 

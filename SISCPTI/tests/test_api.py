@@ -574,11 +574,9 @@ def test_candidatura_campos_obrigatorios(cenario):
     url = f'/api/projeto/{cenario.id}/candidatar'
     r = aluno.post(url, json={'motivo': '   ', 'experiencia': 'Flask'})
     assert r.status_code == 400 and 'participar' in r.get_json()['message']
-    r = aluno.post(url, json={'motivo': 'curto', 'experiencia': ''})
-    assert r.status_code == 400 and '20' in r.get_json()['message']
     assert aluno.post(url, json={'motivo': 'x' * 2001}).status_code == 400
-    # A experiência é opcional
-    assert aluno.post(url, json={'motivo': CANDIDATURA['motivo']}).status_code == 200
+    # Sem tamanho mínimo para a motivação e a experiência é opcional
+    assert aluno.post(url, json={'motivo': 'Quero'}).status_code == 200
     cand = Application.query.filter_by(username='fora').one()
     assert cand.experiencia == ''
 
@@ -717,3 +715,19 @@ def test_migracao_normaliza_status_das_propostas(app_ctx):
     db.session.rollback()
     db.session.expire_all()
     assert db.session.get(Submission, s.id).status == 'APROVADA'
+
+
+# ---------- Sugestões de tags e candidatura sem tamanho mínimo
+def test_sugestoes_de_tags(app_ctx):
+    p1 = criar_projeto(); p1.tags = 'React, Python'
+    p2 = criar_projeto(); p2.tags = 'react, Docker'
+    db.session.commit()
+    tags = flask_app.test_client().get('/api/tags').get_json()['tags']
+    nomes = [t['nome'] for t in tags]
+    assert nomes[0] == 'React' and tags[0]['projetos'] == 2           # mais usada primeiro, sem duplicar maiúsculas
+    assert sum(1 for n in nomes if n.lower() == 'react') == 1
+    assert 'Flask' in nomes                                             # tecnologias comuns também são sugeridas
+
+
+def test_candidatura_sem_tamanho_minimo(cenario):
+    assert logar('fora').post(f'/api/projeto/{cenario.id}/candidatar', json={'motivo': 'Quero'}).status_code == 200

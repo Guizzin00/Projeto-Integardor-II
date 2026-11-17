@@ -4,13 +4,11 @@
  */
 
 // Mesmas regras de validar_candidatura (routes_project.py)
-export const MOTIVO_MIN = 20;
 export const CANDIDATURA_MAX = 2000;
 
 export function erroCandidatura(motivo: string): string {
   const texto = motivo.trim();
   if (!texto) return 'Conte por que você quer participar do projeto.';
-  if (texto.length < MOTIVO_MIN) return `A motivação precisa ter pelo menos ${MOTIVO_MIN} caracteres.`;
   return '';
 }
 
@@ -25,9 +23,6 @@ const campoClasse =
   'p-3 border border-border-color rounded-md text-base bg-bg-primary text-text-primary resize-y transition-all focus:border-purple-primary focus:outline-none';
 
 export function CamposCandidatura({ motivo, experiencia, onMotivo, onExperiencia }: Props) {
-  const tamanhoMotivo = motivo.trim().length;
-  const faltam = Math.max(0, MOTIVO_MIN - tamanhoMotivo);
-
   return (
     <>
       <p className="m-0 text-xs text-text-secondary">
@@ -44,15 +39,13 @@ export function CamposCandidatura({ motivo, experiencia, onMotivo, onExperiencia
           required
           aria-required="true"
           aria-describedby="motivo-ajuda"
-          minLength={MOTIVO_MIN}
           maxLength={CANDIDATURA_MAX}
           placeholder="Explique seu interesse e motivação..."
           value={motivo}
           onChange={(e) => onMotivo(e.target.value)}
           className={campoClasse}
         ></textarea>
-        <div id="motivo-ajuda" className="flex justify-between mt-1 text-xs text-text-secondary">
-          <span>{faltam > 0 ? `Mínimo de ${MOTIVO_MIN} caracteres (faltam ${faltam}).` : 'Tamanho mínimo atingido.'}</span>
+        <div id="motivo-ajuda" className="flex justify-end mt-1 text-xs text-text-secondary">
           <span>{motivo.length}/{CANDIDATURA_MAX}</span>
         </div>
       </div>

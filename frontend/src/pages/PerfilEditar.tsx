@@ -10,6 +10,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useUI } from '../components/UIProvider';
 import { validarSenha, DICA_SENHA } from '../utils/senha';
 import { ExcluirConta } from '../components/ExcluirConta';
+import { CampoTags } from '../components/CampoTags';
 
 export function PerfilEditar() {
   const { avisar } = useUI();
@@ -207,16 +208,13 @@ export function PerfilEditar() {
         {user.role !== 'admin' && (
           <div className="mb-5 flex flex-col">
             <label htmlFor="interesses" className="font-semibold text-[0.9rem] mb-1.5 text-text-primary">
-              ✨ Meus Interesses de Tecnologia <small className="text-text-secondary font-normal">(Separados por vírgula)</small>
+              ✨ Meus Interesses de Tecnologia <small className="text-text-secondary font-normal">(usados para recomendar projetos)</small>
             </label>
-            <input 
-              type="text" 
-              id="interesses" 
-              value={interesses}
-              onChange={(e) => setInteresses(e.target.value)}
-              placeholder="Ex: React, Django, UX Design, Data Science" 
-              maxLength={300}
-              className="w-full p-2.5 border-[1.5px] border-border-color rounded-lg text-[0.95rem] bg-bg-primary text-text-primary transition-all focus:outline-none focus:border-purple-primary focus:shadow-[0_0_0_3px_rgba(122,27,181,0.15)]"
+            <CampoTags
+              id="interesses"
+              valor={interesses}
+              onChange={setInteresses}
+              placeholder="Ex: React, Django, UX Design, Data Science"
             />
           </div>
         )}
